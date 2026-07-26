@@ -269,7 +269,6 @@ textarea:focus-visible, summary:focus-visible { outline: 2px solid var(--amber);
     pointer-events: none;
   }
   .hero h1 { margin-bottom: 1rem; font-size: clamp(2.55rem, 11.4vw, 3.55rem); line-height: .98; }
-  .hero__korean-line { margin-bottom: .8rem; }
   .hero__body { font-size: .88rem; line-height: 1.55; }
   .hero__actions { margin-top: 1.15rem; }
   .hero__actions .button--ghost { display: none; }

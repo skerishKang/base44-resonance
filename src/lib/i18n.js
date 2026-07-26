@@ -40,7 +40,6 @@ export const copy = {
     hero: {
       eyebrow: "A quieter way to meet",
       title: "Connect through the way you feel and remember, not just age, location, or interests.",
-      koreanLine: "조건이 아니라, 느끼고 기억하는 방식으로 연결됩니다.",
       body: "Resonance begins with private memories, explicit consent, and explanations that reveal affinity without exposing the stories that created it.",
       primary: "Enter the experience",
       secondary: "Inspect the foundation",
@@ -241,7 +240,6 @@ export const copy = {
     hero: {
       eyebrow: "조용하고 깊은 만남",
       title: "나이, 지역, 관심사만이 아니라 느끼고 기억하는 방식으로 연결됩니다.",
-      koreanLine: "조건이 아니라, 느끼고 기억하는 방식으로 연결됩니다.",
       body: "Resonance는 사적인 기억과 명시적 동의에서 출발하며, 기억을 노출하지 않고도 왜 서로 닿는지 설명합니다.",
       primary: "공명 시작",
       secondary: "기반 구조 살펴보기",

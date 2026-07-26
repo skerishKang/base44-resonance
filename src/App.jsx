@@ -98,7 +98,6 @@ export default function App() {
         <div className="hero__copy">
           <div className="section-kicker">{text.hero.eyebrow}</div>
           <h1 id="hero-title">{text.hero.title}</h1>
-          <p className="hero__korean-line" lang="ko">{text.hero.koreanLine}</p>
           <p className="hero__body">{text.hero.body}</p>
           <div className="hero__actions">
             <button

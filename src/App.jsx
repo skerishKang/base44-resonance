@@ -5,6 +5,7 @@ import { AuthPanel } from "@/components/AuthPanel";
 import { BackendFlow } from "@/components/BackendFlow";
 import { CapabilityPanel } from "@/components/CapabilityPanel";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
+import { ResonanceJourney } from "@/components/ResonanceJourney";
 import { getCopy, getStoredLanguage, persistLanguage } from "@/lib/i18n";
 import { scrollToElementById } from "@/lib/scroll";
 
@@ -22,6 +23,7 @@ export default function App() {
       try {
         const currentUser = await base44.auth.me();
         if (!active) return;
+        setAuthNotice("");
         if (currentUser) {
           setUser(currentUser);
           setAuthState("ready");
@@ -31,12 +33,9 @@ export default function App() {
       } catch (error) {
         if (!active) return;
         const status = error?.response?.status ?? error?.status;
-        if (status === 401 || status === 403) {
-          setAuthState("anonymous");
-        } else {
-          setAuthState("error");
-          setAuthNotice(text.auth.errors.unavailable);
-        }
+        setUser(null);
+        setAuthState("anonymous");
+        if (status === 401 || status === 403) setAuthNotice("");
       }
     };
     void restoreSession();
@@ -56,6 +55,7 @@ export default function App() {
   };
 
   const openAuth = () => {
+    setAuthNotice("");
     setAuthPanelOpen(true);
     requestAnimationFrame(() =>
       scrollToElementById("auth-region", { block: "center" }),
@@ -68,8 +68,16 @@ export default function App() {
     setAuthPanelOpen(false);
     setAuthNotice("");
     requestAnimationFrame(() =>
-      scrollToElementById("capability", { block: "start" }),
+      scrollToElementById("experience", { block: "start" }),
     );
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setAuthState("anonymous");
+    setAuthNotice("");
+    setAuthPanelOpen(false);
+    base44.auth.logout(window.location.origin);
   };
 
   return (
@@ -95,8 +103,9 @@ export default function App() {
           <div className="hero__actions">
             <button
               className="button button--primary"
+              data-primary-cta="resonance"
               type="button"
-              onClick={user ? () => scrollToElementById("capability") : openAuth}
+              onClick={user ? () => scrollToElementById("experience") : openAuth}
             >
               {text.hero.primary}
             </button>
@@ -108,7 +117,7 @@ export default function App() {
         <div className="hero__signal" aria-hidden="true">
           <div className="signal-disc signal-disc--left"><span /></div>
           <div className="signal-disc signal-disc--right"><span /></div>
-          <div className="signal-caption">R / 01</div>
+          <div className="signal-caption">R / 02</div>
         </div>
       </section>
 
@@ -116,22 +125,39 @@ export default function App() {
         {authState === "checking" ? (
           <div className="state-message state-message--auth">{text.status.checking}</div>
         ) : null}
-        {authNotice ? <p className="form-message form-message--error" role="alert">{authNotice}</p> : null}
+        {authNotice && authPanelOpen ? <p className="form-message form-message--error" role="alert">{authNotice}</p> : null}
         {!user && authPanelOpen ? (
-          <AuthPanel copy={text} onAuthenticated={handleAuthenticated} onClose={() => setAuthPanelOpen(false)} />
+          <AuthPanel
+            copy={text}
+            onAuthenticated={handleAuthenticated}
+            onClose={() => {
+              setAuthPanelOpen(false);
+              setAuthNotice("");
+            }}
+          />
         ) : null}
       </section>
 
       {user ? (
-        <CapabilityPanel
-          user={user}
-          language={language}
-          copy={text}
-          onAuthStateChange={(nextState) => {
-            setUser(null);
-            setAuthState(nextState);
-          }}
-        />
+        <ResonanceJourney language={language} copy={text} onLogout={handleLogout} />
+      ) : null}
+
+      {user ? (
+        <details className="backend-proof" id="backend-proof">
+          <summary>
+            <span>{text.backendProof.summary}</span>
+            <small>{text.backendProof.body}</small>
+          </summary>
+          <CapabilityPanel
+            language={language}
+            copy={text}
+            onAuthStateChange={(nextState) => {
+              setUser(null);
+              setAuthState(nextState);
+              setAuthNotice("");
+            }}
+          />
+        </details>
       ) : null}
 
       <BackendFlow copy={text} />

@@ -10,7 +10,7 @@ import {
 
 const CapabilityProbe = base44.entities.CapabilityProbe;
 
-export function CapabilityPanel({ user, language, copy, onAuthStateChange }) {
+export function CapabilityPanel({ language, copy, onAuthStateChange }) {
   const [label, setLabel] = useState("");
   const [probes, setProbes] = useState([]);
   const [selectedId, setSelectedId] = useState("");
@@ -39,9 +39,12 @@ export function CapabilityPanel({ user, language, copy, onAuthStateChange }) {
     try {
       const records = await CapabilityProbe.list("-created_date", 20, 0);
       if (!activeRef.current) return;
-      setProbes(Array.isArray(records) ? records : []);
-      setSelectedId((current) => current || records?.[0]?.id || "");
-      setStateFor("entity", records?.length ? "ready" : "empty");
+      const boundedRecords = Array.isArray(records) ? records : [];
+      setProbes(boundedRecords);
+      setSelectedId((current) => current || boundedRecords?.[0]?.id || "");
+      setStateFor("entity", boundedRecords.length ? "ready" : "empty");
+      setStateFor("function", boundedRecords.some((record) => record?.verified === true) ? "ready" : "waiting");
+      setMessage("");
     } catch {
       if (!activeRef.current) return;
       setProbes([]);
@@ -136,7 +139,7 @@ export function CapabilityPanel({ user, language, copy, onAuthStateChange }) {
     () => deriveStatusCards(states, copy.status),
     [states, copy.status],
   );
-  const displayName = user?.full_name?.trim() || copy.capability.member;
+  const displayName = copy.capability.member;
 
   return (
     <section className="capability-shell" id="capability" aria-labelledby="capability-title">

@@ -1,54 +1,56 @@
 # Resonance
 
-Resonance is an English-first, Korean-switchable relationship-discovery experience built around a simple product premise:
+Resonance / 공명 is a bilingual Base44 Build-Off product demo that explores relationship discovery through the way people remember, converse, and express care rather than through demographic filters.
 
-> Connect through the way you feel and remember, not just age, location, or interests.
+This repository belongs only to **Business 56 · Resonance / 공명**. It is not Business 25, Love Matchmaking, or an AI Revenue Lab registry application.
 
-This repository currently contains **Slice 1**: a cinematic visual foundation and an inspectable Base44 capability probe. It does not yet implement the final memory, fingerprint, matching, mutual-consent, AI, or realtime-conversation pipeline.
-
-## Slice 1 experience
-
-- English default UI with a persistent `EN | 한국어` switch.
-- Dusk-to-dawn visual system built entirely with CSS, SVG, gradients, blur, grain, and reduced-motion fallbacks.
-- Base44 built-in email/password authentication, registration, and OTP verification flows.
-- An authenticated `CapabilityProbe` Entity with owner-only RLS.
-- An authenticated `verify-capability` Deno Function that uses caller permissions.
-- Independent Auth, Entity, and Function state indicators.
-- Loading, empty, success, and bounded error states.
-- A visible backend path explaining what this foundation proves.
-
-## Backend capability path
+## Slice 2 product journey
 
 ```text
-Base44 Auth
-→ owner-scoped CapabilityProbe Entity
-→ authenticated verify-capability Deno Function
-→ deployable Vite site
+private Memory Cards
+→ explicit ConsentRecord
+→ deterministic ResonanceFingerprint
+→ three explainable synthetic candidates
+→ one MatchDecision with an explicitly simulated mutual state
 ```
 
-The function uses `createClientFromRequest(req)`, explicitly requires a current user, validates a bounded `probe_id`, reads and updates the record under normal caller permissions, and returns only stable capability flags. It does not use service-role access and does not return emails, tokens, request headers, app identifiers, stack traces, or private content.
+The browser experience provides exactly three bounded private memory prompts. It never asks for legal names, addresses, employers, contact details, diagnoses, trauma disclosure, sexual history, or protected characteristics. Raw memory text remains in the owner’s editing surface and is not copied into candidate output.
 
-## Local development routing
+## Durable Base44 resources
 
-The frontend client keeps the existing public Base44 App ID and selects its backend only from build-time environment state:
+All private Entities allow create only for authenticated `user` and `admin` roles. Read, update, and delete are owner-scoped through Base44’s built-in `created_by_id` metadata.
 
-- `VITE_BASE44_APP_BASE_URL` takes priority when the Base44 CLI supplies an explicit URL.
-- Development falls back to `http://localhost:4400` when that variable is absent.
-- Production omits `serverUrl` when no explicit URL is configured, preserving Base44's hosted default.
-- No token, secret, browser input, or runtime user setting can select the backend URL.
+- `MemoryCard` — one of three fixed prompts, 24–420 characters.
+- `ConsentRecord` — explicit, initially unselected consent for exactly three card IDs.
+- `ResonanceFingerprint` — five bounded structured dimensions with no raw memory text.
+- `MatchDecision` — one synthetic candidate and either `interested_waiting` or `simulated_mutual`.
+- `CapabilityProbe` — retained as secondary backend proof from Slice 1.
 
-The Vite development server binds to `0.0.0.0` for cross-WSL frontend access. This setting affects only `npm run dev`; production build and Base44 hosting output are unchanged.
+No private Entity uses `read: true`, public mutation, client-controlled owner fields, or a browser service-role path.
 
-## Privacy and security boundaries
+## Caller-scoped Functions
 
-- `CapabilityProbe` has no anonymous read or write path.
-- Create requires an authenticated user.
-- Read, update, and delete require record ownership through `created_by`.
-- Probe labels are non-sensitive and bounded to 48 characters.
-- Passwords are never logged or included in rendered error messages.
-- Function errors use stable codes and do not disclose whether another user's record exists.
-- No private memories, AI calls, or realtime data are present in this slice.
-- Programmatic scrolling follows `prefers-reduced-motion` and becomes non-animated when reduced motion is requested.
+### `generate-fingerprint`
+
+Authenticated JSON `POST` only. It accepts exactly three unique caller-owned `MemoryCard` IDs, one active caller-owned `ConsentRecord`, and a locale. It reads under caller permissions, deterministically creates or updates one bounded fingerprint for the consent record, and returns only structured output.
+
+### `compute-matches`
+
+Authenticated JSON `POST` only. It accepts one caller-owned fingerprint ID and deterministically scores three server-defined synthetic profiles. Ordering is stable by score and candidate ID. Each result includes a synthetic label, bounded score/tier, two or three shared signals, one difference, and a bounded explanation.
+
+Neither Function uses service role, live AI, Agents, Integrations, secrets, or raw authentication material. Inaccessible and nonexistent resource IDs share the same unavailable error class.
+
+## Visual and resilience contract
+
+- English default with persistent Korean switch.
+- Cinematic CSS/SVG visual language; no raster or stock romance images.
+- Primary CTA visible in the initial `390×844` mobile viewport.
+- Fingerprint and candidates visible as product results before technical evidence.
+- Normal authenticated UI uses `Resonance member` / `공명 사용자`, not account email.
+- Auth errors are shown only after real user-facing failures and stale notices clear on recovery.
+- Reload restores owner-scoped durable steps.
+- Mutation buttons disable while pending and in-flight guards prevent duplicate submission under React StrictMode.
+- Visible focus, reduced motion, and horizontal-overflow protection remain enabled.
 
 ## Local commands
 
@@ -59,20 +61,8 @@ npm run build
 npm run dev
 ```
 
-Tests use the Node test runner and do not require Base44 credentials, a workspace token, a deployed app, or network access. They verify language persistence, unauthenticated capability isolation, independent status rendering, password-safe error handling, function input/auth contracts, Entity RLS, local and production SDK routing, reduced-motion scrolling, responsive width constraints, scaffold-resource absence, and credential-free CI.
+Tests are deterministic and credential-free. They do not deploy, push Base44 resources, call live AI, or require a Base44 token.
 
-## Base44 runtime validation
+## Runtime validation boundary
 
-The Web Implementation Developer does **not** deploy this branch. After Web CTO review, the Local Validator checks out the exact Draft PR HEAD and performs:
-
-1. `npm ci`, `npm run test:ci`, and `npm run build`.
-2. `base44 dev` against the existing `base44-resonance` app.
-3. Confirm frontend SDK calls route to the local Base44 backend URL supplied by the CLI or the development fallback.
-4. Built-in auth registration, OTP verification, login, session restoration, and logout.
-5. Anonymous denial for `CapabilityProbe` create/list/get/update/delete.
-6. Owner-only access and a negative cross-user access test.
-7. `verify-capability` success, malformed JSON, unsupported method, unauthenticated, invalid ID, and inaccessible-record behavior.
-8. Desktop 1440×900 and mobile 390×844 rendering, keyboard focus, reduced motion, console errors, and unexpected same-origin request failures.
-9. One controlled deployment only after Web CTO approval, with credit balance recorded before and after.
-
-No deploy, Base44 Builder message, real AI call, new app, or new workspace is part of this implementation slice.
+The Web Implementation Developer does not deploy or claim browser runtime success. After Web CTO review, the Local Validator checks the exact Draft PR head against the existing Base44 app, including Auth, owner RLS, Function contracts, cross-user isolation, mobile/desktop evidence, retries, reload restoration, and duplicate-mutation behavior.

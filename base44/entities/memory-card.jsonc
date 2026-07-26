@@ -1,0 +1,42 @@
+{
+  "name": "MemoryCard",
+  "description": "One bounded private memory prompt used only in the owner's Resonance demo journey.",
+  "type": "object",
+  "properties": {
+    "slot": {
+      "type": "string",
+      "enum": ["vivid_moment", "care_expression", "conversation_condition"],
+      "description": "The fixed memory-card prompt represented by this record."
+    },
+    "content": {
+      "type": "string",
+      "minLength": 24,
+      "maxLength": 420,
+      "description": "Private memory text visible only to its owner and caller-scoped processing functions."
+    },
+    "locale": {
+      "type": "string",
+      "enum": ["en", "ko"],
+      "default": "en"
+    },
+    "client_nonce": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "description": "A bounded client-generated mutation nonce; not a secret."
+    }
+  },
+  "required": ["slot", "content", "locale", "client_nonce"],
+  "rls": {
+    "create": {
+      "$or": [
+        { "user_condition": { "role": "user" } },
+        { "user_condition": { "role": "admin" } }
+      ]
+    },
+    "read": { "created_by_id": "{{user.id}}" },
+    "update": { "created_by_id": "{{user.id}}" },
+    "delete": { "created_by_id": "{{user.id}}" }
+  }
+}

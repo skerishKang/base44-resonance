@@ -52,6 +52,9 @@ export function AuthPanel({ copy, onAuthenticated, onClose }) {
       const response = await base44.auth.loginViaEmailPassword(email.trim(), password);
       if (!activeRef.current) return;
       const user = response?.user ?? await base44.auth.me();
+      if (!activeRef.current) return;
+      setStatus("success");
+      setMessage("");
       onAuthenticated(user);
     } catch (error) {
       if (!activeRef.current) return;
@@ -135,7 +138,7 @@ export function AuthPanel({ copy, onAuthenticated, onClose }) {
 
       <div className="auth-tabs" role="tablist" aria-label={copy.auth.title}>
         <button
-          type="tab"
+          type="button"
           role="tab"
           aria-selected={mode === "signin"}
           className={mode === "signin" ? "is-active" : ""}

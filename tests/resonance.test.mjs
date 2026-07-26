@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+} from "node:fs";
+import { extname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
   LANGUAGE_STORAGE_KEY,
@@ -12,9 +19,19 @@ import {
   deriveStatusCards,
   getCapabilityActions,
 } from "../src/lib/capability.js";
+import {
+  BASE44_LOCAL_SERVER_URL,
+  createBase44ClientConfig,
+} from "../src/api/base44ClientConfig.js";
+import {
+  getScrollBehavior,
+  scrollElementIntoView,
+  scrollToElementById,
+} from "../src/lib/scroll.js";
 import { validateProbeInput } from "../base44/functions/verify-capability/validation.js";
 
-const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+const repoRoot = fileURLToPath(new URL("../", import.meta.url));
+const read = (path) => readFileSync(join(repoRoot, path), "utf8");
 
 function createStorage(initial = {}) {
   const data = new Map(Object.entries(initial));
@@ -22,6 +39,12 @@ function createStorage(initial = {}) {
     getItem(key) { return data.has(key) ? data.get(key) : null; },
     setItem(key, value) { data.set(key, String(value)); },
   };
+}
+
+function collectTextFiles(path) {
+  if (!existsSync(path)) return [];
+  if (!statSync(path).isDirectory()) return [path];
+  return readdirSync(path).flatMap((entry) => collectTextFiles(join(path, entry)));
 }
 
 test("language defaults to English", () => {
@@ -88,13 +111,134 @@ test("CapabilityProbe schema is authenticated-create and owner-only", () => {
   assert.doesNotMatch(schema, /"read"\s*:\s*true/);
 });
 
-test("generic Task UI is removed", () => {
-  const app = read("src/App.jsx");
-  assert.doesNotMatch(app, /Base44 Tasks|What needs to be done|Clear completed/);
-  assert.doesNotMatch(app, /entities\.Task/);
+test("development client configuration prefers the CLI-provided URL", () => {
+  const config = createBase44ClientConfig({
+    appId: "public-app-id",
+    configuredServerUrl: "  http://127.0.0.1:4411  ",
+    isDevelopment: true,
+  });
+  assert.deepEqual(config, {
+    appId: "public-app-id",
+    serverUrl: "http://127.0.0.1:4411",
+  });
+  assert.match(read("src/api/base44Client.js"), /import\.meta\.env\.VITE_BASE44_APP_BASE_URL/);
 });
 
-test("reduced-motion path exists", () => {
+test("local fallback is applied only in development", () => {
+  const development = createBase44ClientConfig({
+    appId: "public-app-id",
+    configuredServerUrl: "",
+    isDevelopment: true,
+  });
+  const production = createBase44ClientConfig({
+    appId: "public-app-id",
+    configuredServerUrl: "",
+    isDevelopment: false,
+  });
+  assert.equal(development.serverUrl, BASE44_LOCAL_SERVER_URL);
+  assert.equal(BASE44_LOCAL_SERVER_URL, "http://localhost:4400");
+  assert.equal("serverUrl" in production, false);
+});
+
+test("production preserves an explicit hosted URL and otherwise omits serverUrl", () => {
+  assert.deepEqual(
+    createBase44ClientConfig({
+      appId: "public-app-id",
+      configuredServerUrl: "https://example.base44.app",
+      isDevelopment: false,
+    }),
+    { appId: "public-app-id", serverUrl: "https://example.base44.app" },
+  );
+  assert.deepEqual(
+    createBase44ClientConfig({
+      appId: "public-app-id",
+      configuredServerUrl: undefined,
+      isDevelopment: false,
+    }),
+    { appId: "public-app-id" },
+  );
+});
+
+test("Vite development server binds to all interfaces only through config", () => {
+  const source = read("vite.config.js");
+  assert.match(source, /server:\s*\{[\s\S]*host:\s*"0\.0\.0\.0"/);
+  assert.doesNotMatch(read("package.json"), /--host|0\.0\.0\.0/);
+});
+
+test("reduced-motion programmatic scrolling uses auto", () => {
+  let receivedOptions;
+  const element = {
+    scrollIntoView(options) { receivedOptions = options; },
+  };
+  assert.equal(
+    scrollElementIntoView(element, {
+      block: "center",
+      matchMedia: () => ({ matches: true }),
+    }),
+    true,
+  );
+  assert.deepEqual(receivedOptions, { behavior: "auto", block: "center" });
+  assert.equal(getScrollBehavior(() => ({ matches: true })), "auto");
+});
+
+test("normal-motion programmatic scrolling uses smooth", () => {
+  let receivedOptions;
+  const element = {
+    scrollIntoView(options) { receivedOptions = options; },
+  };
+  assert.equal(
+    scrollElementIntoView(element, {
+      block: "start",
+      matchMedia: () => ({ matches: false }),
+    }),
+    true,
+  );
+  assert.deepEqual(receivedOptions, { behavior: "smooth", block: "start" });
+  assert.equal(getScrollBehavior(() => ({ matches: false })), "smooth");
+});
+
+test("scroll helper is safe without a browser or target element", () => {
+  assert.equal(scrollElementIntoView(null), false);
+  assert.equal(scrollToElementById("missing"), false);
+  assert.equal(getScrollBehavior(null), "auto");
+  const app = read("src/App.jsx");
+  assert.match(app, /scrollToElementById/);
+  assert.doesNotMatch(app, /scrollIntoView|behavior:\s*"smooth"/);
+});
+
+test("legacy scaffold resource directories contain only active resources", () => {
+  const entityFiles = readdirSync(join(repoRoot, "base44/entities")).sort();
+  assert.deepEqual(entityFiles, ["capability-probe.jsonc"]);
+  assert.equal(existsSync(join(repoRoot, "base44/agents")), false);
+});
+
+test("source, resources, tests, and README contain no scaffold flow references", () => {
+  const textExtensions = new Set([".js", ".jsx", ".ts", ".jsonc", ".mjs", ".md"]);
+  const files = [
+    ...collectTextFiles(join(repoRoot, "src")),
+    ...collectTextFiles(join(repoRoot, "base44")),
+    ...collectTextFiles(join(repoRoot, "tests")),
+    join(repoRoot, "README.md"),
+  ].filter((path) => textExtensions.has(extname(path)));
+  const forbiddenTerms = [
+    ["Ta", "sk"].join(""),
+    ["task", "manager"].join("_"),
+  ];
+
+  for (const path of files) {
+    const source = readFileSync(path, "utf8");
+    for (const term of forbiddenTerms) {
+      assert.equal(source.includes(term), false, `${path} contains a removed scaffold reference`);
+    }
+  }
+});
+
+test("generic scaffold UI is removed", () => {
+  const app = read("src/App.jsx");
+  assert.doesNotMatch(app, /What needs to be done|Clear completed/);
+});
+
+test("reduced-motion CSS path exists", () => {
   const css = read("src/index.css");
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /animation-duration: 0\.001ms !important/);

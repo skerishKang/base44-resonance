@@ -6,6 +6,7 @@ import { BackendFlow } from "@/components/BackendFlow";
 import { CapabilityPanel } from "@/components/CapabilityPanel";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { getCopy, getStoredLanguage, persistLanguage } from "@/lib/i18n";
+import { scrollToElementById } from "@/lib/scroll";
 
 export default function App() {
   const [language, setLanguage] = useState(() => getStoredLanguage());
@@ -56,7 +57,9 @@ export default function App() {
 
   const openAuth = () => {
     setAuthPanelOpen(true);
-    requestAnimationFrame(() => document.getElementById("auth-region")?.scrollIntoView({ behavior: "smooth", block: "center" }));
+    requestAnimationFrame(() =>
+      scrollToElementById("auth-region", { block: "center" }),
+    );
   };
 
   const handleAuthenticated = (authenticatedUser) => {
@@ -64,7 +67,9 @@ export default function App() {
     setAuthState("ready");
     setAuthPanelOpen(false);
     setAuthNotice("");
-    requestAnimationFrame(() => document.getElementById("capability")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    requestAnimationFrame(() =>
+      scrollToElementById("capability", { block: "start" }),
+    );
   };
 
   return (
@@ -88,7 +93,11 @@ export default function App() {
           <p className="hero__korean-line" lang="ko">{text.hero.koreanLine}</p>
           <p className="hero__body">{text.hero.body}</p>
           <div className="hero__actions">
-            <button className="button button--primary" type="button" onClick={user ? () => document.getElementById("capability")?.scrollIntoView({ behavior: "smooth" }) : openAuth}>
+            <button
+              className="button button--primary"
+              type="button"
+              onClick={user ? () => scrollToElementById("capability") : openAuth}
+            >
               {text.hero.primary}
             </button>
             <a className="button button--ghost" href="#backend">{text.hero.secondary}</a>

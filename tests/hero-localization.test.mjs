@@ -87,3 +87,34 @@ test("unrelated Auth, journey, and backend copy contracts remain unchanged", () 
   assert.equal(ko.journey.title, "스스로 설명되는 공명 신호를 만듭니다.");
   assert.equal(ko.backend.foundation, "Slice 2 제품 경로");
 });
+
+test("CapabilityPanel orbit markup remains paired with its exact CSS rule", () => {
+  const capabilityPanel = read("src/components/CapabilityPanel.jsx");
+  const css = read("src/index.css");
+
+  assert.match(
+    capabilityPanel,
+    /<span className="probe-card__orbit" aria-hidden="true" \/>/,
+  );
+  assert.match(
+    css,
+    /\.probe-card__orbit \{ width: 2\.1rem; aspect-ratio: 1; border: 1px solid rgba\(244,236,221,\.22\); border-radius: 50%; box-shadow: inset 0 0 0 \.42rem transparent, inset 0 0 0 \.48rem rgba\(244,236,221,\.09\); \}/,
+  );
+});
+
+test("Issue 16 source contracts leave Auth, Journey, Entity, and Function paths intact", () => {
+  const contracts = [
+    ["src/components/AuthPanel.jsx", /base44\.auth\.(register|login|verifyOtp)/],
+    ["src/components/ResonanceJourney.jsx", /generate-fingerprint/],
+    ["base44/entities/memory-card.jsonc", /"name": "MemoryCard"/],
+    ["base44/entities/consent-record.jsonc", /"name": "ConsentRecord"/],
+    ["base44/entities/resonance-fingerprint.jsonc", /"name": "ResonanceFingerprint"/],
+    ["base44/entities/match-decision.jsonc", /"name": "MatchDecision"/],
+    ["base44/functions/generate-fingerprint/entry.ts", /createClientFromRequest/],
+    ["base44/functions/compute-matches/entry.ts", /createClientFromRequest/],
+  ];
+
+  for (const [path, pattern] of contracts) {
+    assert.match(read(path), pattern, `${path} contract changed unexpectedly`);
+  }
+});

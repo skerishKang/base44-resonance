@@ -30,9 +30,14 @@
   },
   "required": ["label", "locale", "client_nonce"],
   "rls": {
-    "create": { "user_condition": { "id": "{{user.id}}" } },
-    "read": { "created_by": "{{user.email}}" },
-    "update": { "created_by": "{{user.email}}" },
-    "delete": { "created_by": "{{user.email}}" }
+    "create": {
+      "$or": [
+        { "user_condition": { "role": "user" } },
+        { "user_condition": { "role": "admin" } }
+      ]
+    },
+    "read": { "created_by_id": "{{user.id}}" },
+    "update": { "created_by_id": "{{user.id}}" },
+    "delete": { "created_by_id": "{{user.id}}" }
   }
 }

@@ -103,12 +103,27 @@ test("function source performs explicit authentication and caller-scoped entity 
 });
 
 test("CapabilityProbe schema is authenticated-create and owner-only", () => {
-  const schema = read("base44/entities/capability-probe.jsonc");
-  assert.match(schema, /"create": \{ "user_condition": \{ "id": "\{\{user\.id\}\}" \} \}/);
-  assert.match(schema, /"read": \{ "created_by": "\{\{user\.email\}\}" \}/);
-  assert.match(schema, /"update": \{ "created_by": "\{\{user\.email\}\}" \}/);
-  assert.match(schema, /"delete": \{ "created_by": "\{\{user\.email\}\}" \}/);
-  assert.doesNotMatch(schema, /"read"\s*:\s*true/);
+  const schema = JSON.parse(read("base44/entities/capability-probe.jsonc"));
+  assert.deepEqual(schema.rls.create, {
+    $or: [
+      { user_condition: { role: "user" } },
+      { user_condition: { role: "admin" } },
+    ],
+  });
+  assert.notEqual(schema.rls.create, true);
+  assert.notDeepEqual(schema.rls.create, { user_condition: { id: "{{user.id}}" } });
+
+  const ownerRule = { created_by_id: "{{user.id}}" };
+  assert.deepEqual(schema.rls.read, ownerRule);
+  assert.deepEqual(schema.rls.update, ownerRule);
+  assert.deepEqual(schema.rls.delete, ownerRule);
+  assert.notEqual(schema.rls.read, true);
+
+  const prohibitedFields = ["id", "created_by", "created_by_id", "owner_id", "owner_email"];
+  for (const field of prohibitedFields) {
+    assert.equal(Object.hasOwn(schema.properties ?? {}, field), false);
+    assert.equal((schema.required ?? []).includes(field), false);
+  }
 });
 
 test("development client configuration prefers the CLI-provided URL", () => {

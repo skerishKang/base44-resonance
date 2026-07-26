@@ -22,8 +22,11 @@ export function CapabilityPanel({ user, language, copy, onAuthStateChange }) {
   const [states, setStates] = useState({ auth: "ready", entity: "loading", function: "waiting" });
   const activeRef = useRef(true);
 
-  useEffect(() => () => {
-    activeRef.current = false;
+  useEffect(() => {
+    activeRef.current = true;
+    return () => {
+      activeRef.current = false;
+    };
   }, []);
 
   const setStateFor = (key, value) => {

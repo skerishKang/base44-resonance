@@ -13,8 +13,11 @@ export function AuthPanel({ copy, onAuthenticated, onClose }) {
   const [message, setMessage] = useState("");
   const activeRef = useRef(true);
 
-  useEffect(() => () => {
-    activeRef.current = false;
+  useEffect(() => {
+    activeRef.current = true;
+    return () => {
+      activeRef.current = false;
+    };
   }, []);
 
   const resetFeedback = () => {
@@ -132,7 +135,7 @@ export function AuthPanel({ copy, onAuthenticated, onClose }) {
 
       <div className="auth-tabs" role="tablist" aria-label={copy.auth.title}>
         <button
-          type="button"
+          type="tab"
           role="tab"
           aria-selected={mode === "signin"}
           className={mode === "signin" ? "is-active" : ""}

@@ -240,13 +240,20 @@ test("CI remains credential-free and contains no deploy or Base44 push", () => {
   assert.doesNotMatch(workflow, /base44 deploy|base44 auth push|entities push|functions push|secrets\./i);
 });
 
-test("the active Entity inventory contains the Slice 2 resources without legacy scaffold resources", () => {
+test("the active Entity inventory preserves Slice 2 and adds the WatchTree resources", () => {
   const files = readdirSync(join(repoRoot, "base44/entities")).sort();
   assert.deepEqual(files, [
     "capability-probe.jsonc",
     "consent-record.jsonc",
+    "import-chunk-receipt.jsonc",
     "match-decision.jsonc",
     "memory-card.jsonc",
+    "mutual-resonance.jsonc",
     "resonance-fingerprint.jsonc",
+    "reveal-consent.jsonc",
+    "shared-path-candidate.jsonc",
+    "watch-event.jsonc",
+    "watch-import.jsonc",
+    "watch-tree-fingerprint.jsonc",
   ]);
 });

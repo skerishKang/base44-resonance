@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-labelledby="title desc">
+<title id="title">Abstract documentary media frame</title>
+<desc id="desc">Original platform-neutral abstract frame representing documentary</desc>
+<defs>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#F4CB84"/>
+    <stop offset="1" stop-color="#D7A96F"/>
+  </linearGradient>
+  <linearGradient id="violetGlow" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#4D3C81"/>
+    <stop offset="1" stop-color="#28234F"/>
+  </linearGradient>
+  <radialGradient id="halo">
+    <stop offset="0" stop-color="#F4CB84" stop-opacity=".58"/>
+    <stop offset=".55" stop-color="#D7A96F" stop-opacity=".18"/>
+    <stop offset="1" stop-color="#D7A96F" stop-opacity="0"/>
+  </radialGradient>
+  <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+    <feGaussianBlur stdDeviation="10"/>
+  </filter>
+  <filter id="smallGlow" x="-80%" y="-80%" width="260%" height="260%">
+    <feGaussianBlur stdDeviation="4"/>
+  </filter>
+</defs>
+
+<rect x="74" y="120" width="652" height="440" rx="34" fill="#121329" stroke="#3D3B51" stroke-width="5"/>
+<rect x="105" y="151" width="590" height="378" rx="22" fill="url(#violetGlow)"/>
+
+<path d="M105 420 C184 312 250 342 314 286 C372 235 448 180 695 198 V529 H105 Z" fill="#233B38"/>
+<path d="M105 478 C215 357 302 438 383 361 C465 283 553 285 695 256 V529 H105 Z" fill="#A8C8AC" opacity=".42"/>
+<circle cx="562" cy="233" r="55" fill="#D7A96F" opacity=".86"/>
+<path d="M122 214 C195 240 224 202 292 223 C366 246 397 190 477 205" fill="none" stroke="#F4ECDD" opacity=".5" stroke-width="6"/>
+<rect x="136" y="424" width="215" height="20" fill="#F4ECDD" opacity=".68"/>
+<rect x="136" y="457" width="162" height="12" fill="#F4ECDD" opacity=".38"/>
+
+<rect x="74" y="590" width="420" height="18" rx="9" fill="#3D3B51"/>
+<rect x="74" y="590" width="238" height="18" rx="9" fill="#A8C8AC"/>
+<circle cx="665" cy="600" r="18" fill="#7E9DB7" opacity=".85"/>
+<text x="78" y="670" fill="#CFC7BA" font-family="Arial, sans-serif" font-size="30" letter-spacing="4">DOCUMENTARY</text>
+
+</svg>

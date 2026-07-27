@@ -29,7 +29,7 @@ async function expectedConfirmationToken(input: Record<string, unknown>) {
 }
 
 Deno.serve(async (req) => {
-  const rejected = requirePostJson(req);
+  const rejected = await requirePostJson(req);
   if (rejected) return rejected;
 
   const base44 = createClientFromRequest(req);

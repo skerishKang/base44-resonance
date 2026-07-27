@@ -15,7 +15,7 @@ const sameTokens = (a: unknown, b: unknown) => JSON.stringify([...(Array.isArray
   === JSON.stringify([...(Array.isArray(b) ? b : [])].sort());
 
 Deno.serve(async (req) => {
-  const rejected = requirePostJson(req);
+  const rejected = await requirePostJson(req);
   if (rejected) return rejected;
   const base44 = createClientFromRequest(req);
   if (!await authenticate(base44)) return fail("AUTH_REQUIRED", 401);

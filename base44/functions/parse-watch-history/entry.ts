@@ -13,7 +13,7 @@ function normalize(record, ordinal, sourceType) {
   return { status: "accepted", event: { source_platform: "youtube", source_type: sourceType, normalized_content_id: id, bounded_title: bounded(record.bounded_title, 240) || "Untitled video", bounded_creator_label: bounded(record.bounded_creator_label, 160), canonical_public_url: `https://www.youtube.com/watch?v=${id}`, watched_at: new Date(timestamp).toISOString(), repeat_count: Math.max(1, Math.min(999, Number(record.repeat_count) || 1)), first_watched_at: new Date(Number.isFinite(first) ? first : timestamp).toISOString(), last_watched_at: new Date(Number.isFinite(last) ? last : timestamp).toISOString(), occurrence_index: Math.max(1, Math.min(999, Number(record.occurrence_index) || 1)), same_second_ordinal: Math.max(0, Math.min(99, Number(record.same_second_ordinal) || 0)), visibility_state: "owner_only", matching_enabled: false, sensitivity_excluded: false, exclusion_reason: "", optional_owner_note: "", normalization_version: NORMALIZATION_VERSION, canonicalization_version: "youtube-id-v1", is_synthetic: false, fixture_id: "", schema_version: 1, source_ordinal: ordinal, creator_key: bounded(record.creator_key, 128) } };
 }
 Deno.serve(async (req) => {
-  const rejected = requirePostJson(req); if (rejected) return rejected;
+  const rejected = await requirePostJson(req); if (rejected) return rejected;
   const base44 = createClientFromRequest(req); if (!await authenticate(base44)) return fail("AUTH_REQUIRED", 401);
   const input = await readInput(req); if (!validNonce(input)) return fail("INVALID_CLIENT_NONCE", 400);
   if (!SOURCES.has(input.source_type)) return fail("SOURCE_TYPE_UNSUPPORTED", 415);

@@ -11,42 +11,136 @@ export const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 
 export function json(body, status = 200, headers = {}) { return Response.json(body, { status, headers: { ...JSON_HEADERS, ...headers } }); }
 export function fail(code, status = 400, retryable = false) { return json({ ok: false, error: { code, retryable } }, status); }
-export function requirePostJson(req) {
+
+// Stream-based request body byte guard.
+// Reads actual bytes from the request body stream to enforce the limit,
+// rather than trusting Content-Length which can be spoofed.
+export async function requirePostJson(req) {
   if (req.method !== "POST") return fail("METHOD_NOT_ALLOWED", 405, false);
   const type = req.headers.get("content-type") ?? "";
   if (!type.toLowerCase().includes("application/json")) return fail("UNSUPPORTED_MEDIA_TYPE", 415, false);
-  const length = Number(req.headers.get("content-length") ?? 0);
-  if (length > REQUEST_GUARD) return fail("REQUEST_TOO_LARGE", 413, false);
+  // Read the body stream with a byte limit to avoid trusting Content-Length
+  const bytes = await readStreamBytes(req.body, REQUEST_GUARD + 1);
+  if (bytes === null) return fail("REQUEST_TOO_LARGE", 413, false);
+  if (bytes.byteLength > REQUEST_GUARD) return fail("REQUEST_TOO_LARGE", 413, false);
+  // Store bytes for later JSON parsing via req.json()
+  req._bodyBytes = bytes;
   return null;
 }
+
+// Safely read the request body stream up to maxBytes+1.
+// Returns Uint8Array if within limit, null if exceeded.
+async function readStreamBytes(stream, maxBytes) {
+  if (!stream) {
+    // Handle empty/no-body case
+    return new Uint8Array(0);
+  }
+  const reader = stream.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        total += value.byteLength;
+        if (total > maxBytes) {
+          reader.cancel().catch(() => {});
+          return null;
+        }
+        chunks.push(value);
+      }
+    }
+  } catch {
+    // Stream error during reading
+    return null;
+  }
+  // Concatenate all chunks
+  const combined = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return combined;
+}
+
 export async function authenticate(base44) {
   try { const user = await base44.auth.me(); return user || null; } catch { return null; }
 }
-export async function readInput(req) { try { return await req.json(); } catch { return null; } }
-export function validNonce(input) { return Boolean(input && NONCE.test(input.client_nonce ?? "")); }
-export async function digestHex(value) {
-  const bytes = new TextEncoder().encode(typeof value === "string" ? value : stableStringify(value));
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return [...new Uint8Array(digest)].map((item) => item.toString(16).padStart(2, "0")).join("");
+
+export async function readInput(req) {
+  try {
+    if (req._bodyBytes) {
+      // Parse from pre-read bytes
+      const text = new TextDecoder().decode(req._bodyBytes);
+      return JSON.parse(text);
+    }
+    return await req.json();
+  } catch { return null; }
 }
+
+export function validNonce(input) { return Boolean(input && NONCE.test(input.client_nonce ?? "")); }
+
+// HMAC-SHA256 based digest for internal deduplication.
+// Fails closed with HMAC_KEY_UNAVAILABLE if the WATCHTREE_HMAC_KEY
+// environment variable is not set or is too short.
+export async function digestHex(value) {
+  const hmacKey = typeof Deno !== "undefined" ? (Deno.env?.get?.("WATCHTREE_HMAC_KEY") ?? "") : "";
+  if (!hmacKey || hmacKey.length < 16) {
+    throw new Error("HMAC_KEY_UNAVAILABLE");
+  }
+  const bytes = new TextEncoder().encode(typeof value === "string" ? value : stableStringify(value));
+  try {
+    const keyBytes = new TextEncoder().encode(hmacKey);
+    const key = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const signature = await crypto.subtle.sign("HMAC", key, bytes);
+    return [...new Uint8Array(signature)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  } catch {
+    throw new Error("HMAC_KEY_UNAVAILABLE");
+  }
+}
+
 export function stableStringify(value) {
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
   if (value && typeof value === "object") return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
   return JSON.stringify(value);
 }
-export function bounded(value, max) { return typeof value === "string" ? [...value.normalize("NFC").replace(/[\\u0000-\\u001F\\u007F]/g, " ").replace(/\\s+/g, " ").trim()].slice(0, max).join("") : ""; }
-export function publicEvent(record) {
-  const { match_hash, source_record_fingerprint, ...safe } = record;
-  return safe;
+export function bounded(value, max) { return typeof value === "string" ? [...value.normalize("NFC").replace(/[\u0000-\u001F\u007F]/g, " ").replace(/\s+/g, " ").trim()].slice(0, max).join("") : ""; }
+
+// Internal fields that must NOT be exposed to browser/client responses
+const INTERNAL_FIELDS = new Set([
+  "match_hash",
+  "source_record_fingerprint",
+  "input_digest",
+  "source_digest",
+]);
+
+// Recursive response sanitizer: strips all internal fields from any response object.
+export function sanitizeResponse(record) {
+  if (!record || typeof record !== "object") return record;
+  if (Array.isArray(record)) return record.map(sanitizeResponse);
+  const cleaned = {};
+  for (const [key, value] of Object.entries(record)) {
+    if (INTERNAL_FIELDS.has(key)) continue;
+    cleaned[key] = sanitizeResponse(value);
+  }
+  return cleaned;
 }
+
+// Legacy publicEvent helper - now uses the generic sanitizer
+export function publicEvent(record) {
+  return sanitizeResponse(record);
+}
+
 export function publicImport(record) {
   const { file_sha256_or_fixture_digest, preview_digest, confirmation_token_digest, error_sample_codes, ...safe } = record;
   return safe;
 }
-export function publicTree(record) { return record; }
+export function publicTree(record) { return sanitizeResponse(record); }
 export function publicCandidate(record) {
-  const { source_digest, candidate_label, ...safe } = record;
-  return { ...safe, label: candidate_label ?? safe.label ?? "Synthetic viewer" };
+  const { source_digest, ...safe } = record;
+  return sanitizeResponse({ ...safe, label: safe.candidate_label ?? safe.label ?? "Synthetic viewer" });
 }
 export async function unavailable(getter) { try { const record = await getter(); return record || null; } catch { return null; } }
 export async function deleteRecords(entity, records) { for (const record of records) if (record?.id) await entity.delete(record.id); }
@@ -74,4 +168,10 @@ const cosine=(a,b)=>Math.max(0,Math.min(1,a.reduce((sum,value,index)=>sum+value*
 export function buildTree(events){const active=events.filter((event)=>!event.sensitivity_excluded);const creators=new Map();for(const event of active){const key=event.bounded_creator_label||"Creator unavailable";const item=creators.get(key)??{label:key,count:0,ids:new Set()};item.count+=1;item.ids.add(event.normalized_content_id);creators.set(key,item);}return{eligible_event_count:active.length,unique_content_count:new Set(active.map((event)=>event.normalized_content_id)).size,creator_clusters:[...creators.values()].sort((a,b)=>b.count-a.count||a.label.localeCompare(b.label)).slice(0,50).map((item)=>({label:item.label,count:item.count,unique:item.ids.size})),repeat_signal_count:[...counts(active).values()].filter((n)=>n>1).length,viewing_rhythm:rhythm(active),rarity_signal_count:0,excluded_count:events.length-active.length,generated_at:new Date(0).toISOString(),matching_version:MATCHING_VERSION};}
 export function scoreCandidate(ownerEvents,candidate,corpus=SYNTHETIC_CANDIDATES){const a=setOf(ownerEvents),b=setOf(candidate.events),shared=inter(a,b);const exact=shared.length/Math.max(1,Math.min(a.size,b.size));const sets=[...corpus.map((item)=>setOf(item.events)),a];const idf=(id)=>Math.max(1,Math.min(4,1+Math.log((sets.length+1)/(sets.filter((items)=>items.has(id)).length+1))));const rarity=shared.reduce((sum,id)=>sum+idf(id),0)/Math.max(.0001,Math.min([...a].reduce((sum,id)=>sum+idf(id),0),[...b].reduce((sum,id)=>sum+idf(id),0)));const ac=counts(ownerEvents),bc=counts(candidate.events),union=new Set([...ac.keys(),...bc.keys()]);const g=(n)=>1+Math.min(2,Math.log(Math.max(1,n)));let rn=0,rd=0;for(const id of union){rn+=Math.min(g(ac.get(id)??0),g(bc.get(id)??0));rd+=Math.max(g(ac.get(id)??0),g(bc.get(id)??0));}const repeated=rd?rn/rd:0;const ap=paths(ownerEvents),bp=paths(candidate.events),sharedBi=inter(ap.bi,bp.bi).length,sharedTri=inter(ap.tri,bp.tri).length,seq=(sharedBi+1.5*sharedTri)/Math.max(1,new Set([...ap.bi,...bp.bi]).size+1.5*new Set([...ap.tri,...bp.tri]).size);const creatorA=new Set(ownerEvents.filter(eligible).map((e)=>e.creator_key||e.bounded_creator_label)),creatorB=new Set(candidate.events.filter(eligible).map((e)=>e.creator_key||e.bounded_creator_label)),creator=inter(creatorA,creatorB).length/Math.max(1,new Set([...creatorA,...creatorB]).size);const temporal=cosine(rhythm(ownerEvents),rhythm(candidate.events));const difference=creator>0?Math.max(0,1-exact):0;const score=.25*exact+.25*rarity+.15*repeated+.15*seq+.08*creator+.07*temporal+.05*difference;const rare=shared.filter((id)=>sets.filter((items)=>items.has(id)).length<=2).length;return{id:candidate.id,label:candidate.label,synthetic_label:candidate.synthetic_label,score:Number(score.toFixed(6)),score_band:score>=.45?"distinctive":score>=.28?"strong":"emerging",exact_overlap_count:shared.length,rare_overlap_count:rare,repeated_overlap_count:shared.filter((id)=>(ac.get(id)??0)>1&&(bc.get(id)??0)>1).length,shared_path_count:sharedBi+sharedTri,meaningful_difference_present:difference>.15,evidence_tokens:[{id:`${candidate.id}:exact`,type:"exact",label:"Exact overlap",count:shared.length},{id:`${candidate.id}:rare`,type:"rare",label:"Rare signal",count:rare},{id:`${candidate.id}:path`,type:"path",label:"Shared path",count:sharedBi+sharedTri},{id:`${candidate.id}:difference`,type:"difference",label:"Meaningful difference",count:difference>.15?1:0}]};}
 export function orderCandidates(events){return SYNTHETIC_CANDIDATES.map((candidate)=>scoreCandidate(events,candidate)).sort((a,b)=>b.score-a.score||b.rare_overlap_count-a.rare_overlap_count||b.shared_path_count-a.shared_path_count||b.exact_overlap_count-a.exact_overlap_count||a.id.localeCompare(b.id));}
-export async function decorateStoredEvent(event, importId, ordinal) { const identity=`${event.source_platform}|${event.normalized_content_id}`;const match_hash=await digestHex(`match-v1|${identity}`);const source_record_fingerprint=await digestHex(`record-v1|${identity}|${event.watched_at}|${event.same_second_ordinal??0}`);return{...event,bounded_title:bounded(event.bounded_title,240)||"Untitled video",bounded_creator_label:bounded(event.bounded_creator_label,160),canonical_public_url:bounded(event.canonical_public_url,512),optional_owner_note:bounded(event.optional_owner_note,500),match_hash,source_record_fingerprint,import_id:importId,source_ordinal:ordinal,canonicalization_version:event.canonicalization_version||"youtube-id-v1",schema_version:1};}
+
+export async function decorateStoredEvent(event, importId, ordinal) {
+  const identity=`${event.source_platform}|${event.normalized_content_id}`;
+  const match_hash=await digestHex(`match-v1|${identity}`);
+  const source_record_fingerprint=await digestHex(`record-v1|${identity}|${event.watched_at}|${event.same_second_ordinal??0}`);
+  return{...event,bounded_title:bounded(event.bounded_title,240)||"Untitled video",bounded_creator_label:bounded(event.bounded_creator_label,160),canonical_public_url:bounded(event.canonical_public_url,512),optional_owner_note:bounded(event.optional_owner_note,500),match_hash,source_record_fingerprint,import_id:importId,source_ordinal:ordinal,canonicalization_version:event.canonicalization_version||"youtube-id-v1",schema_version:1};
+}

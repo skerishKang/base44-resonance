@@ -254,6 +254,7 @@ test("the active Entity inventory preserves Slice 2 and adds the WatchTree resou
     "shared-path-candidate.jsonc",
     "watch-event.jsonc",
     "watch-import.jsonc",
+    "watch-match-signal.jsonc",
     "watch-tree-fingerprint.jsonc",
   ]);
 });

@@ -20,7 +20,7 @@ import {
 } from "../_shared/watchtree.js";
 
 Deno.serve(async (req) => {
-  const rejected = requirePostJson(req);
+  const rejected = await requirePostJson(req);
   if (rejected) return rejected;
   const base44 = createClientFromRequest(req);
   if (!await authenticate(base44)) return fail("AUTH_REQUIRED", 401);

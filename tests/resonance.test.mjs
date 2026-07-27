@@ -181,6 +181,7 @@ test("active Entity inventory contains capability proof and Slice 2 private reso
     "shared-path-candidate.jsonc",
     "watch-event.jsonc",
     "watch-import.jsonc",
+    "watch-match-signal.jsonc",
     "watch-tree-fingerprint.jsonc",
   ]);
   assert.equal(existsSync(join(repoRoot, "base44/agents")), false);

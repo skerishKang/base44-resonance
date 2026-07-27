@@ -1,7 +1,7 @@
 import { createClientFromRequest } from "npm:@base44/sdk";
 import { authenticate, buildTree, digestHex, fail, json, MATCHING_VERSION, publicEvent, requirePostJson, readInput, unavailable, validNonce } from "../_shared/watchtree.js";
 Deno.serve(async (req) => {
-  const rejected=requirePostJson(req);if(rejected)return rejected;const base44=createClientFromRequest(req);if(!await authenticate(base44))return fail("AUTH_REQUIRED",401);
+  const rejected=await requirePostJson(req);if(rejected)return rejected;const base44=createClientFromRequest(req);if(!await authenticate(base44))return fail("AUTH_REQUIRED",401);
   const input=await readInput(req);if(!validNonce(input))return fail("INVALID_CLIENT_NONCE",400);if(input.matching_version!==MATCHING_VERSION)return fail("VERSION_UNSUPPORTED",409);
   const watchImport=await unavailable(()=>base44.entities.WatchImport.get(input.import_id));if(!watchImport||watchImport.status!=="completed")return fail("RESOURCE_UNAVAILABLE",404);
   const events=await base44.entities.WatchEvent.filter({import_id:watchImport.id},"watched_at",5000,0);if(!events.length)return fail("NO_ELIGIBLE_EVENTS",409);

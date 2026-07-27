@@ -7,7 +7,7 @@ const clientConfig = createBase44ClientConfig({
   appId: import.meta.env.VITE_BASE44_APP_ID,
   source: import.meta.env.VITE_BASE44_APP_SOURCE,
   configuredServerUrl,
-  isDevelopment: import.meta.env.DEV,
+  isDevelopment: import.meta.env.MODE === "development",
 });
 
 function createNoopClient() {

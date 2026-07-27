@@ -1,4 +1,5 @@
 import { sanitizeResponse, publicEvent } from "./sanitizer.js";
+export { sanitizeResponse, publicEvent };
 
 export const JSON_HEADERS = { "Cache-Control": "no-store", "Content-Type": "application/json; charset=utf-8" };
 export const FIXTURE_ID = "watchtree-demo-v1";

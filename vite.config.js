@@ -32,6 +32,7 @@ export default defineConfig(({ command, mode }) => {
     define: {
       "import.meta.env.VITE_BASE44_APP_ID": JSON.stringify(appId || ""),
       "import.meta.env.VITE_BASE44_APP_SOURCE": JSON.stringify(source),
+      "process.env.NODE_ENV": JSON.stringify(mode === "development" ? "development" : "production"),
     },
   };
 });

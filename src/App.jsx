@@ -27,11 +27,22 @@ export default function App() {
     let active = true;
     const restoreSession = async () => {
       try {
+        const authenticated = await base44.auth.isAuthenticated();
+        if (!active) return;
+
+        if (!authenticated) {
+          setUser(null);
+          setAuthState("anonymous");
+          setAuthNotice("");
+          return;
+        }
+
         const currentUser = await base44.auth.me();
         if (!active) return;
+        
         setAuthNotice("");
         if (currentUser) { setUser(currentUser); setAuthState("ready"); }
-        else setAuthState("anonymous");
+        else { setUser(null); setAuthState("anonymous"); }
       } catch (error) {
         if (!active) return;
         const status = error?.response?.status ?? error?.status;

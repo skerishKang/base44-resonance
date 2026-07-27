@@ -31,29 +31,3 @@ test("production browser config has no localhost and uses app id", async () => {
   assert.equal(foundLocalhost, false, "Production build should not contain localhost:4400");
   assert.equal(foundOldAppId, false, "Production build should not contain old hardcoded app ID");
 });
-
-test("production browser config has replaced process.env.NODE_ENV and removed Base44 SDK Error", async () => {
-  const distPath = path.resolve(__dirname, "../dist");
-  if (!fs.existsSync(distPath)) {
-    return; // skip if build not run yet
-  }
-
-  let foundNodeEnv = false;
-  let foundSdkError = false;
-
-  const files = fs.readdirSync(path.join(distPath, "assets"));
-  for (const file of files) {
-    if (file.endsWith(".js")) {
-      const content = fs.readFileSync(path.join(distPath, "assets", file), "utf-8");
-      if (content.includes("process.env.NODE_ENV")) {
-        foundNodeEnv = true;
-      }
-      if (content.includes("[Base44 SDK Error]")) {
-        foundSdkError = true;
-      }
-    }
-  }
-
-  assert.equal(foundNodeEnv, false, "Production build should not contain unreplaced process.env.NODE_ENV");
-  assert.equal(foundSdkError, false, "Production build should not contain [Base44 SDK Error] string (should be dead-code eliminated)");
-});

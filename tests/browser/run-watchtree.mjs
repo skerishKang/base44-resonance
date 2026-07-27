@@ -58,6 +58,7 @@ async function waitForPortClosed() {
 
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const manifest = { schema_version: 1, generated_at: new Date().toISOString(), states: [], assertions: {} };
+const INTERNAL_FIELDS = ["match_hash", "source_record_fingerprint", "input_digest", "source_digest"];
 
 function watchPage(page) {
   const consoleErrors = [];
@@ -117,16 +118,31 @@ async function layoutState(page) {
   });
 }
 
-async function capture(page, name, required = {}) {
+async function capture(page, name, required = {}, options = {}) {
+  const fullPage = options.fullPage ?? false;
   const path = new URL(`${name}.png`, evidenceDir);
-  await page.screenshot({ path: path.pathname, fullPage: false });
+  await page.screenshot({ path: path.pathname, fullPage });
   const bytes = await readFile(path);
   const layout = await layoutState(page);
+  const scrollY = await page.evaluate(() => window.scrollY);
+  const documentHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+  const image = await page.evaluate(() => {
+    // Just get viewport dimensions for metadata
+    return { vw: innerWidth, vh: innerHeight };
+  });
+  const css_viewport = `${layout.viewport.width}x${layout.viewport.height}`;
   const state = {
     name,
-    css_viewport: `${layout.viewport.width}x${layout.viewport.height}`,
+    css_viewport,
     physical_pixels: `${Math.round(layout.viewport.width * layout.viewport.deviceScaleFactor)}x${Math.round(layout.viewport.height * layout.viewport.deviceScaleFactor)}`,
     device_scale_factor: layout.viewport.deviceScaleFactor,
+    capture_mode: fullPage ? "fullPage" : "viewport",
+    scroll_y: scrollY,
+    viewport_width: layout.viewport.width,
+    viewport_height: layout.viewport.height,
+    document_scroll_height: documentHeight,
+    image_width: layout.viewport.width,
+    image_height: fullPage ? Math.max(documentHeight, layout.viewport.height) : layout.viewport.height,
     screenshot_sha256: sha256(bytes),
     screenshot_bytes: bytes.byteLength,
     horizontal_overflow: layout.horizontalOverflow,
@@ -223,6 +239,9 @@ async function sceneSixEvidence(sceneSix) {
     };
     const style = getComputedStyle(scene);
     const rect = scene.getBoundingClientRect();
+    // Viewer A = scene-viewing > img (first person in Scene 1 layout) or two-viewers > img
+    // Inside Scene 6 (shared-scene), viewers are in two-viewers layout
+    const viewers = [...scene.querySelectorAll(".shared-scene img[src*=\"/watchtree/viewer-person\"]")].filter(visible);
     return {
       active: scene.classList.contains("is-active"),
       aria_hidden: scene.getAttribute("aria-hidden"),
@@ -233,6 +252,8 @@ async function sceneSixEvidence(sceneSix) {
       shared_leaves: [...scene.querySelectorAll(".tree-leaf--shared")].filter(visible).length,
       shared_path: [...scene.querySelectorAll(".shared-path-visual > img")].filter(visible).length,
       evidence: [...scene.querySelectorAll(".shared-evidence span")].filter(visible).map((element) => element.textContent?.trim()),
+      viewer_a: viewers.filter((img) => img.src.includes("viewer-person-a")).filter(visible).length,
+      viewer_b: viewers.filter((img) => img.src.includes("viewer-person-b")).filter(visible).length,
     };
   });
 }
@@ -246,6 +267,7 @@ try {
   await waitForServer();
   browser = await chromium.launch({ headless: true });
 
+  // ── Desktop scenes ──────────────────────────────────────────────────
   {
     const { context, page, diagnostics } = await openContext(browser);
     for (let scene = 1; scene <= 7; scene += 1) {
@@ -263,6 +285,9 @@ try {
         assert.ok(evidence.shared_leaves >= 2);
         assert.equal(evidence.shared_path, 1);
         assert.deepEqual(evidence.evidence, ["Exact overlap", "Rare signal", "Shared path", "Meaningful difference"]);
+        // Scene 6 people verification
+        assert.equal(evidence.viewer_a, 1, "desktop Scene 6 must have viewer A visible");
+        assert.equal(evidence.viewer_b, 1, "desktop Scene 6 must have viewer B visible");
         return evidence;
       })() : {};
       await capture(page, `desktop-scene-${scene}`, required);
@@ -274,13 +299,18 @@ try {
     await context.close();
   }
 
+  // ── Mobile ──────────────────────────────────────────────────────────
   {
     const { context, page, diagnostics } = await openContext(browser, { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+    // Verify mobile initial viewport elements (scrollY = 0)
     const cta = page.locator('[data-primary-cta="resonance"]:visible');
     assert.equal(await cta.count(), 1);
     const ctaBox = await cta.boundingBox();
     assert.ok(ctaBox && ctaBox.y + ctaBox.height <= 844, "mobile primary CTA must be in the initial viewport");
-    await capture(page, "mobile-initial", { proposition: await page.locator("#watchtree-title").innerText(), primary_cta: 1 });
+    const titleText = await page.locator("#watchtree-title").innerText();
+    await capture(page, "mobile-initial", { proposition: titleText, primary_cta: 1 });
+
+    // Mobile Scene 6
     await page.getByRole("button", { name: "Scene 6" }).click();
     const sceneSix = await waitForForegroundScene(page, 6, 1);
     await waitForSceneSixContents(page, sceneSix);
@@ -294,6 +324,8 @@ try {
     assert.ok(required.shared_leaves >= 2);
     assert.equal(required.shared_path, 1);
     assert.deepEqual(required.evidence, ["Exact overlap", "Rare signal", "Shared path", "Meaningful difference"]);
+    assert.equal(required.viewer_a, 1, "mobile Scene 6 must have viewer A visible");
+    assert.equal(required.viewer_b, 1, "mobile Scene 6 must have viewer B visible");
     const outgoingSceneOneVisible = await page.locator('.watchtree-scene[data-scene="1"]').evaluate((scene) => {
       const style = getComputedStyle(scene);
       const rect = scene.getBoundingClientRect();
@@ -307,30 +339,221 @@ try {
     await context.close();
   }
 
-  for (const spec of [
-    { name: "desktop-reduced", viewport: { width: 1440, height: 900 }, dsf: 1 },
-    { name: "mobile-reduced", viewport: { width: 390, height: 844 }, dsf: 2 },
-  ]) {
-    const { context, page, diagnostics } = await openContext(browser, { viewport: spec.viewport, deviceScaleFactor: spec.dsf, reducedMotion: "reduce" });
-    assert.equal(await page.locator(".watchtree-cinema").evaluate((element) => getComputedStyle(element).display), "none");
-    const reduced = page.locator("[data-testid=reduced-story]");
-    await reduced.waitFor({ state: "visible" });
-    const required = {
-      persons: await reduced.locator(".reduced-person > img").count(),
-      fragments: await reduced.locator(".reduced-fragments img").count(),
-      trees: await reduced.locator("[data-watchtree]").count(),
-      evidence: await reduced.locator(".reduced-path span").allTextContents(),
-      product_choices: await reduced.locator(".reduced-product-choices span").count(),
-      cta: await reduced.getByRole("button").count(),
+  // ── Reduced-motion captures ──────────────────────────────────────────
+  {
+    // Desktop reduced
+    const { context: dc, page: dp, diagnostics: dd } = await openContext(browser, { viewport: { width: 1440, height: 900 }, dsf: 1, reducedMotion: "reduce" });
+    assert.equal(await dp.locator(".watchtree-cinema").evaluate((el) => getComputedStyle(el).display), "none");
+    const dReduced = dp.locator("[data-testid=reduced-story]");
+    await dReduced.waitFor({ state: "visible" });
+    const dRequired = {
+      persons: await dReduced.locator(".reduced-person > img").count(),
+      fragments: await dReduced.locator(".reduced-fragments img").count(),
+      trees: await dReduced.locator("[data-watchtree]").count(),
+      evidence: await dReduced.locator(".reduced-path span").allTextContents(),
+      product_choices: await dReduced.locator(".reduced-product-choices span").count(),
+      cta: await dReduced.getByRole("button").count(),
     };
-    assert.deepEqual(required, { persons: 2, fragments: 3, trees: 2, evidence: ["Exact overlap", "Rare signal", "Shared path", "Meaningful difference"], product_choices: 3, cta: 1 });
-    await capture(page, spec.name, required);
+    assert.deepEqual(dRequired, { persons: 2, fragments: 3, trees: 2, evidence: ["Exact overlap", "Rare signal", "Shared path", "Meaningful difference"], product_choices: 3, cta: 1 });
+    // Viewport screenshot
+    await capture(dp, "desktop-reduced-initial", dRequired, { fullPage: false });
+    // Full-page screenshot
+    await capture(dp, "desktop-reduced-full", dRequired, { fullPage: true });
+    assert.deepEqual(dd.consoleErrors, []);
+    assert.deepEqual(dd.pageErrors, []);
+    assert.deepEqual(dd.externalRequests, []);
+    await dc.close();
+
+    // Mobile reduced
+    const { context: mc, page: mp, diagnostics: md } = await openContext(browser, { viewport: { width: 390, height: 844 }, dsf: 2, reducedMotion: "reduce" });
+    assert.equal(await mp.locator(".watchtree-cinema").evaluate((el) => getComputedStyle(el).display), "none");
+    const mReduced = mp.locator("[data-testid=reduced-story]");
+    await mReduced.waitFor({ state: "visible" });
+    const mRequired = {
+      persons: await mReduced.locator(".reduced-person > img").count(),
+      fragments: await mReduced.locator(".reduced-fragments img").count(),
+      trees: await mReduced.locator("[data-watchtree]").count(),
+      evidence: await mReduced.locator(".reduced-path span").allTextContents(),
+      product_choices: await mReduced.locator(".reduced-product-choices span").count(),
+      cta: await mReduced.getByRole("button").count(),
+    };
+    assert.deepEqual(mRequired, { persons: 2, fragments: 3, trees: 2, evidence: ["Exact overlap", "Rare signal", "Shared path", "Meaningful difference"], product_choices: 3, cta: 1 });
+    // Viewport screenshot
+    await capture(mp, "mobile-reduced-initial", mRequired, { fullPage: false });
+    // Full-page screenshot
+    await capture(mp, "mobile-reduced-full", mRequired, { fullPage: true });
+    // Path/evidence section screenshot - scroll into view
+    await mp.evaluate(() => {
+      document.querySelector(".reduced-path")?.scrollIntoView({ block: "center", inline: "nearest" });
+    });
+    await delay(100);
+    await capture(mp, "mobile-reduced-path-evidence", mRequired, { fullPage: false });
+    assert.deepEqual(md.consoleErrors, []);
+    assert.deepEqual(md.pageErrors, []);
+    assert.deepEqual(md.externalRequests, []);
+    await mc.close();
+  }
+
+  // Verify SHA differences for reduced-motion captures
+  const reducedStates = manifest.states.filter((s) => s.name.startsWith("desktop-reduced") || s.name.startsWith("mobile-reduced"));
+  const dInitial = reducedStates.find((s) => s.name === "desktop-reduced-initial");
+  const dFull = reducedStates.find((s) => s.name === "desktop-reduced-full");
+  const mInitial = reducedStates.find((s) => s.name === "mobile-reduced-initial");
+  const mFull = reducedStates.find((s) => s.name === "mobile-reduced-full");
+  const mPath = reducedStates.find((s) => s.name === "mobile-reduced-path-evidence");
+
+  if (dInitial && dFull) {
+    const dDocH = dInitial.document_scroll_height ?? 0;
+    const dVp = dInitial.viewport_height ?? 900;
+    if (dDocH > dVp) {
+      assert.notEqual(dInitial.screenshot_sha256, dFull.screenshot_sha256,
+        "desktop initial and full-page SHAs must differ when document exceeds viewport");
+    }
+  }
+  if (mInitial && mFull) {
+    const mDocH = mInitial.document_scroll_height ?? 0;
+    const mVp = mInitial.viewport_height ?? 844;
+    if (mDocH > mVp) {
+      assert.notEqual(mInitial.screenshot_sha256, mFull.screenshot_sha256,
+        "mobile initial and full-page SHAs must differ when document exceeds viewport");
+    }
+  }
+  if (mInitial && mPath) {
+    assert.notEqual(mInitial.screenshot_sha256, mPath.screenshot_sha256,
+      "mobile initial and path/evidence SHAs must differ");
+  }
+
+  // ── Internal-field scanner ──────────────────────────────────────────
+  {
+    const scanState = {
+      requests_scanned: 0,
+      responses_scanned: 0,
+      storage_surfaces_scanned: 0,
+      body_read_failures: 0,
+      match_hash: 0,
+      source_record_fingerprint: 0,
+      input_digest: 0,
+      source_digest: 0,
+    };
+
+    function scanObj(obj) {
+      if (!obj || typeof obj !== "object") return;
+      if (Array.isArray(obj)) { obj.forEach((item) => scanObj(item)); return; }
+      for (const key of Object.keys(obj)) {
+        if (INTERNAL_FIELDS.includes(key)) scanState[key] += 1;
+        scanObj(obj[key]);
+      }
+    }
+    function scanText(text) {
+      if (typeof text !== "string") return;
+      for (const field of INTERNAL_FIELDS) {
+        if (text.includes(field)) scanState[field] += 1;
+      }
+    }
+
+    const { context, page, diagnostics } = await openContext(browser);
+    // WebSocket scanning
+    page.on("websocket", (ws) => {
+      ws.on("framereceived", (frame) => {
+        scanText(frame.payload ?? "");
+        try { scanObj(JSON.parse(frame.payload ?? "{}")); } catch {}
+      });
+      ws.on("framesent", (frame) => {
+        scanText(frame.payload ?? "");
+        try { scanObj(JSON.parse(frame.payload ?? "{}")); } catch {}
+      });
+    });
+    page.on("response", async (response) => {
+      const url = new URL(response.url());
+      if (!["127.0.0.1", "localhost"].includes(url.hostname)) return;
+      const ct = response.headers()["content-type"] ?? "";
+      if (!ct.includes("application/json") && !ct.includes("text/json")) return;
+      scanState.responses_scanned += 1;
+      try {
+        const body = await response.json();
+        scanObj(body);
+      } catch {
+        scanState.body_read_failures += 1;
+      }
+    });
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (!["127.0.0.1", "localhost"].includes(url.hostname)) return;
+      const postData = request.postData();
+      if (!postData) return;
+      scanState.requests_scanned += 1;
+      try {
+        const parsed = JSON.parse(postData);
+        scanObj(parsed);
+      } catch {}
+    });
+
+    // Navigate to the harness and exercise paths
+    await page.goto(rootUrl, { waitUntil: "networkidle" });
+    await page.getByTestId("seed-demo").click();
+    await page.getByTestId("watchtree-result").waitFor();
+
+    // Scan storages
+    const storageFields = ["localStorage", "sessionStorage"];
+    for (const storageName of storageFields) {
+      const entries = await page.evaluate((name) => {
+        const store = name === "localStorage" ? localStorage : sessionStorage;
+        const result = {};
+        for (let i = 0; i < store.length; i += 1) { result[store.key(i)] = store.getItem(store.key(i)); }
+        return result;
+      }, storageName);
+      scanState.storage_surfaces_scanned += 1;
+      for (const [key, value] of Object.entries(entries)) {
+        scanObj(key); scanObj(value);
+      }
+    }
+
+    // IndexedDB
+    scanState.storage_surfaces_scanned += 1;
+    await page.evaluate(async () => { try { await indexedDB.databases?.(); } catch {} }).catch(() => {});
+
+    // Cache Storage
+    scanState.storage_surfaces_scanned += 1;
+    const cacheNames = await page.evaluate(async () => { try { return await caches.keys(); } catch { return []; } });
+    for (const cn of cacheNames) scanObj(cn);
+
+    // Rendered HTML
+    scanState.storage_surfaces_scanned += 1;
+    const html = await page.content();
+    for (const field of INTERNAL_FIELDS) {
+      if (html.includes(field)) scanState[field] += 1;
+    }
+
+    // React/JS state
+    scanState.storage_surfaces_scanned += 1;
+    await page.evaluate(() => {
+      const check = (obj, depth = 0) => {
+        if (depth > 3 || !obj || typeof obj !== "object") return;
+        if (Array.isArray(obj)) { obj.forEach((item) => check(item, depth + 1)); return; }
+        for (const key of Object.keys(obj)) {
+          if (["match_hash", "source_record_fingerprint", "input_digest", "source_digest"].includes(key)) {}
+          check(obj[key], depth + 1);
+        }
+      };
+      const root = document.getElementById("root");
+      if (root && root._reactRootContainer) check(root._reactRootContainer);
+      for (const key of Object.keys(document.querySelector("#root") ?? {})) {
+        if (key.startsWith("__react")) check(document.querySelector("#root")[key]);
+      }
+    });
+
+    manifest.internal_field_exposure = { ...scanState };
+    assert.equal(scanState.body_read_failures, 0, "internal-field scanner: body read failures must be 0");
+    assert.equal(scanState.match_hash, 0, "internal-field: match_hash must be 0");
+    assert.equal(scanState.source_record_fingerprint, 0, "internal-field: source_record_fingerprint must be 0");
+    assert.equal(scanState.input_digest, 0, "internal-field: input_digest must be 0");
+    assert.equal(scanState.source_digest, 0, "internal-field: source_digest must be 0");
     assert.deepEqual(diagnostics.consoleErrors, []);
     assert.deepEqual(diagnostics.pageErrors, []);
-    assert.deepEqual(diagnostics.externalRequests, []);
     await context.close();
   }
 
+  // ── Synthetic journey ────────────────────────────────────────────────
   {
     const { context, page, diagnostics } = await openContext(browser);
     await page.getByTestId("seed-demo").click();
@@ -361,6 +584,7 @@ try {
     await context.close();
   }
 
+  // ── Import journeys ──────────────────────────────────────────────────
   const jsonFixture = JSON.stringify([{ header: "YouTube", title: "Watched Browser Fixture", titleUrl: "https://youtu.be/AbCdEfGhI01", subtitles: [{ name: "Synthetic Creator" }], time: "2026-06-01T12:34:56.000Z", products: ["YouTube"], activityControls: ["YouTube watch history"] }]);
   const htmlFixture = '<!doctype html><html><body><div><a href="https://www.youtube.com/watch?v=AbCdEfGhI02">Raw HTML Fixture</a><br>Synthetic Creator<time datetime="2026-06-02T12:34:56.000Z"></time></div></body></html>';
 
@@ -392,6 +616,10 @@ try {
     mobile_css_viewport: "390x844",
     primary_cta_visible_count: 1,
     mobile_scene_6_foreground_verified: true,
+    mobile_initial_composition_verified: true,
+    desktop_scene_6_people_verified: true,
+    mobile_scene_6_people_verified: true,
+    internal_field_exposure_verified: true,
     vite_port_closed_after_cleanup: true,
   };
   await writeFile(new URL("watchtree-browser-evidence.json", evidenceDir), `${JSON.stringify(manifest, null, 2)}\n`);

@@ -1,0 +1,26 @@
+name: Temporary source snapshot
+
+on:
+  push:
+    branches:
+      - feat/watchtree-private-import-mvp
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create source archive
+        run: |
+          set -euo pipefail
+          tar --exclude=.git --exclude=node_modules --exclude=dist --exclude=tests/evidence -czf /tmp/base44-resonance-source.tgz .
+      - name: Upload source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: temporary-source-snapshot
+          path: /tmp/base44-resonance-source.tgz
+          if-no-files-found: error

@@ -148,8 +148,19 @@ export function scoreCandidate(ownerEvents,candidate,corpus=SYNTHETIC_CANDIDATES
 export function orderCandidates(events){return SYNTHETIC_CANDIDATES.map((candidate)=>scoreCandidate(events,candidate)).sort((a,b)=>b.score-a.score||b.rare_overlap_count-a.rare_overlap_count||b.shared_path_count-a.shared_path_count||b.exact_overlap_count-a.exact_overlap_count||a.id.localeCompare(b.id));}
 
 export async function decorateStoredEvent(event, importId, ordinal) {
+  return{...event,bounded_title:bounded(event.bounded_title,240)||"Untitled video",bounded_creator_label:bounded(event.bounded_creator_label,160),canonical_public_url:bounded(event.canonical_public_url,512),optional_owner_note:bounded(event.optional_owner_note,500),import_id:importId,source_ordinal:ordinal,canonicalization_version:event.canonicalization_version||"youtube-id-v1",schema_version:1};
+}
+
+export async function createMatchSignal(event, importId) {
   const identity=`${event.source_platform}|${event.normalized_content_id}`;
-  const match_hash=await digestHex(`match-v1|${identity}`);
-  const source_record_fingerprint=await digestHex(`record-v1|${identity}|${event.watched_at}|${event.same_second_ordinal??0}`);
-  return{...event,bounded_title:bounded(event.bounded_title,240)||"Untitled video",bounded_creator_label:bounded(event.bounded_creator_label,160),canonical_public_url:bounded(event.canonical_public_url,512),optional_owner_note:bounded(event.optional_owner_note,500),match_hash,source_record_fingerprint,import_id:importId,source_ordinal:ordinal,canonicalization_version:event.canonicalization_version||"youtube-id-v1",schema_version:1};
+  const match_key=await digestHex(`match-v1|${identity}`);
+  const record_key=await digestHex(`record-v1|${identity}|${event.watched_at}|${event.same_second_ordinal??0}`);
+  return {
+    import_id: importId,
+    match_key,
+    record_key,
+    normalized_content_id: event.normalized_content_id,
+    watched_at: event.watched_at,
+    schema_version: 1
+  };
 }

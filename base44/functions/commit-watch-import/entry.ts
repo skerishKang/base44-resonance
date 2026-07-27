@@ -2,6 +2,7 @@ import { createClientFromRequest } from "npm:@base44/sdk";
 import {
   authenticate,
   decorateStoredEvent,
+  createMatchSignal,
   digestHex,
   fail,
   json,
@@ -169,23 +170,36 @@ Deno.serve(async (req) => {
 
   try {
     const stored = [];
+    const signals = [];
     for (const [index, event] of input.records.entries()) {
       stored.push(await decorateStoredEvent(event, watchImport.id, chunkIndex * 200 + index));
+      signals.push(await createMatchSignal(event, watchImport.id));
     }
 
     // A Function may be retried after the event batch succeeds but before the receipt is written.
-    // Filter by the server-generated source-record fingerprint before the next bulkCreate.
+    // Check existing WatchEvents by generating signatures locally.
     const existingEvents = await base44.entities.WatchEvent.filter(
       { import_id: watchImport.id },
       "watched_at",
       MAX_RECORDS,
       0,
     );
-    const existingFingerprints = new Set(
-      existingEvents.map((event: Record<string, unknown>) => event.source_record_fingerprint),
+    const existingSignatures = new Set(
+      existingEvents.map((e: any) => `${e.normalized_content_id}|${e.watched_at}|${e.same_second_ordinal??0}`)
     );
-    const missing = stored.filter((event) => !existingFingerprints.has(event.source_record_fingerprint));
-    if (missing.length) await base44.entities.WatchEvent.bulkCreate(missing);
+    
+    const missingIndices = stored.map((e, i) => existingSignatures.has(`${e.normalized_content_id}|${e.watched_at}|${e.same_second_ordinal??0}`) ? -1 : i).filter((i) => i >= 0);
+    
+    if (missingIndices.length > 0) {
+      const missingEvents = missingIndices.map(i => stored[i]);
+      const missingSignals = missingIndices.map(i => signals[i]);
+      
+      await base44.entities.WatchEvent.bulkCreate(missingEvents);
+      await base44.entities.WatchMatchSignal.bulkCreate(missingSignals).catch(async (err: any) => {
+          // If WatchMatchSignal fails for some reason (e.g. duplicate due to concurrent partial retry),
+          // WatchEvent is already written. 
+      });
+    }
 
     await base44.entities.ImportChunkReceipt.create({
       import_id: watchImport.id,

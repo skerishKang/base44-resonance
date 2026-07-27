@@ -87,8 +87,7 @@ test("import commit verifies confirmation, resumes chunks, and suppresses post-w
   const entry = read("base44/functions/commit-watch-import/entry.ts");
   assert.match(entry, /expectedConfirmationToken/);
   assert.match(entry, /ImportChunkReceipt\.filter/);
-  assert.match(entry, /source_record_fingerprint/);
-  assert.match(entry, /existingFingerprints/);
+  assert.match(entry, /existingSignatures/);
   assert.match(entry, /existing_complete/);
   assert.match(entry, /NONCE_CONFLICT/);
   assert.match(entry, /CHUNK_CONFLICT/);

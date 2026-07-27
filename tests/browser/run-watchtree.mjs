@@ -766,6 +766,220 @@ try {
     await context.close();
   }
 
+  // ── Browser response sanitizer positive/negative control ───────────
+  {
+    const sanitizerUrl = new URL("../../base44/functions/_shared/sanitizer.js", import.meta.url);
+    const rawSanitizerCode = await readFile(fileURLToPath(sanitizerUrl), "utf8");
+    const { context, page, diagnostics } = await openContext(browser);
+    await page.goto(rootUrl, { waitUntil: "networkidle" });
+
+    const controlResults = await page.evaluate((code) => {
+      // Transform export declarations to self-assignments so they're available
+      // on the global object after eval. Function declarations inside eval in
+      // non-strict mode leak to the enclosing scope, so we avoid declaring
+      // them with const/function inside eval.
+      const adjusted = code
+        .replace(/^export const /gm, "self.")
+        .replace(/^export function (\w+)/gm, "self.$1 = function");
+      eval(adjusted);
+      const INTERNAL_FIELDS = self.INTERNAL_FIELDS;
+      const sanitizeResponse = self.sanitizeResponse;
+      const publicEvent = self.publicEvent;
+
+      const forbidden = ["match_hash", "source_record_fingerprint", "input_digest", "source_digest"];
+
+      // Scanner functions (matching existing implementation)
+      const scanState = { match_hash: 0, source_record_fingerprint: 0, input_digest: 0, source_digest: 0, total: 0 };
+      function scanObj(obj) {
+        if (!obj || typeof obj !== "object") return obj;
+        if (Array.isArray(obj)) { obj.forEach((item) => scanObj(item)); return obj; }
+        for (const key of Object.keys(obj)) {
+          if (forbidden.includes(key)) { scanState[key] += 1; scanState.total += 1; }
+          scanObj(obj[key]);
+        }
+        return obj;
+      }
+      function scanText(text) {
+        if (typeof text !== "string") return;
+        for (const field of forbidden) {
+          if (text.includes(field)) { scanState[field] += 1; scanState.total += 1; }
+        }
+      }
+
+      // Raw fixture with all four forbidden fields at different nesting levels
+      const rawFixture = {
+        ok: true,
+        event: {
+          id: "synthetic-event-1",
+          title: "Synthetic title",
+          match_hash: "synthetic-match-value",
+          nested: {
+            source_record_fingerprint: "synthetic-record-value",
+          },
+        },
+        records: [
+          {
+            id: "synthetic-record-1",
+            input_digest: "synthetic-input-value",
+          },
+          {
+            id: "synthetic-record-2",
+            metadata: {
+              source_digest: "synthetic-source-value",
+            },
+          },
+        ],
+      };
+
+      // Clone raw fixture for sanitization (preserve original)
+      const clone = (obj) => JSON.parse(JSON.stringify(obj));
+      const fixtureForSanitize = clone(rawFixture);
+
+      // === Positive control: scan raw fixture ===
+      const rawScan = clone(scanState);
+      scanObj(rawFixture);
+      const rawResults = {
+        match_hash: scanState.match_hash - rawScan.match_hash,
+        source_record_fingerprint: scanState.source_record_fingerprint - rawScan.source_record_fingerprint,
+        input_digest: scanState.input_digest - rawScan.input_digest,
+        source_digest: scanState.source_digest - rawScan.source_digest,
+        total: scanState.total - rawScan.total,
+      };
+
+      // === Verify sanitizeResponse is the production one ===
+      const hasSanitizeResponse = typeof sanitizeResponse === "function";
+      const hasPublicEvent = typeof publicEvent === "function";
+      const fieldsSet = INTERNAL_FIELDS instanceof Set && INTERNAL_FIELDS.size === 4;
+
+      // === Apply sanitizeResponse ===
+      const rawBeforeSanitize = clone(fixtureForSanitize);
+      const sanitizedResult = sanitizeResponse(fixtureForSanitize);
+
+      // Check if input was mutated
+      const inputMutated = JSON.stringify(rawBeforeSanitize) !== JSON.stringify(fixtureForSanitize);
+
+      // Check allowed fields preserved
+      const allowedCheck = (obj) => {
+        return obj && typeof obj === "object" && obj.ok === true
+          && obj.event?.id === "synthetic-event-1"
+          && obj.event?.title === "Synthetic title"
+          && obj.records?.[0]?.id === "synthetic-record-1"
+          && obj.records?.[1]?.metadata?.source_digest === undefined // sanitized
+          && obj.event?.match_hash === undefined // sanitized
+          && obj.event?.nested?.source_record_fingerprint === undefined // sanitized
+          && obj.records?.[0]?.input_digest === undefined; // sanitized
+      };
+      const allowedPreserved = allowedCheck(sanitizedResult);
+
+      // === Negative control: scan sanitized fixture ===
+      const preSanitizedScan = { ...scanState };
+      scanObj(sanitizedResult);
+      const sanitizedCounts = {
+        match_hash: scanState.match_hash - preSanitizedScan.match_hash,
+        source_record_fingerprint: scanState.source_record_fingerprint - preSanitizedScan.source_record_fingerprint,
+        input_digest: scanState.input_digest - preSanitizedScan.input_digest,
+        source_digest: scanState.source_digest - preSanitizedScan.source_digest,
+        total: scanState.total - preSanitizedScan.total,
+      };
+
+      // === Serialized check ===
+      const rawSerialized = JSON.stringify(rawFixture);
+      const sanitizedSerialized = JSON.stringify(sanitizedResult);
+
+      const rawSerializedDetected = forbidden.some((f) => rawSerialized.includes(f));
+      const sanitizedSerializedClean = forbidden.every((f) => !sanitizedSerialized.includes(f));
+      const parseSuccess = (() => { try { JSON.parse(sanitizedSerialized); return true; } catch { return false; } })();
+
+      // Verify serialized normal fields retained
+      const serializedRetained = sanitizedSerialized.includes("synthetic-event-1")
+        && sanitizedSerialized.includes("Synthetic title")
+        && sanitizedSerialized.includes("synthetic-record-1");
+
+      return {
+        shared_production_sanitizer_used: hasSanitizeResponse && hasPublicEvent && fieldsSet,
+        sanitizer_source: typeof sanitizeResponse.toString === "function" ? sanitizeResponse.toString().substring(0, 100) : "",
+        input_mutated: inputMutated,
+        raw_fixture: rawResults,
+        sanitized_fixture: sanitizedCounts,
+        serialized_raw_fixture_detected: rawSerializedDetected,
+        serialized_sanitized_fixture_clean: sanitizedSerializedClean,
+        serialized_parse_success: parseSuccess,
+        serialized_allowed_fields_preserved: serializedRetained,
+        allowed_fields_preserved: allowedPreserved,
+      };
+    }, rawSanitizerCode);
+
+    // Assert positive control: scanner detects all four forbidden fields
+    assert.ok(controlResults.shared_production_sanitizer_used,
+      "sanitizer control: production shared sanitizeResponse must be available in browser");
+    assert.ok(controlResults.raw_fixture.match_hash >= 1,
+      `sanitizer positive control: match_hash detected (got ${controlResults.raw_fixture.match_hash})`);
+    assert.ok(controlResults.raw_fixture.source_record_fingerprint >= 1,
+      `sanitizer positive control: source_record_fingerprint detected (got ${controlResults.raw_fixture.source_record_fingerprint})`);
+    assert.ok(controlResults.raw_fixture.input_digest >= 1,
+      `sanitizer positive control: input_digest detected (got ${controlResults.raw_fixture.input_digest})`);
+    assert.ok(controlResults.raw_fixture.source_digest >= 1,
+      `sanitizer positive control: source_digest detected (got ${controlResults.raw_fixture.source_digest})`);
+    assert.ok(controlResults.raw_fixture.total >= 4,
+      `sanitizer positive control: total >= 4 (got ${controlResults.raw_fixture.total})`);
+
+    // Assert negative control: sanitized fixture has zero forbidden fields
+    assert.equal(controlResults.sanitized_fixture.match_hash, 0,
+      "sanitizer negative control: match_hash must be 0 after sanitization");
+    assert.equal(controlResults.sanitized_fixture.source_record_fingerprint, 0,
+      "sanitizer negative control: source_record_fingerprint must be 0 after sanitization");
+    assert.equal(controlResults.sanitized_fixture.input_digest, 0,
+      "sanitizer negative control: input_digest must be 0 after sanitization");
+    assert.equal(controlResults.sanitized_fixture.source_digest, 0,
+      "sanitizer negative control: source_digest must be 0 after sanitization");
+    assert.equal(controlResults.sanitized_fixture.total, 0,
+      "sanitizer negative control: total must be 0 after sanitization");
+
+    // Assert allowed fields preserved
+    assert.ok(controlResults.allowed_fields_preserved,
+      "sanitizer negative control: allowed fields must be preserved");
+
+    // Assert serialized checks
+    assert.ok(controlResults.serialized_raw_fixture_detected,
+      "sanitizer serialized: raw serialized must contain forbidden fields");
+    assert.ok(controlResults.serialized_sanitized_fixture_clean,
+      "sanitizer serialized: sanitized serialized must be clean of forbidden fields");
+    assert.ok(controlResults.serialized_parse_success,
+      "sanitizer serialized: sanitized JSON must be parseable");
+    assert.ok(controlResults.serialized_allowed_fields_preserved,
+      "sanitizer serialized: normal fields must be retained");
+
+    // Record in manifest
+    manifest.browser_response_sanitizer_control = {
+      executed: true,
+      runtime: "browser",
+      shared_production_sanitizer_used: controlResults.shared_production_sanitizer_used,
+      raw_fixture: {
+        match_hash: controlResults.raw_fixture.match_hash,
+        source_record_fingerprint: controlResults.raw_fixture.source_record_fingerprint,
+        input_digest: controlResults.raw_fixture.input_digest,
+        source_digest: controlResults.raw_fixture.source_digest,
+        total: controlResults.raw_fixture.total,
+      },
+      sanitized_fixture: {
+        match_hash: controlResults.sanitized_fixture.match_hash,
+        source_record_fingerprint: controlResults.sanitized_fixture.source_record_fingerprint,
+        input_digest: controlResults.sanitized_fixture.input_digest,
+        source_digest: controlResults.sanitized_fixture.source_digest,
+        total: controlResults.sanitized_fixture.total,
+      },
+      serialized_raw_fixture_detected: controlResults.serialized_raw_fixture_detected,
+      serialized_sanitized_fixture_clean: controlResults.serialized_sanitized_fixture_clean,
+      allowed_fields_preserved: controlResults.allowed_fields_preserved,
+      input_mutated: controlResults.input_mutated,
+    };
+
+    assert.deepEqual(diagnostics.consoleErrors, []);
+    assert.deepEqual(diagnostics.pageErrors, []);
+    assert.deepEqual(diagnostics.externalRequests, []);
+    await context.close();
+  }
+
   // ── Synthetic journey ────────────────────────────────────────────────
   {
     const { context, page, diagnostics } = await openContext(browser);

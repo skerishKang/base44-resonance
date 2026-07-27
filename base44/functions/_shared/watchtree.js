@@ -1,3 +1,5 @@
+import { sanitizeResponse, publicEvent } from "./sanitizer.js";
+
 export const JSON_HEADERS = { "Cache-Control": "no-store", "Content-Type": "application/json; charset=utf-8" };
 export const FIXTURE_ID = "watchtree-demo-v1";
 export const CORPUS_VERSION = "demo-corpus-v1";
@@ -107,31 +109,6 @@ export function stableStringify(value) {
   return JSON.stringify(value);
 }
 export function bounded(value, max) { return typeof value === "string" ? [...value.normalize("NFC").replace(/[\u0000-\u001F\u007F]/g, " ").replace(/\s+/g, " ").trim()].slice(0, max).join("") : ""; }
-
-// Internal fields that must NOT be exposed to browser/client responses
-const INTERNAL_FIELDS = new Set([
-  "match_hash",
-  "source_record_fingerprint",
-  "input_digest",
-  "source_digest",
-]);
-
-// Recursive response sanitizer: strips all internal fields from any response object.
-export function sanitizeResponse(record) {
-  if (!record || typeof record !== "object") return record;
-  if (Array.isArray(record)) return record.map(sanitizeResponse);
-  const cleaned = {};
-  for (const [key, value] of Object.entries(record)) {
-    if (INTERNAL_FIELDS.has(key)) continue;
-    cleaned[key] = sanitizeResponse(value);
-  }
-  return cleaned;
-}
-
-// Legacy publicEvent helper - now uses the generic sanitizer
-export function publicEvent(record) {
-  return sanitizeResponse(record);
-}
 
 export function publicImport(record) {
   const { file_sha256_or_fixture_digest, preview_digest, confirmation_token_digest, error_sample_codes, ...safe } = record;

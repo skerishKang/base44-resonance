@@ -4,7 +4,7 @@ import {
   fail,
   json,
   sanitizeResponse,
-} from "../_shared/watchtree.js";
+} from "./_shared/watchtree.js";
 import {
   BATCH_SIZE,
   boundedError,
@@ -14,7 +14,7 @@ import {
   validateAction,
   validateEntity,
   validateOwnerId,
-} from "../_shared/reconcile.js";
+} from "./_shared/reconcile.js";
 
 Deno.serve(async (req) => {
   // Method guard

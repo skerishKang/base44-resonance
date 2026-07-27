@@ -1,5 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk";
-import { authenticate, buildTree, digestHex, fail, json, MATCHING_VERSION, publicEvent, requirePostJson, readInput, unavailable, validNonce } from "../_shared/watchtree.js";
+import { authenticate, buildTree, digestHex, fail, json, MATCHING_VERSION, publicEvent, requirePostJson, readInput, unavailable, validNonce } from "./_shared/watchtree.js";
 Deno.serve(async (req) => {
   const rejected=await requirePostJson(req);if(rejected)return rejected;const base44=createClientFromRequest(req);if(!await authenticate(base44))return fail("AUTH_REQUIRED",401);
   const input=await readInput(req);if(!validNonce(input))return fail("INVALID_CLIENT_NONCE",400);if(input.matching_version!==MATCHING_VERSION)return fail("VERSION_UNSUPPORTED",409);

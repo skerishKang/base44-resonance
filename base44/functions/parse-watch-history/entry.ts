@@ -1,5 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk";
-import { authenticate, bounded, digestHex, fail, json, NORMALIZATION_VERSION, requirePostJson, readInput, stableStringify, validNonce, VIDEO_ID } from "../_shared/watchtree.js";
+import { authenticate, bounded, digestHex, fail, json, NORMALIZATION_VERSION, requirePostJson, readInput, stableStringify, validNonce, VIDEO_ID } from "./_shared/watchtree.js";
 
 const SOURCES = new Set(["google_takeout_json", "google_takeout_html"]);
 function normalize(record, ordinal, sourceType) {

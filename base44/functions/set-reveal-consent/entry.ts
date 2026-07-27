@@ -9,7 +9,7 @@ import {
   readInput,
   unavailable,
   validNonce,
-} from "../_shared/watchtree.js";
+} from "./_shared/watchtree.js";
 
 const sameTokens = (a: unknown, b: unknown) => JSON.stringify([...(Array.isArray(a) ? a : [])].sort())
   === JSON.stringify([...(Array.isArray(b) ? b : [])].sort());

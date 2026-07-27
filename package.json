@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "test": "node --test tests/*.test.mjs",
     "test:ci": "node --test --test-reporter=spec tests/*.test.mjs",
-    "test:browser": "node tests/browser/run-watchtree.mjs"
+    "test:browser": "node tests/browser/run-watchtree.mjs",
+    "sync:base44-shared": "node scripts/sync-base44-function-shared.mjs",
+    "check:base44-shared": "node scripts/check-base44-function-shared.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.3",

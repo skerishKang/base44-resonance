@@ -11,7 +11,7 @@ import {
   requirePostJson,
   readInput,
   validNonce,
-} from "../_shared/watchtree.js";
+} from "./_shared/watchtree.js";
 
 const SOURCES = new Set(["google_takeout_json", "google_takeout_html"]);
 const MAX_RECORDS = 5_000;

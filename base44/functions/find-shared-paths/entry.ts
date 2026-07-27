@@ -12,7 +12,7 @@ import {
   readInput,
   unavailable,
   validNonce,
-} from "../_shared/watchtree.js";
+} from "./_shared/watchtree.js";
 
 Deno.serve(async (req) => {
   const rejected = await requirePostJson(req);

@@ -25,6 +25,27 @@ export function CinematicWatchTree({ copy, onPrimary }) {
         <p className="privacy-note">{copy.landing.privacy}</p>
       </div>
 
+      {/* Mobile compact composition - visible only at mobile widths */}
+      <div className="watchtree-mobile-hero" data-testid="mobile-hero" aria-label="Mobile WatchTree overview">
+        <div className="mobile-hero__person"><img className="mobile-hero__person-a" src="/watchtree/viewer-person-a.svg" alt="" /></div>
+        <div className="mobile-hero__fragments">
+          <img src="/watchtree/viewing-fragment.svg" alt="" />
+          <img src="/watchtree/media-frame-interview.svg" alt="" className="mobile-hero__trace" />
+        </div>
+        <div className="mobile-hero__tree">
+          <WatchTreeGraphic compact label="Personal" events={sampleEvents(8)} />
+        </div>
+        <div className="mobile-hero__path">
+          <img className="mobile-hero__path-line" src="/watchtree/shared-path-line.svg" alt="" />
+        </div>
+        <div className="mobile-hero__tree-remote">
+          <WatchTreeGraphic compact shared label="Synthetic" events={sampleEvents(7)} />
+        </div>
+        <div className="mobile-hero__person-remote">
+          <img className="mobile-hero__person-b" src="/watchtree/viewer-person-b.svg" alt="" />
+        </div>
+      </div>
+
       <div className="watchtree-cinema" data-current-scene={scene + 1} aria-live="polite">
         {copy.landing.scenes.map(([title, body], index) => (
           <article key={title} className={`watchtree-scene${scene === index ? " is-active" : ""}`} data-scene={index + 1} aria-hidden={scene !== index}>

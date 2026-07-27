@@ -54,10 +54,8 @@ async function waitForPortClosed() {
     await delay(100);
   }
   throw new Error(`Vite port ${port} remained open after server.close().`);
-}
-
-const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
-const manifest = { schema_version: 1, generated_at: new Date().toISOString(), states: [], assertions: {} };
+}  const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
+const manifest = { schema_version: 1, generated_at: new Date().toISOString(), states: [], assertions: {}, indexeddb: {}, cache_storage: {} };
 const INTERNAL_FIELDS = ["match_hash", "source_record_fingerprint", "input_digest", "source_digest"];
 
 function watchPage(page) {
@@ -302,13 +300,51 @@ try {
   // ── Mobile ──────────────────────────────────────────────────────────
   {
     const { context, page, diagnostics } = await openContext(browser, { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
-    // Verify mobile initial viewport elements (scrollY = 0)
-    const cta = page.locator('[data-primary-cta="resonance"]:visible');
-    assert.equal(await cta.count(), 1);
-    const ctaBox = await cta.boundingBox();
-    assert.ok(ctaBox && ctaBox.y + ctaBox.height <= 844, "mobile primary CTA must be in the initial viewport");
-    const titleText = await page.locator("#watchtree-title").innerText();
-    await capture(page, "mobile-initial", { proposition: titleText, primary_cta: 1 });
+    // Verify mobile initial viewport all 7 required elements (scrollY = 0)
+    const mobileComposition = await page.evaluate(() => {
+      const visible = (element) => {
+        if (!(element instanceof HTMLElement)) return false;
+        const style = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return style.display !== "none"
+          && style.visibility !== "hidden"
+          && Number(style.opacity) > 0.1
+          && rect.width > 0
+          && rect.height > 0
+          && rect.right > 0
+          && rect.bottom > 0
+          && rect.left < innerWidth
+          && rect.top < innerHeight;
+      };
+      const title = document.getElementById("watchtree-title");
+      const cta = document.querySelector('[data-primary-cta="resonance"]');
+      const viewerA = document.querySelector('.mobile-hero__person-a');
+      const fragments = document.querySelectorAll('.mobile-hero__fragments img');
+      const trees = document.querySelectorAll('[data-testid="mobile-hero"] [data-watchtree]');
+      const viewerB = document.querySelector('.mobile-hero__person-b');
+      const pathLine = document.querySelector('.mobile-hero__path-line');
+      return {
+        scroll_y: window.scrollY,
+        proposition: visible(title) ? 1 : 0,
+        primary_cta: visible(cta) ? 1 : 0,
+        cta_in_viewport: cta ? (cta.getBoundingClientRect().y + cta.getBoundingClientRect().height <= innerHeight) : false,
+        viewer_a: viewerA ? visible(viewerA) ? 1 : 0 : 0,
+        visible_fragments: [...fragments].filter(visible).length,
+        personal_trees: [...trees].filter(visible).length,
+        viewer_b: viewerB ? visible(viewerB) ? 1 : 0 : 0,
+        connection_signal: pathLine ? visible(pathLine) ? 1 : 0 : 0,
+      };
+    });
+    assert.equal(mobileComposition.scroll_y, 0, "mobile scrollY must be 0");
+    assert.equal(mobileComposition.proposition, 1, "mobile: proposition must be visible");
+    assert.equal(mobileComposition.primary_cta, 1, "mobile: primary CTA must be visible");
+    assert.ok(mobileComposition.cta_in_viewport, "mobile: CTA must be in initial viewport");
+    assert.equal(mobileComposition.viewer_a, 1, "mobile: viewer A must be visible");
+    assert.ok(mobileComposition.visible_fragments >= 1, `mobile: >=1 fragment visible, got ${mobileComposition.visible_fragments}`);
+    assert.ok(mobileComposition.personal_trees >= 1, `mobile: >=1 tree visible, got ${mobileComposition.personal_trees}`);
+    assert.equal(mobileComposition.viewer_b, 1, "mobile: viewer B must be visible");
+    assert.equal(mobileComposition.connection_signal, 1, "mobile: connection signal must be visible");
+    await capture(page, "mobile-initial", mobileComposition);
 
     // Mobile Scene 6
     await page.getByRole("button", { name: "Scene 6" }).click();
@@ -427,8 +463,28 @@ try {
   {
     const scanState = {
       requests_scanned: 0,
+      request_bodies_scanned: 0,
       responses_scanned: 0,
-      storage_surfaces_scanned: 0,
+      response_bodies_scanned: 0,
+      websocket_frames_scanned: 0,
+      rendered_html_scanned: 0,
+      react_state_surfaces_scanned: 0,
+      local_storage_entries_scanned: 0,
+      session_storage_entries_scanned: 0,
+      indexeddb_databases_scanned: 0,
+      indexeddb_object_stores_scanned: 0,
+      indexeddb_keys_scanned: 0,
+      indexeddb_values_scanned: 0,
+      indexeddb_read_failures: 0,
+      indexeddb_scan_executed: false,
+      indexeddb_api_supported: true,
+      cache_storage_caches_scanned: 0,
+      cache_storage_entries_scanned: 0,
+      cache_storage_request_bodies_scanned: 0,
+      cache_storage_response_bodies_scanned: 0,
+      cache_storage_body_read_failures: 0,
+      cache_storage_scan_executed: false,
+      cache_storage_api_supported: true,
       body_read_failures: 0,
       match_hash: 0,
       source_record_fingerprint: 0,
@@ -508,14 +564,134 @@ try {
       }
     }
 
-    // IndexedDB
-    scanState.storage_surfaces_scanned += 1;
-    await page.evaluate(async () => { try { await indexedDB.databases?.(); } catch {} }).catch(() => {});
+    // IndexedDB — bounded scan with actual checking
+    const indexedDbState = await page.evaluate(async () => {
+      const result = { databases_scanned: 0, object_stores_scanned: 0, keys_scanned: 0, values_scanned: 0, read_failures: 0, found_fields: [] };
+      const forbidden = ["match_hash", "source_record_fingerprint", "input_digest", "source_digest"];
+      try {
+        let dbList;
+        if (indexedDB.databases) {
+          dbList = await indexedDB.databases();
+        } else {
+          return { ...result, api_supported: false };
+        }
+        result.api_supported = true;
+        const limited = (dbList ?? []).slice(0, 20);
+        for (const dbInfo of limited) {
+          const dbName = dbInfo.name ?? "unknown";
+          result.databases_scanned += 1;
+          for (const f of forbidden) { if (dbName.includes(f)) result.found_fields.push(f); }
+          await new Promise((resolve) => {
+            const req = indexedDB.open(dbName);
+            req.onerror = () => { result.read_failures += 1; resolve(); };
+            req.onsuccess = () => {
+              const db = req.result;
+              const storeNames = [...db.objectStoreNames].slice(0, 50);
+              result.object_stores_scanned += storeNames.length;
+              for (const storeName of storeNames) {
+                for (const f of forbidden) { if (storeName.includes(f)) result.found_fields.push(f); }
+                try {
+                  const tx = db.transaction(storeName, "readonly");
+                  const store = tx.objectStore(storeName);
+                  const cursorReq = store.openCursor();
+                  let cursorCount = 0;
+                  cursorReq.onsuccess = () => {
+                    const cursor = cursorReq.result;
+                    if (cursor && cursorCount < 100) {
+                      result.keys_scanned += 1;
+                      const keyStr = String(cursor.key ?? "");
+                      for (const f of forbidden) { if (keyStr.includes(f)) result.found_fields.push(f); }
+                      const valStr = typeof cursor.value === "string" ? cursor.value : JSON.stringify(cursor.value ?? "");
+                      if (valStr.length < 5000) {
+                        result.values_scanned += 1;
+                        for (const f of forbidden) { if (valStr.includes(f)) result.found_fields.push(f); }
+                      }
+                      cursorCount += 1;
+                      cursor.continue();
+                    }
+                  };
+                  cursorReq.onerror = () => { result.read_failures += 1; };
+                  tx.onerror = () => { result.read_failures += 1; };
+                } catch { result.read_failures += 1; }
+              }
+              db.close();
+              resolve();
+            };
+          });
+        }
+      } catch { result.read_failures += 1; }
+      return result;
+    });
+    scanState.indexeddb_databases_scanned = indexedDbState.databases_scanned;
+    scanState.indexeddb_object_stores_scanned = indexedDbState.object_stores_scanned;
+    scanState.indexeddb_keys_scanned = indexedDbState.keys_scanned;
+    scanState.indexeddb_values_scanned = indexedDbState.values_scanned;
+    scanState.indexeddb_read_failures = indexedDbState.read_failures;
+    scanState.indexeddb_scan_executed = true;
+    if (indexedDbState.api_supported === false) scanState.indexeddb_api_supported = false;
+    for (const field of indexedDbState.found_fields) scanState[field] += 1;
 
-    // Cache Storage
-    scanState.storage_surfaces_scanned += 1;
-    const cacheNames = await page.evaluate(async () => { try { return await caches.keys(); } catch { return []; } });
-    for (const cn of cacheNames) scanObj(cn);
+    // Cache Storage — bounded scan with proper string/text handling
+    const cacheState = await page.evaluate(async () => {
+      const result = { caches_scanned: 0, entries_scanned: 0, request_bodies_scanned: 0, response_bodies_scanned: 0, body_read_failures: 0, found_fields: [] };
+      const forbidden = ["match_hash", "source_record_fingerprint", "input_digest", "source_digest"];
+      if (!("caches" in self)) return { ...result, api_supported: false };
+      result.api_supported = true;
+      try {
+        const names = await caches.keys();
+        result.caches_scanned = names.length;
+        for (const name of names) {
+          for (const f of forbidden) { if (name.includes(f)) result.found_fields.push(f); }
+          const cache = await caches.open(name);
+          const requests = await cache.keys();
+          for (const req of requests.slice(0, 200)) {
+            result.entries_scanned += 1;
+            const urlStr = req.url ?? "";
+            for (const f of forbidden) { if (urlStr.includes(f)) result.found_fields.push(f); }
+            // Request headers
+            for (const [hkey, hval] of [...req.headers.entries()].slice(0, 20)) {
+              for (const f of forbidden) { if (hkey.includes(f) || hval.includes(f)) result.found_fields.push(f); }
+            }
+            // Response
+            try {
+              const resp = await cache.match(req);
+              if (resp) {
+                // Response headers
+                for (const [hkey, hval] of [...resp.headers.entries()].slice(0, 20)) {
+                  for (const f of forbidden) { if (hkey.includes(f) || hval.includes(f)) result.found_fields.push(f); }
+                }
+                // Read body if same-origin JSON
+                const ct = resp.headers.get("content-type") ?? "";
+                if (ct.includes("application/json") || ct.includes("text/json")) {
+                  try {
+                    const body = await resp.clone().json();
+                    result.response_bodies_scanned += 1;
+                    const check = (obj) => {
+                      if (!obj || typeof obj !== "object") return;
+                      if (Array.isArray(obj)) { obj.forEach(check); return; }
+                      for (const key of Object.keys(obj)) {
+                        if (forbidden.includes(key)) result.found_fields.push(key);
+                        check(obj[key]);
+                      }
+                    };
+                    check(body);
+                  } catch { result.body_read_failures += 1; }
+                }
+              }
+            } catch { result.body_read_failures += 1; }
+          }
+        }
+      } catch { result.body_read_failures += 1; }
+      return result;
+    });
+    scanState.cache_storage_caches_scanned = cacheState.caches_scanned;
+    scanState.cache_storage_entries_scanned = cacheState.entries_scanned;
+    scanState.cache_storage_request_bodies_scanned = 0; // req body from cache not easily readable
+    scanState.cache_storage_response_bodies_scanned = cacheState.response_bodies_scanned;
+    scanState.cache_storage_body_read_failures = cacheState.body_read_failures;
+    scanState.cache_storage_scan_executed = true;
+    if (cacheState.api_supported === false) scanState.cache_storage_api_supported = false;
+    for (const field of cacheState.found_fields) scanState[field] += 1;
 
     // Rendered HTML
     scanState.storage_surfaces_scanned += 1;
@@ -542,7 +718,44 @@ try {
       }
     });
 
-    manifest.internal_field_exposure = { ...scanState };
+    manifest.internal_field_exposure = {
+      requests_scanned: scanState.requests_scanned,
+      request_bodies_scanned: scanState.request_bodies_scanned,
+      responses_scanned: scanState.responses_scanned,
+      response_bodies_scanned: scanState.response_bodies_scanned,
+      websocket_frames_scanned: scanState.websocket_frames_scanned,
+      rendered_html_scanned: scanState.rendered_html_scanned,
+      react_state_surfaces_scanned: scanState.react_state_surfaces_scanned,
+      local_storage_entries_scanned: scanState.local_storage_entries_scanned,
+      session_storage_entries_scanned: scanState.session_storage_entries_scanned,
+      indexeddb_databases_scanned: scanState.indexeddb_databases_scanned,
+      indexeddb_object_stores_scanned: scanState.indexeddb_object_stores_scanned,
+      indexeddb_keys_scanned: scanState.indexeddb_keys_scanned,
+      indexeddb_values_scanned: scanState.indexeddb_values_scanned,
+      cache_storage_caches_scanned: scanState.cache_storage_caches_scanned,
+      cache_storage_entries_scanned: scanState.cache_storage_entries_scanned,
+      body_read_failures: scanState.body_read_failures,
+      match_hash: scanState.match_hash,
+      source_record_fingerprint: scanState.source_record_fingerprint,
+      input_digest: scanState.input_digest,
+      source_digest: scanState.source_digest,
+    };
+    manifest.indexeddb = {
+      databases_scanned: scanState.indexeddb_databases_scanned,
+      object_stores_scanned: scanState.indexeddb_object_stores_scanned,
+      keys_scanned: scanState.indexeddb_keys_scanned,
+      values_scanned: scanState.indexeddb_values_scanned,
+      read_failures: scanState.indexeddb_read_failures,
+      indexeddb_scan_executed: scanState.indexeddb_scan_executed,
+    };
+    manifest.cache_storage = {
+      caches_scanned: scanState.cache_storage_caches_scanned,
+      entries_scanned: scanState.cache_storage_entries_scanned,
+      request_bodies_scanned: scanState.cache_storage_request_bodies_scanned,
+      response_bodies_scanned: scanState.cache_storage_response_bodies_scanned,
+      body_read_failures: scanState.cache_storage_body_read_failures,
+      cache_storage_scan_executed: scanState.cache_storage_scan_executed,
+    };
     assert.equal(scanState.body_read_failures, 0, "internal-field scanner: body read failures must be 0");
     assert.equal(scanState.match_hash, 0, "internal-field: match_hash must be 0");
     assert.equal(scanState.source_record_fingerprint, 0, "internal-field: source_record_fingerprint must be 0");

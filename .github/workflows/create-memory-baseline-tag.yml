@@ -1,0 +1,36 @@
+name: Create immutable Memory Resonance baseline tag
+
+on:
+  push:
+    branches:
+      - feat/watchtree-private-import-mvp
+
+permissions:
+  contents: write
+
+jobs:
+  create-tag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Create and verify exact baseline tag
+        env:
+          TAG_NAME: memory-resonance-baseline-214cf519
+          TARGET_SHA: 214cf519ea140fb97af87561782c2e98ea759ebd
+        run: |
+          set -euo pipefail
+          git fetch origin --tags --force
+          existing="$(git rev-parse -q --verify "refs/tags/${TAG_NAME}^{commit}" || true)"
+          if [ -n "${existing}" ]; then
+            test "${existing}" = "${TARGET_SHA}"
+            exit 0
+          fi
+          test "$(git rev-parse "${TARGET_SHA}^{commit}")" = "${TARGET_SHA}"
+          git tag "${TAG_NAME}" "${TARGET_SHA}"
+          git push origin "refs/tags/${TAG_NAME}"
+          remote="$(git ls-remote --tags origin "refs/tags/${TAG_NAME}" | awk '{print $1}')"
+          test "${remote}" = "${TARGET_SHA}"

@@ -126,9 +126,8 @@ test("development client configuration prefers the CLI-provided URL", () => {
     isDevelopment: true,
   });
   assert.deepEqual(config, {
-    appId: "public-app-id",
-    serverUrl: "http://127.0.0.1:4411",
-  });
+    enabled: true, appId: "public-app-id", serverUrl: "http://127.0.0.1:4411", source: "unknown" },
+  );
   assert.match(read("src/api/base44Client.js"), /import\.meta\.env\.VITE_BASE44_APP_BASE_URL/);
 });
 
@@ -143,11 +142,11 @@ test("local fallback is applied only in development", () => {
 test("production preserves an explicit hosted URL and otherwise omits serverUrl", () => {
   assert.deepEqual(
     createBase44ClientConfig({ appId: "public-app-id", configuredServerUrl: "https://example.base44.app", isDevelopment: false }),
-    { appId: "public-app-id", serverUrl: "https://example.base44.app" },
+    { enabled: true, appId: "public-app-id", serverUrl: "https://example.base44.app", source: "unknown" },
   );
   assert.deepEqual(
     createBase44ClientConfig({ appId: "public-app-id", configuredServerUrl: undefined, isDevelopment: false }),
-    { appId: "public-app-id" },
+    { enabled: true, appId: "public-app-id", source: "unknown" },
   );
 });
 

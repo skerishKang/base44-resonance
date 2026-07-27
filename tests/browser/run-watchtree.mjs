@@ -15,6 +15,9 @@ const server = spawn("npm", ["run", "dev", "--", "--host", "127.0.0.1", "--port"
 let serverOutput = "";
 server.stdout.on("data", (chunk) => { serverOutput += chunk; });
 server.stderr.on("data", (chunk) => { serverOutput += chunk; });
+server.unref();
+server.stdout.unref();
+server.stderr.unref();
 
 async function waitForServer() {
   for (let attempt = 0; attempt < 80; attempt += 1) {
@@ -241,6 +244,6 @@ try {
   await writeFile(new URL("watchtree-browser-evidence.json", evidenceDir), `${JSON.stringify(manifest, null, 2)}\n`);
   console.log(JSON.stringify(manifest.assertions));
 } finally {
-  await browser.close();
-  server.kill("SIGTERM");
+  await browser.close().catch(() => {});
+  server.kill("SIGKILL");
 }

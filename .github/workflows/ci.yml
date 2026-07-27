@@ -17,23 +17,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Upload temporary source snapshot
-        uses: actions/upload-artifact@v4
-        with:
-          name: temporary-source-snapshot
-          path: |
-            .github/
-            base44/
-            docs/
-            public/
-            src/
-            tests/
-            index.html
-            package.json
-            package-lock.json
-            vite.config.js
-          include-hidden-files: true
-          if-no-files-found: error
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:

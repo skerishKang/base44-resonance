@@ -1,0 +1,276 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-27T03:29:07.416Z",
+  "states": [
+    {
+      "name": "desktop-scene-1",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "screenshot_sha256": "554d40550ed88828fcc2c8a5dba341e2472faefc5e60fee6605ae8ab89065758",
+      "screenshot_bytes": 321113,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {}
+    },
+    {
+      "name": "desktop-scene-2",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "screenshot_sha256": "f234baaa027a27a5e776e3027f284926f8c1d3df99522e99d1190dc4601c1443",
+      "screenshot_bytes": 303177,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {}
+    },
+    {
+      "name": "desktop-scene-3",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "screenshot_sha256": "e50d5bc5013da730e7aca42dd78e8c72d9bd299caff7a5d3ddec4b7de0e873cb",
+      "screenshot_bytes": 301852,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {}
+    },
+    {
+      "name": "desktop-scene-4",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "screenshot_sha256": "d37c796668a50d96dcaaf90f596b827ab5ef0c8d8de167f00634fd76f2740434",
+      "screenshot_bytes": 356415,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {}
+    },
+    {
+      "name": "desktop-scene-5",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "screenshot_sha256": "027b1a4fb154d3780343b64a468c0d2d0383b1d055d2938b340e3e7b1958c1b6",
+      "screenshot_bytes": 349649,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {}
+    },
+    {
+      "name": "desktop-scene-6",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "screenshot_sha256": "b787c740e930ab614e0bb138e12f75b2b4698a9bde104ee8de98f23afd53de4f",
+      "screenshot_bytes": 555493,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "active": true,
+        "aria_hidden": "false",
+        "visibility": "visible",
+        "opacity": 1,
+        "rendered_bounds": {
+          "x": 657.90625,
+          "y": 75.71875,
+          "width": 694.6875,
+          "height": 702
+        },
+        "trees": 2,
+        "shared_leaves": 8,
+        "shared_path": 1,
+        "evidence": [
+          "Exact overlap",
+          "Rare signal",
+          "Shared path",
+          "Meaningful difference"
+        ]
+      }
+    },
+    {
+      "name": "desktop-scene-7",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "screenshot_sha256": "add84b57f1c1519378140290c2b3fffcf554d67b58647e3cf58dcec8eddd2a3a",
+      "screenshot_bytes": 541933,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {}
+    },
+    {
+      "name": "mobile-initial",
+      "css_viewport": "390x844",
+      "physical_pixels": "780x1688",
+      "device_scale_factor": 2,
+      "screenshot_sha256": "dd2883fffdcea847006cbe0af09f53c73c524083fb84611125a616c3c6fa5c4c",
+      "screenshot_bytes": 718374,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "proposition": "You watched. You remembered. Somewhere, someone followed the same path.",
+        "primary_cta": 1
+      }
+    },
+    {
+      "name": "mobile-scene-6",
+      "css_viewport": "390x844",
+      "physical_pixels": "780x1688",
+      "device_scale_factor": 2,
+      "screenshot_sha256": "3f5933f864329602b0127c27c6a137890582f9ebe1f51c9ac65fe787bce81656",
+      "screenshot_bytes": 512119,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "active": true,
+        "aria_hidden": "false",
+        "visibility": "visible",
+        "opacity": 1,
+        "rendered_bounds": {
+          "x": 17,
+          "y": 105.15625,
+          "width": 356,
+          "height": 446
+        },
+        "trees": 2,
+        "shared_leaves": 8,
+        "shared_path": 1,
+        "evidence": [
+          "Exact overlap",
+          "Rare signal",
+          "Shared path",
+          "Meaningful difference"
+        ]
+      }
+    },
+    {
+      "name": "desktop-reduced",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "screenshot_sha256": "2bc444b27a6c6e1eccae06115b01a188371273c18a51a1fe0b6dbf7e04c5e540",
+      "screenshot_bytes": 571626,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "persons": 2,
+        "fragments": 3,
+        "trees": 2,
+        "evidence": [
+          "Exact overlap",
+          "Rare signal",
+          "Shared path",
+          "Meaningful difference"
+        ],
+        "product_choices": 3,
+        "cta": 1
+      }
+    },
+    {
+      "name": "mobile-reduced",
+      "css_viewport": "390x844",
+      "physical_pixels": "780x1688",
+      "device_scale_factor": 2,
+      "screenshot_sha256": "6aa91d6f1bcf1ab0c45e20da44cde46c41439d34ca065f93fd19128d7f3106cb",
+      "screenshot_bytes": 769786,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "persons": 2,
+        "fragments": 3,
+        "trees": 2,
+        "evidence": [
+          "Exact overlap",
+          "Rare signal",
+          "Shared path",
+          "Meaningful difference"
+        ],
+        "product_choices": 3,
+        "cta": 1
+      }
+    },
+    {
+      "name": "synthetic-mutual",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "screenshot_sha256": "c1b9ad54b9f74c99157667ec46d5f44575661d01026ea0d32627d7b12a85ba60",
+      "screenshot_bytes": 146785,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "synthetic_label": "SIMULATED MUTUAL RESONANCE · NO REAL PERSON\nTwo synthetic paths now resonate."
+      }
+    },
+    {
+      "name": "korean-restored-private",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "screenshot_sha256": "4adbd6e88748a42ce475c41617aadb341788d6feb497e65ad3ce27540b3c87fe",
+      "screenshot_bytes": 566846,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "locale": "ko",
+        "mutual_visible": 0
+      }
+    },
+    {
+      "name": "json-import",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "screenshot_sha256": "6c0fe33037ea80d49ccfb5c8c0c444c71392d289cec6f1366ac58888cbcbc708",
+      "screenshot_bytes": 95627,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "preview": "accepted",
+        "raw_file_network_uploads": 0
+      }
+    },
+    {
+      "name": "html-import",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "screenshot_sha256": "6c0fe33037ea80d49ccfb5c8c0c444c71392d289cec6f1366ac58888cbcbc708",
+      "screenshot_bytes": 95627,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "preview": "accepted",
+        "raw_file_network_uploads": 0
+      }
+    }
+  ],
+  "assertions": {
+    "console_errors": 0,
+    "page_errors": 0,
+    "unexpected_external_requests": 0,
+    "raw_file_network_uploads": 0,
+    "scene_count": 7,
+    "reduced_motion_complete": true,
+    "mobile_css_viewport": "390x844",
+    "primary_cta_visible_count": 1,
+    "mobile_scene_6_foreground_verified": true,
+    "vite_port_closed_after_cleanup": true
+  }
+}

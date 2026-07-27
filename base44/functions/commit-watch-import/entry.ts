@@ -188,17 +188,25 @@ Deno.serve(async (req) => {
       existingEvents.map((e: any) => `${e.normalized_content_id}|${e.watched_at}|${e.same_second_ordinal??0}`)
     );
     
-    const missingIndices = stored.map((e, i) => existingSignatures.has(`${e.normalized_content_id}|${e.watched_at}|${e.same_second_ordinal??0}`) ? -1 : i).filter((i) => i >= 0);
+    const missingEvents = stored.filter((e) => !existingSignatures.has(`${e.normalized_content_id}|${e.watched_at}|${e.same_second_ordinal??0}`));
+
+    const existingSignalsList = await base44.entities.WatchMatchSignal.filter(
+      { import_id: watchImport.id },
+      "watched_at",
+      MAX_RECORDS,
+      0,
+    );
+    const existingSignalKeys = new Set(
+      existingSignalsList.map((s: any) => s.record_key)
+    );
+
+    const missingSignals = signals.filter((s) => !existingSignalKeys.has(s.record_key));
     
-    if (missingIndices.length > 0) {
-      const missingEvents = missingIndices.map(i => stored[i]);
-      const missingSignals = missingIndices.map(i => signals[i]);
-      
+    if (missingEvents.length > 0) {
       await base44.entities.WatchEvent.bulkCreate(missingEvents);
-      await base44.entities.WatchMatchSignal.bulkCreate(missingSignals).catch(async (err: any) => {
-          // If WatchMatchSignal fails for some reason (e.g. duplicate due to concurrent partial retry),
-          // WatchEvent is already written. 
-      });
+    }
+    if (missingSignals.length > 0) {
+      await base44.entities.WatchMatchSignal.bulkCreate(missingSignals);
     }
 
     await base44.entities.ImportChunkReceipt.create({
@@ -236,7 +244,9 @@ Deno.serve(async (req) => {
       events: complete ? allEvents.map(publicEvent) : [],
       committed_chunk: chunkIndex,
       complete,
-      stored_records: missing.length,
+      stored_records: missingEvents.length,
+      stored_signals: missingSignals.length,
+      idempotent_replay: missingEvents.length === 0 && missingSignals.length === 0,
     });
   } catch {
     await base44.entities.WatchImport.update(watchImport.id, {

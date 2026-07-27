@@ -5,7 +5,7 @@ const configuredServerUrl = import.meta.env.VITE_BASE44_APP_BASE_URL?.trim();
 
 export const base44 = createClient(
   createBase44ClientConfig({
-    appId: "6a6538c71a8e3e1640117c91",
+    appId: import.meta.env.VITE_BASE44_APP_ID,
     configuredServerUrl,
     isDevelopment: import.meta.env.DEV,
   }),

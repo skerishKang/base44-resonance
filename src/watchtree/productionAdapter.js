@@ -1,4 +1,4 @@
-import { base44 } from "@/api/base44Client";
+import { getBase44Client } from "@/api/base44Client";
 import { LIMITS, WATCHTREE_VERSIONS } from "./constants.js";
 
 const unwrap = (response) => response?.data ?? response ?? {};
@@ -6,6 +6,7 @@ const nonce = () => crypto.randomUUID();
 const encoder = new TextEncoder();
 
 async function invokeWithRetry(name, payload, attempts = 3) {
+  const base44 = await getBase44Client();
   let lastError;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
@@ -55,6 +56,7 @@ export function createProductionWatchTreeAdapter() {
     kind: "production",
 
     async restore() {
+      const base44 = await getBase44Client();
       const imports = await base44.entities.WatchImport.list("-created_date", 20, 0);
       const completed = imports.find((item) => item.status === "completed") ?? null;
       if (!completed) return { import: null, events: [], tree: null, candidates: [], consent: null, mutual: null, matchingEnabled: false };

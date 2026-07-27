@@ -1,4 +1,3 @@
-import { createClient, getAccessToken } from "@base44/sdk";
 import { createBase44ClientConfig } from "@/api/base44ClientConfig";
 
 const configuredServerUrl = import.meta.env.VITE_BASE44_APP_BASE_URL?.trim();
@@ -10,6 +9,47 @@ const clientConfig = createBase44ClientConfig({
   isDevelopment: import.meta.env.MODE === "development",
 });
 
+const TOKEN_STORAGE_KEY = "base44_access_token";
+const TOKEN_URL_PARAM = "access_token";
+const ANALYTICS_ENABLE_URL_PARAM = "analytics-enable";
+
+function readStoredSessionToken() {
+  if (typeof window === "undefined") return null;
+  try {
+    const urlToken = new URLSearchParams(window.location.search).get(TOKEN_URL_PARAM);
+    if (urlToken) return urlToken;
+    return window.localStorage?.getItem(TOKEN_STORAGE_KEY) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function hasStoredBase44Session() {
+  return Boolean(readStoredSessionToken());
+}
+
+function disableAnalyticsBeforeSdkLoad() {
+  if (typeof window === "undefined" || !window.location || typeof window.history?.replaceState !== "function") return;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get(ANALYTICS_ENABLE_URL_PARAM) === "false") return;
+    params.set(ANALYTICS_ENABLE_URL_PARAM, "false");
+    const query = params.toString();
+    window.history.replaceState({}, document.title, `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+  } catch {
+  }
+}
+
+let sdkPromise = null;
+
+function loadBase44Sdk() {
+  if (!sdkPromise) {
+    disableAnalyticsBeforeSdkLoad();
+    sdkPromise = import("@base44/sdk");
+  }
+  return sdkPromise;
+}
+
 function createNoopClient() {
   const unavailable = async () => { throw new Error("APP_ID_UNAVAILABLE"); };
   const emptyList = async () => [];
@@ -19,8 +59,12 @@ function createNoopClient() {
     auth: {
       isAuthenticated: async () => false,
       me: emptyNull,
+      loginViaEmailPassword: unavailable,
+      register: unavailable,
+      verifyOtp: unavailable,
       signInWithOAuth: unavailable,
       signOut: unavailable,
+      logout: () => {},
     },
     entities: new Proxy({}, {
       get: () => ({
@@ -35,52 +79,32 @@ function createNoopClient() {
     }),
     functions: {
       invoke: unavailable,
-    }
+    },
+    setToken: () => {},
+    cleanup: () => {},
   };
 }
 
-export const base44 = clientConfig.enabled ? createClient(clientConfig) : createNoopClient();
+let clientPromise = null;
+let activeClient = null;
 
-if (clientConfig.enabled) {
-  if (typeof window !== "undefined" && typeof window.XMLHttpRequest !== "undefined") {
-    const originalOpen = window.XMLHttpRequest.prototype.open;
-    const originalSend = window.XMLHttpRequest.prototype.send;
-    
-    window.XMLHttpRequest.prototype.open = function(method, url) {
-      this._isAuthMe = typeof url === "string" && url.includes("/entities/User/me");
-      return originalOpen.apply(this, arguments);
-    };
+async function createLazyBase44Client() {
+  if (!clientConfig.enabled) return createNoopClient();
+  const { createClient } = await loadBase44Sdk();
+  const client = createClient(clientConfig);
+  activeClient = client;
+  return client;
+}
 
-    window.XMLHttpRequest.prototype.send = function() {
-      if (this._isAuthMe) {
-        const token = getAccessToken({ saveToStorage: false, removeFromUrl: false });
-        if (!token) {
-          // Mock a 200 response with empty user data to avoid browser 401 log AND axios error log
-          Object.defineProperty(this, 'readyState', { value: 4 });
-          Object.defineProperty(this, 'status', { value: 200 });
-          Object.defineProperty(this, 'statusText', { value: 'OK' });
-          Object.defineProperty(this, 'responseText', { value: 'null' });
-          Object.defineProperty(this, 'response', { value: 'null' });
-          
-          if (this.onreadystatechange) {
-            this.onreadystatechange();
-          }
-          if (this.onload) {
-            this.onload();
-          }
-          return;
-        }
-      }
-      return originalSend.apply(this, arguments);
-    };
-  }
+export function getBase44Client() {
+  if (!clientPromise) clientPromise = createLazyBase44Client();
+  return clientPromise;
+}
 
-  const originalMe = base44.auth.me.bind(base44.auth);
+export function getAuthenticatedBase44Client() {
+  return getBase44Client();
+}
 
-  const originalIsAuthenticated = base44.auth.isAuthenticated.bind(base44.auth);
-  base44.auth.isAuthenticated = async () => {
-    const token = getAccessToken({ saveToStorage: false, removeFromUrl: false });
-    if (!token) return false;
-    return await originalIsAuthenticated();
-  };
+export function cleanupBase44Client() {
+  activeClient?.cleanup?.();
 }

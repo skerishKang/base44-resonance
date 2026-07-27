@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { getBase44Client } from "@/api/base44Client";
 import {
   createClientNonce,
   deriveStatusCards,
@@ -7,8 +7,6 @@ import {
   isProbeLabelValid,
   normalizeProbeLabel,
 } from "@/lib/capability";
-
-const CapabilityProbe = base44.entities.CapabilityProbe;
 
 export function CapabilityPanel({ language, copy, onAuthStateChange }) {
   const [label, setLabel] = useState("");
@@ -37,6 +35,8 @@ export function CapabilityPanel({ language, copy, onAuthStateChange }) {
     if (!quiet) setIsLoading(true);
     setStateFor("entity", "loading");
     try {
+      const base44 = await getBase44Client();
+      const CapabilityProbe = base44.entities.CapabilityProbe;
       const records = await CapabilityProbe.list("-created_date", 20, 0);
       if (!activeRef.current) return;
       const boundedRecords = Array.isArray(records) ? records : [];
@@ -73,6 +73,8 @@ export function CapabilityPanel({ language, copy, onAuthStateChange }) {
     setStateFor("entity", "loading");
     setMessage("");
     try {
+      const base44 = await getBase44Client();
+      const CapabilityProbe = base44.entities.CapabilityProbe;
       const record = await CapabilityProbe.create({
         label: normalized,
         locale: language,
@@ -106,6 +108,7 @@ export function CapabilityPanel({ language, copy, onAuthStateChange }) {
     setStateFor("function", "loading");
     setMessage("");
     try {
+      const base44 = await getBase44Client();
       const response = await base44.functions.invoke("verify-capability", {
         probe_id: selectedId,
         locale: language,
@@ -132,7 +135,7 @@ export function CapabilityPanel({ language, copy, onAuthStateChange }) {
 
   const logout = () => {
     onAuthStateChange("anonymous");
-    base44.auth.logout(window.location.origin);
+    void getBase44Client().then((base44) => base44.auth.logout(window.location.origin)).catch(() => {});
   };
 
   const statusCards = useMemo(

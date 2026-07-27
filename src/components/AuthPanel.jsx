@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { getBase44Client } from "@/api/base44Client";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -49,6 +49,7 @@ export function AuthPanel({ copy, onAuthenticated, onClose }) {
     setStatus("loading");
     setMessage("");
     try {
+      const base44 = await getBase44Client();
       const response = await base44.auth.loginViaEmailPassword(email.trim(), password);
       if (!activeRef.current) return;
       const user = response?.user ?? await base44.auth.me();
@@ -75,6 +76,7 @@ export function AuthPanel({ copy, onAuthenticated, onClose }) {
     setStatus("loading");
     setMessage("");
     try {
+      const base44 = await getBase44Client();
       await base44.auth.register({ email: email.trim(), password });
       if (!activeRef.current) return;
       setPendingEmail(email.trim());
@@ -99,6 +101,7 @@ export function AuthPanel({ copy, onAuthenticated, onClose }) {
     setStatus("loading");
     setMessage("");
     try {
+      const base44 = await getBase44Client();
       await base44.auth.verifyOtp({ email: pendingEmail, otpCode: otp });
       if (!activeRef.current) return;
       setEmail(pendingEmail);

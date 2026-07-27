@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { cleanupBase44Client, getBase44Client, hasStoredBase44Session } from "@/api/base44Client";
 import { Atmosphere } from "@/components/Atmosphere";
 import { AuthPanel } from "@/components/AuthPanel";
 import { BackendFlow } from "@/components/BackendFlow";
@@ -27,19 +27,18 @@ export default function App() {
     let active = true;
     const restoreSession = async () => {
       try {
-        const authenticated = await base44.auth.isAuthenticated();
-        if (!active) return;
-
-        if (!authenticated) {
+        if (!hasStoredBase44Session()) {
+          if (!active) return;
           setUser(null);
           setAuthState("anonymous");
           setAuthNotice("");
           return;
         }
 
+        const base44 = await getBase44Client();
         const currentUser = await base44.auth.me();
         if (!active) return;
-        
+
         setAuthNotice("");
         if (currentUser) { setUser(currentUser); setAuthState("ready"); }
         else { setUser(null); setAuthState("anonymous"); }
@@ -51,14 +50,17 @@ export default function App() {
       }
     };
     void restoreSession();
-    return () => { active = false; base44.cleanup?.(); };
+    return () => { active = false; cleanupBase44Client(); };
   }, []);
 
   useEffect(() => { document.documentElement.lang = language === "ko" ? "ko" : "en"; }, [language]);
   const changeLanguage = (nextLanguage) => setLanguage(persistLanguage(nextLanguage));
   const openAuth = () => { setAuthNotice(""); setAuthPanelOpen(true); requestAnimationFrame(() => scrollToElementById("auth-region", { block: "center" })); };
   const handleAuthenticated = (authenticatedUser) => { setUser(authenticatedUser); setAuthState("ready"); setAuthPanelOpen(false); setAuthNotice(""); requestAnimationFrame(() => scrollToElementById("experience", { block: "start" })); };
-  const handleLogout = () => { setUser(null); setAuthState("anonymous"); setAuthNotice(""); setAuthPanelOpen(false); base44.auth.logout(window.location.origin); };
+  const handleLogout = () => {
+    setUser(null); setAuthState("anonymous"); setAuthNotice(""); setAuthPanelOpen(false);
+    void getBase44Client().then((base44) => base44.auth.logout(window.location.origin)).catch(() => {});
+  };
 
   return <main className="site-shell">
     <Atmosphere />

@@ -1,34 +1,59 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { connect } from "node:net";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { createServer } from "vite";
 
-const rootUrl = "http://127.0.0.1:4173/tests/harness/index.html";
+const host = "127.0.0.1";
+const port = 4173;
+const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
+const rootUrl = `http://${host}:${port}/tests/harness/index.html`;
 const evidenceDir = new URL("../evidence/", import.meta.url);
 await mkdir(evidenceDir, { recursive: true });
 
-const server = spawn("npm", ["run", "dev", "--", "--host", "127.0.0.1", "--port", "4173", "--strictPort"], {
-  stdio: ["ignore", "pipe", "pipe"],
-  env: { ...process.env, BROWSER: "none" },
+const server = await createServer({
+  root: repoRoot,
+  logLevel: "error",
+  server: { host, port, strictPort: true },
 });
-let serverOutput = "";
-server.stdout.on("data", (chunk) => { serverOutput += chunk; });
-server.stderr.on("data", (chunk) => { serverOutput += chunk; });
-server.unref();
-server.stdout.unref();
-server.stderr.unref();
+
+const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 async function waitForServer() {
   for (let attempt = 0; attempt < 80; attempt += 1) {
-    if (server.exitCode !== null) throw new Error(`Vite exited early: ${serverOutput}`);
     try {
       const response = await fetch(rootUrl);
       if (response.ok) return;
     } catch {}
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await delay(250);
   }
-  throw new Error(`Vite did not start: ${serverOutput}`);
+  throw new Error("Vite did not start on the expected port.");
+}
+
+function portIsOpen() {
+  return new Promise((resolve) => {
+    const socket = connect({ host, port });
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      socket.destroy();
+      resolve(value);
+    };
+    socket.once("connect", () => finish(true));
+    socket.once("error", () => finish(false));
+    socket.setTimeout(300, () => finish(false));
+  });
+}
+
+async function waitForPortClosed() {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    if (!(await portIsOpen())) return;
+    await delay(100);
+  }
+  throw new Error(`Vite port ${port} remained open after server.close().`);
 }
 
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -56,7 +81,15 @@ async function layoutState(page) {
       if (!(element instanceof HTMLElement)) return false;
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
-      return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) !== 0 && rect.width > 0 && rect.height > 0;
+      return style.display !== "none"
+        && style.visibility !== "hidden"
+        && Number(style.opacity) > 0.01
+        && rect.width > 0
+        && rect.height > 0
+        && rect.right > 0
+        && rect.bottom > 0
+        && rect.left < innerWidth
+        && rect.top < innerHeight;
     };
     const actionables = [...document.querySelectorAll("button:not([disabled]), a[href], input:not([type=file]):not([disabled])")].filter(visible);
     let overlapCount = 0;
@@ -116,19 +149,122 @@ async function openContext(browser, options = {}) {
   return { context, page, diagnostics };
 }
 
-await waitForServer();
-const browser = await chromium.launch({ headless: true });
+async function waitForForegroundScene(page, sceneNumber, outgoingSceneNumber = null) {
+  const activeScene = page.locator(`.watchtree-scene[data-scene="${sceneNumber}"]`);
+  await activeScene.waitFor({ state: "attached" });
+  await page.waitForFunction(({ sceneNumber: expected, outgoing }) => {
+    const rendered = (element) => {
+      if (!(element instanceof HTMLElement)) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== "none"
+        && style.visibility !== "hidden"
+        && Number(style.opacity) >= 0.99
+        && rect.width > 0
+        && rect.height > 0;
+    };
+    const scene = document.querySelector(`.watchtree-scene.is-active[data-scene="${expected}"]`);
+    if (!rendered(scene) || scene.getAttribute("aria-hidden") !== "false") return false;
+    if (outgoing !== null) {
+      const outgoingScene = document.querySelector(`.watchtree-scene[data-scene="${outgoing}"]`);
+      if (outgoingScene && rendered(outgoingScene)) return false;
+    }
+    return true;
+  }, { sceneNumber, outgoing: outgoingSceneNumber });
+  return activeScene;
+}
+
+async function waitForSceneSixContents(page, sceneSix) {
+  await page.waitForFunction(() => {
+    const visible = (element) => {
+      if (!(element instanceof HTMLElement)) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== "none"
+        && style.visibility !== "hidden"
+        && Number(style.opacity) > 0.1
+        && rect.width > 0
+        && rect.height > 0
+        && rect.right > 0
+        && rect.bottom > 0
+        && rect.left < innerWidth
+        && rect.top < innerHeight;
+    };
+    const scene = document.querySelector('.watchtree-scene.is-active[data-scene="6"]');
+    if (!visible(scene)) return false;
+    const trees = [...scene.querySelectorAll("[data-watchtree]")].filter(visible);
+    const sharedLeaves = [...scene.querySelectorAll(".tree-leaf--shared")].filter(visible);
+    const path = [...scene.querySelectorAll(".shared-path-visual > img")].filter(visible);
+    const evidence = [...scene.querySelectorAll(".shared-evidence span")].filter(visible);
+    return trees.length === 2 && sharedLeaves.length >= 2 && path.length === 1 && evidence.length === 4;
+  });
+  await sceneSix.scrollIntoViewIfNeeded();
+  await page.evaluate(() => {
+    document.querySelector('.watchtree-scene.is-active[data-scene="6"]')?.scrollIntoView({ block: "center", inline: "nearest" });
+  });
+  await delay(80);
+}
+
+async function sceneSixEvidence(sceneSix) {
+  return sceneSix.evaluate((scene) => {
+    const visible = (element) => {
+      if (!(element instanceof HTMLElement)) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== "none"
+        && style.visibility !== "hidden"
+        && Number(style.opacity) > 0.1
+        && rect.width > 0
+        && rect.height > 0
+        && rect.right > 0
+        && rect.bottom > 0
+        && rect.left < innerWidth
+        && rect.top < innerHeight;
+    };
+    const style = getComputedStyle(scene);
+    const rect = scene.getBoundingClientRect();
+    return {
+      active: scene.classList.contains("is-active"),
+      aria_hidden: scene.getAttribute("aria-hidden"),
+      visibility: style.visibility,
+      opacity: Number(style.opacity),
+      rendered_bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+      trees: [...scene.querySelectorAll("[data-watchtree]")].filter(visible).length,
+      shared_leaves: [...scene.querySelectorAll(".tree-leaf--shared")].filter(visible).length,
+      shared_path: [...scene.querySelectorAll(".shared-path-visual > img")].filter(visible).length,
+      evidence: [...scene.querySelectorAll(".shared-evidence span")].filter(visible).map((element) => element.textContent?.trim()),
+    };
+  });
+}
+
+let browser;
+let runError;
+const cleanupErrors = [];
+
 try {
-  // Desktop cinematic scene inventory.
+  await server.listen();
+  await waitForServer();
+  browser = await chromium.launch({ headless: true });
+
   {
     const { context, page, diagnostics } = await openContext(browser);
     for (let scene = 1; scene <= 7; scene += 1) {
       await page.getByRole("button", { name: `Scene ${scene}` }).click();
-      await page.locator(`.watchtree-scene[data-scene="${scene}"]`).waitFor({ state: "visible" });
-      const required = scene === 6 ? {
-        trees: await page.locator('.watchtree-scene[data-scene="6"] [data-watchtree]').count(),
-        evidence: await page.locator('.watchtree-scene[data-scene="6"] .shared-evidence span').allTextContents(),
-      } : {};
+      const activeScene = await waitForForegroundScene(page, scene, scene === 6 ? 1 : null);
+      const required = scene === 6 ? await (async () => {
+        await waitForSceneSixContents(page, activeScene);
+        const evidence = await sceneSixEvidence(activeScene);
+        assert.equal(evidence.active, true);
+        assert.equal(evidence.aria_hidden, "false");
+        assert.equal(evidence.visibility, "visible");
+        assert.ok(evidence.opacity >= 0.99);
+        assert.ok(evidence.rendered_bounds.width > 0 && evidence.rendered_bounds.height > 0);
+        assert.equal(evidence.trees, 2);
+        assert.ok(evidence.shared_leaves >= 2);
+        assert.equal(evidence.shared_path, 1);
+        assert.deepEqual(evidence.evidence, ["Exact overlap", "Rare signal", "Shared path", "Meaningful difference"]);
+        return evidence;
+      })() : {};
       await capture(page, `desktop-scene-${scene}`, required);
     }
     assert.equal(await page.locator('[data-primary-cta="resonance"]:visible').count(), 1);
@@ -138,7 +274,6 @@ try {
     await context.close();
   }
 
-  // Mobile initial viewport and Scene 6.
   {
     const { context, page, diagnostics } = await openContext(browser, { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
     const cta = page.locator('[data-primary-cta="resonance"]:visible');
@@ -147,14 +282,31 @@ try {
     assert.ok(ctaBox && ctaBox.y + ctaBox.height <= 844, "mobile primary CTA must be in the initial viewport");
     await capture(page, "mobile-initial", { proposition: await page.locator("#watchtree-title").innerText(), primary_cta: 1 });
     await page.getByRole("button", { name: "Scene 6" }).click();
-    await capture(page, "mobile-scene-6", { trees: await page.locator('.watchtree-scene[data-scene="6"] [data-watchtree]').count(), evidence: await page.locator('.shared-evidence span').allTextContents() });
+    const sceneSix = await waitForForegroundScene(page, 6, 1);
+    await waitForSceneSixContents(page, sceneSix);
+    const required = await sceneSixEvidence(sceneSix);
+    assert.equal(required.active, true);
+    assert.equal(required.aria_hidden, "false");
+    assert.equal(required.visibility, "visible");
+    assert.ok(required.opacity >= 0.99);
+    assert.ok(required.rendered_bounds.width > 0 && required.rendered_bounds.height > 0);
+    assert.equal(required.trees, 2);
+    assert.ok(required.shared_leaves >= 2);
+    assert.equal(required.shared_path, 1);
+    assert.deepEqual(required.evidence, ["Exact overlap", "Rare signal", "Shared path", "Meaningful difference"]);
+    const outgoingSceneOneVisible = await page.locator('.watchtree-scene[data-scene="1"]').evaluate((scene) => {
+      const style = getComputedStyle(scene);
+      const rect = scene.getBoundingClientRect();
+      return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) > 0.01 && rect.width > 0 && rect.height > 0;
+    });
+    assert.equal(outgoingSceneOneVisible, false, "mobile Scene 1 must not remain visible after Scene 6 becomes active");
+    await capture(page, "mobile-scene-6", required);
     assert.deepEqual(diagnostics.consoleErrors, []);
     assert.deepEqual(diagnostics.pageErrors, []);
     assert.deepEqual(diagnostics.externalRequests, []);
     await context.close();
   }
 
-  // Actual prefers-reduced-motion static narrative on desktop and mobile.
   for (const spec of [
     { name: "desktop-reduced", viewport: { width: 1440, height: 900 }, dsf: 1 },
     { name: "mobile-reduced", viewport: { width: 390, height: 844 }, dsf: 2 },
@@ -179,7 +331,6 @@ try {
     await context.close();
   }
 
-  // Full synthetic journey, exclusions, consent, withdrawal, mutual, language, reload.
   {
     const { context, page, diagnostics } = await openContext(browser);
     await page.getByTestId("seed-demo").click();
@@ -240,10 +391,36 @@ try {
     reduced_motion_complete: true,
     mobile_css_viewport: "390x844",
     primary_cta_visible_count: 1,
+    mobile_scene_6_foreground_verified: true,
+    vite_port_closed_after_cleanup: true,
   };
   await writeFile(new URL("watchtree-browser-evidence.json", evidenceDir), `${JSON.stringify(manifest, null, 2)}\n`);
   console.log(JSON.stringify(manifest.assertions));
+} catch (error) {
+  runError = error;
+  await writeFile(new URL("browser-error.log", evidenceDir), `${error?.stack ?? error}\n`).catch(() => {});
 } finally {
-  await browser.close().catch(() => {});
-  server.kill("SIGKILL");
+  if (browser) {
+    try {
+      await browser.close();
+    } catch (error) {
+      cleanupErrors.push(new Error(`Chromium cleanup failed: ${error?.message ?? error}`));
+    }
+  }
+  try {
+    await server.close();
+  } catch (error) {
+    cleanupErrors.push(new Error(`Vite cleanup failed: ${error?.message ?? error}`));
+  }
+  try {
+    await waitForPortClosed();
+  } catch (error) {
+    cleanupErrors.push(error);
+  }
+  if (cleanupErrors.length) {
+    await writeFile(new URL("cleanup-failure.log", evidenceDir), `${cleanupErrors.map((error) => error.stack ?? error).join("\n\n")}\n`);
+  }
 }
+
+const failures = [runError, ...cleanupErrors].filter(Boolean);
+if (failures.length) throw new AggregateError(failures, "WatchTree browser validation or cleanup failed.");

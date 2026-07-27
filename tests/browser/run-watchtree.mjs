@@ -161,7 +161,7 @@ try {
     const reduced = page.locator("[data-testid=reduced-story]");
     await reduced.waitFor({ state: "visible" });
     const required = {
-      persons: await reduced.locator(".reduced-person img").count(),
+      persons: await reduced.locator(".reduced-person > img").count(),
       fragments: await reduced.locator(".reduced-fragments img").count(),
       trees: await reduced.locator("[data-watchtree]").count(),
       evidence: await reduced.locator(".reduced-path span").allTextContents(),

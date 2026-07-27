@@ -1,0 +1,153 @@
+
+> base44-app@0.0.0 test:ci
+> node --test --test-reporter=spec tests/*.test.mjs
+
+✔ CapabilityProbe create allows only documented authenticated roles (2.540001ms)
+✔ CapabilityProbe read, update, and delete use built-in creator ID ownership (0.42751ms)
+✔ CapabilityProbe exposes no client-controlled owner or built-in identity fields (1.5501ms)
+✔ verify-capability remains authenticated and caller scoped (0.494144ms)
+✔ CI remains credential-free and contains no deploy (0.479767ms)
+✔ scanner rejects credentials and accepts synthetic aggregate evidence (1.794096ms)
+✖ repository evidence-facing source contains no embedded credentials (18.234722ms)
+✔ English hero contains English product copy only (1.955478ms)
+✔ Korean locale keeps its coherent hero title and body (0.342982ms)
+✔ locale persistence and document language switching remain intact (0.445253ms)
+✔ orphaned hero subline CSS is removed without changing mobile CTA contracts (0.613137ms)
+✔ unrelated Auth, journey, and backend copy contracts remain unchanged (0.385762ms)
+✔ CapabilityPanel orbit markup remains paired with its exact CSS rule (0.407432ms)
+✔ Issue 16 source contracts leave Auth, Journey, Entity, and Function paths intact (0.855761ms)
+✔ language defaults to English (1.96171ms)
+✔ language switch exposes Korean functional copy and persists selection (0.400479ms)
+✔ unauthenticated landing exposes no capability actions (0.94606ms)
+✔ capability status keeps Auth, Entity, and Function independent (0.463547ms)
+✔ authentication source never logs or surfaces raw error messages (0.574394ms)
+✔ function validation rejects missing and oversized probe IDs (0.607486ms)
+✔ verify-capability remains explicitly authenticated and caller scoped (0.388166ms)
+✔ CapabilityProbe schema remains authenticated-create and owner-only (0.453688ms)
+✔ development client configuration prefers the CLI-provided URL (0.692004ms)
+✔ local fallback is applied only in development (1.485198ms)
+✔ production preserves an explicit hosted URL and otherwise omits serverUrl (0.326641ms)
+✔ Vite development server binds to all interfaces only through config (0.376033ms)
+✔ programmatic scrolling respects reduced and normal motion (0.388207ms)
+✖ active Entity inventory contains capability proof and Slice 2 private resources (2.073589ms)
+✔ source, resources, tests, and README contain no removed scaffold flow references (12.797891ms)
+✔ generic scaffold UI is removed and product journey is primary (0.282178ms)
+✔ reduced-motion and responsive overflow paths remain (0.385151ms)
+✔ CI is credential-free and never deploys (1.369272ms)
+✔ journey mutation surfaces are removed from interaction while durable state restores (1.51848ms)
+✔ auth errors are not rendered before an explicit panel state and recovery clears stale notice (2.027343ms)
+✔ normal authenticated product UI never renders a raw account email (0.622154ms)
+✔ mobile landing keeps a primary CTA in the initial viewport contract (0.531004ms)
+✔ the product journey exposes exactly three bounded memory-card slots (1.321221ms)
+✔ consent starts unselected and requires an affirmative user action (0.390159ms)
+✔ all new private Entities use authenticated create and creator-ID owner RLS (1.037381ms)
+✔ new Entity schemas expose no client-controlled owner or built-in identity fields (2.360485ms)
+✔ Entity schemas bound strings, arrays, enums, and the exactly-three relationship (3.02051ms)
+✔ generate-fingerprint validates exactly three unique IDs, consent, and locale (0.814313ms)
+✔ generate-fingerprint is POST-only, authenticated, consent-gated, caller-scoped, and bounded (1.629649ms)
+✔ compute-matches validates fingerprint input and returns stable synthetic ordering (1.199434ms)
+✔ compute-matches treats inaccessible and nonexistent fingerprints as one unavailable class (0.218279ms)
+✔ candidate output never copies raw memory text and no live AI, Agent, or Integration path exists (0.477494ms)
+✔ reload restores durable steps and StrictMode guards every mutation from duplication (0.354443ms)
+✔ mobile product result, reduced motion, and overflow contracts remain explicit (0.445122ms)
+✔ journey step derivation is deterministic and reaches mutual state (0.330699ms)
+✔ CI remains credential-free and contains no deploy or Base44 push (0.335478ms)
+✔ the active Entity inventory preserves Slice 2 and adds the WatchTree resources (0.220744ms)
+✔ AuthPanel restores the mounted ref during every effect setup (1.615562ms)
+✔ AuthPanel cleanup is the only lifecycle path that marks the ref inactive (1.077766ms)
+✔ register completion can transition to OTP verification after StrictMode replay (0.478815ms)
+✔ sign-in and OTP completion paths remain mounted-guarded and reachable (0.402012ms)
+✔ CapabilityPanel uses the same StrictMode-safe lifecycle for list, create, and verify completions (0.476001ms)
+✔ React StrictMode remains enabled and CI remains credential-free (0.408845ms)
+✔ all WatchTree entities are owner scoped and contain no client owner field (4.211449ms)
+✔ all Functions authenticate, accept JSON, use nonce, and avoid service role matching (1.172764ms)
+✔ production entry graph cannot reach test adapter or query-parameter login (0.613658ms)
+✔ raw watch history is not persisted or transported (2.033885ms)
+✔ approved visual subset is local and provenance is recorded (0.570387ms)
+✔ CI is credential free, tests/builds, and never deploys (0.365534ms)
+✔ import commit verifies confirmation, resumes chunks, and suppresses post-write retry duplicates (0.359172ms)
+✔ privacy exclusion remains authoritative when matching is toggled (0.253865ms)
+✔ reveal consent is nonce-idempotent and synthetic mutual is explicitly labelled (1.486ms)
+✔ synthetic journey restores, excludes, consents, withdraws, and deletes (14.816587ms)
+✔ HTML and JSON previews commit the same bounded owner-only model (4.683962ms)
+✔ fixture is versioned, synthetic, and bounded (1.254116ms)
+✔ deterministic candidate ordering exposes required causal evidence (7.712468ms)
+✔ excluded items cannot influence fingerprint or candidates (1.720678ms)
+✔ matching weights sum to one without compatibility percentage (1.3472ms)
+✔ format and URL canonicalization are bounded (1.040867ms)
+✔ JSON fixture normalizes one owner-only event (1.264265ms)
+✔ HTML tokenizer is deterministic and does not require DOMParser (1.910534ms)
+✔ scripts are ignored and never executed (0.631782ms)
+✔ depth and record limits fail closed (2.246192ms)
+✔ malformed input produces bounded codes (0.311031ms)
+ℹ tests 78
+ℹ suites 0
+ℹ pass 76
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 365.933021
+
+✖ failing tests:
+
+test at tests/evidence-scanner.test.mjs:34:1
+✖ repository evidence-facing source contains no embedded credentials (18.234722ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   'rc/components/AuthPanel.jsx: /\\b(access[_-]?token|refresh[_-]?token|client[_-]?secret|api[_-]?key|password|passwd|otp|one[_-]?time[_-]?code)\\b/i',
+  +   'rc/lib/i18n.js: /\\b(access[_-]?token|refresh[_-]?token|client[_-]?secret|api[_-]?key|password|passwd|otp|one[_-]?time[_-]?code)\\b/i'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///home/runner/work/base44-resonance/base44-resonance/tests/evidence-scanner.test.mjs:43:10)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1047:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+      at Test.postRun (node:internal/test_runner/test:1173:19)
+      at Test.run (node:internal/test_runner/test:1101:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'rc/components/AuthPanel.jsx: /\\b(access[_-]?token|refresh[_-]?token|client[_-]?secret|api[_-]?key|password|passwd|otp|one[_-]?time[_-]?code)\\b/i', 'rc/lib/i18n.js: /\\b(access[_-]?token|refresh[_-]?token|client[_-]?secret|api[_-]?key|password|passwd|otp|one[_-]?time[_-]?code)\\b/i' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/resonance.test.mjs:170:1
+✖ active Entity inventory contains capability proof and Slice 2 private resources (2.073589ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      'capability-probe.jsonc',
+      'consent-record.jsonc',
+  +   'import-chunk-receipt.jsonc',
+      'match-decision.jsonc',
+      'memory-card.jsonc',
+  +   'mutual-resonance.jsonc',
+      'resonance-fingerprint.jsonc',
+  +   'reveal-consent.jsonc',
+  +   'shared-path-candidate.jsonc',
+  +   'watch-event.jsonc',
+  +   'watch-import.jsonc',
+  +   'watch-tree-fingerprint.jsonc'
+    ]
+  
+      at TestContext.<anonymous> (file:///home/runner/work/base44-resonance/base44-resonance/tests/resonance.test.mjs:172:10)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1047:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+      at Test.postRun (node:internal/test_runner/test:1173:19)
+      at Test.run (node:internal/test_runner/test:1101:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:744:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'capability-probe.jsonc', 'consent-record.jsonc', 'import-chunk-receipt.jsonc', 'match-decision.jsonc', 'memory-card.jsonc', 'mutual-resonance.jsonc', 'resonance-fingerprint.jsonc', 'reveal-consent.jsonc', 'shared-path-candidate.jsonc', 'watch-event.jsonc', 'watch-import.jsonc', 'watch-tree-fingerprint.jsonc' ],
+    expected: [ 'capability-probe.jsonc', 'consent-record.jsonc', 'match-decision.jsonc', 'memory-card.jsonc', 'resonance-fingerprint.jsonc' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

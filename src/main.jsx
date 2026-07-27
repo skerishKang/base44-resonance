@@ -4,9 +4,6 @@ import App from "@/App.jsx";
 import "@/index.css";
 import "@/product.css";
 import "@/restore-guard.css";
+import "@/watchtree/watchtree.css";
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-);
+ReactDOM.createRoot(document.getElementById("root")).render(<React.StrictMode><App /></React.StrictMode>);

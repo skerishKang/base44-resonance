@@ -172,9 +172,17 @@ test("active Entity inventory contains capability proof and Slice 2 private reso
   assert.deepEqual(entityFiles, [
     "capability-probe.jsonc",
     "consent-record.jsonc",
+    "import-chunk-receipt.jsonc",
     "match-decision.jsonc",
     "memory-card.jsonc",
+    "mutual-resonance.jsonc",
     "resonance-fingerprint.jsonc",
+    "reveal-consent.jsonc",
+    "shared-path-candidate.jsonc",
+    "watch-event.jsonc",
+    "watch-import.jsonc",
+    "watch-match-signal.jsonc",
+    "watch-tree-fingerprint.jsonc",
   ]);
   assert.equal(existsSync(join(repoRoot, "base44/agents")), false);
 });

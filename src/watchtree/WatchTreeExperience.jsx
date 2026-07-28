@@ -4,6 +4,7 @@ import { selectedEvidenceTokensForCandidate } from "./matching.js";
 import { initialState, watchTreeReducer } from "./state-machine.js";
 import { LIMITS } from "./constants.js";
 import { WatchTreeGraphic } from "./WatchTreeGraphic.jsx";
+import { createWatchTreeRealtime } from "./realtime/createWatchTreeRealtime.js";
 
 const createWorker = () => new Worker(new URL("./watch-history.worker.js", import.meta.url), { type: "module" });
 
@@ -41,6 +42,39 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
       workerRef.current = null;
     };
   }, [adapter, copy.errors.unavailable]);
+
+  // Keep a ref to the latest state so the realtime callback can check
+  // whether a mutation is in-flight before dispatching RESTORED.
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  // States where the realtime subscription is allowed to dispatch RESTORED.
+  // All other states (seeding, parsing, preview, resolving, url_preview,
+  // adding, committing, matching, private) represent an in-flight user
+  // operation that must not be overwritten by a background refresh.
+  const REALTIME_SAFE_STATUSES = new Set(["idle", "ready", "error"]);
+
+  // Realtime subscription: WatchEvent changes in other tabs trigger
+  // a debounced restore through the normal state-machine path.
+  // Subscription starts on mount and stops on unmount.
+  useEffect(() => {
+    const realtime = createWatchTreeRealtime({ adapter });
+
+    realtime.start((data) => {
+      // Guard: do not overwrite an in-flight mutation.
+      const status = stateRef.current.status;
+      if (!REALTIME_SAFE_STATUSES.has(status)) return;
+
+      // Dispatch RESTORED — the state machine's normal restore path.
+      // The realtime module calls adapter.restore() internally after
+      // debounce, so the callback never modifies state directly.
+      dispatch({ type: "RESTORED", payload: data });
+    });
+
+    return () => {
+      realtime.stop();
+    };
+  }, [adapter]);
 
   const seed = () => run("seed", async () => {
     dispatch({ type: "BUSY", status: "seeding" });

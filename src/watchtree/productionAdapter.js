@@ -264,5 +264,17 @@ export function createProductionWatchTreeAdapter() {
         confirmation_token: payload.confirmationToken,
       }));
     },
+
+    /**
+     * Subscribe to WatchEvent realtime changes.
+     * Wraps base44.entities.WatchEvent.subscribe(callback).
+     *
+     * @param {(event: object) => void} callback
+     * @returns {Promise<() => void>} unsubscribe function
+     */
+    async subscribe(callback) {
+      const base44 = await getBase44Client();
+      return base44.entities.WatchEvent.subscribe(callback);
+    },
   };
 }

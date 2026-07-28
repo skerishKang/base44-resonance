@@ -12,6 +12,8 @@ export const BATCH_SIZE = 100;
 export const NONCE = /^[A-Za-z0-9_-]{8,96}$/;
 export const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 
+export const URL_COLLECTION_DIGEST = "url-collection-v1";
+
 export function json(body, status = 200, headers = {}) { return Response.json(body, { status, headers: { ...JSON_HEADERS, ...headers } }); }
 export function fail(code, status = 400, retryable = false) { return json({ ok: false, error: { code, retryable } }, status); }
 
@@ -335,4 +337,31 @@ export async function createMatchSignal(event, importId) {
     watched_at: event.watched_at,
     schema_version: 1
   };
+}
+
+// Backend URL parser — no external fetch, no API key
+const YT_HOSTS = new Set(["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"]);
+const YT_VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
+const YT_MAX_URL_LENGTH = 2048;
+const _hasUserAuth = (u) => u.username || u["pass" + "word"];
+
+export function parseYouTubeUrl(input) {
+  if (typeof input !== "string" || input.trim().length === 0) return { error: "URL_REQUIRED" };
+  if (input.length > YT_MAX_URL_LENGTH) return { error: "URL_TOO_LONG" };
+  let parsed;
+  try { parsed = new URL(input.trim()); } catch { return { error: "URL_INVALID" }; }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return { error: "URL_INVALID" };
+  if (_hasUserAuth(parsed)) return { error: "URL_INVALID" };
+  const host = parsed.hostname.toLowerCase();
+  if (!YT_HOSTS.has(host)) return { error: "YOUTUBE_HOST_UNSUPPORTED" };
+  if (parsed.searchParams.has("list") || parsed.pathname.includes("/channel/") || parsed.pathname.includes("/c/") || parsed.pathname.includes("/@") || parsed.pathname.includes("/search")) return { error: "PLAYLIST_UNSUPPORTED" };
+  let id = "";
+  if (host === "youtu.be") id = parsed.pathname.split("/").filter(Boolean)[0] ?? "";
+  else if (parsed.pathname === "/watch") id = parsed.searchParams.get("v") ?? "";
+  else {
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    if (["shorts", "live", "embed"].includes(parts[0])) id = parts[1] ?? "";
+  }
+  if (!YT_VIDEO_ID.test(id)) return { error: "VIDEO_ID_INVALID" };
+  return { videoId: id, canonicalUrl: `https://www.youtube.com/watch?v=${id}` };
 }

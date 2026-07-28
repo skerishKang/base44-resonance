@@ -242,5 +242,27 @@ export function createProductionWatchTreeAdapter() {
       if (action === "delete_import") return invokeOwnedDeleteImportWithAmbiguity(request);
       return invokeWithRetry("delete-watch-data", request);
     },
+
+    async resolveYouTubeVideo(videoUrl) {
+      const base44 = await getBase44Client();
+      return unwrap(await base44.functions.invoke("resolve-youtube-video", {
+        schema_version: 1,
+        client_nonce: nonce(),
+        video_url: videoUrl,
+      }));
+    },
+
+    async addWatchUrlEvent(payload) {
+      const base44 = await getBase44Client();
+      return unwrap(await base44.functions.invoke("add-watch-url-event", {
+        schema_version: 1,
+        client_nonce: nonce(),
+        video_id: payload.videoId,
+        watched_at: payload.watchedAt ?? new Date().toISOString(),
+        private_note: payload.privateNote ?? "",
+        rewatch: payload.rewatch ?? false,
+        confirmation_token: payload.confirmationToken,
+      }));
+    },
   };
 }

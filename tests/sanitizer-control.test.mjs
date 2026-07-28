@@ -22,7 +22,7 @@ try {
   publicEvent = exports.publicEvent;
 }
 
-const FORBIDDEN = ["match_hash", "source_record_fingerprint", "input_digest", "source_digest"];
+const FORBIDDEN = ["match_hash", "source_record_fingerprint", "input_digest", "source_digest", "client_nonce_digest", "payload_digest"];
 
 // Raw fixture matching the browser test structure
 const rawFixture = {
@@ -31,6 +31,8 @@ const rawFixture = {
     id: "synthetic-event-1",
     title: "Synthetic title",
     match_hash: "synthetic-match-value",
+    client_nonce_digest: "abc123",
+    payload_digest: "def456",
     nested: {
       source_record_fingerprint: "synthetic-record-value",
     },
@@ -53,7 +55,7 @@ const rawFixture = {
 const clone = (obj) => JSON.parse(JSON.stringify(obj));
 
 // Helper: recursive scanner (mirrors browser scanner)
-function scanForbidden(obj, counts = { match_hash: 0, source_record_fingerprint: 0, input_digest: 0, source_digest: 0 }) {
+function scanForbidden(obj, counts = { match_hash: 0, source_record_fingerprint: 0, input_digest: 0, source_digest: 0, client_nonce_digest: 0, payload_digest: 0 }) {
   if (!obj || typeof obj !== "object") return counts;
   if (Array.isArray(obj)) { obj.forEach((item) => scanForbidden(item, counts)); return counts; }
   for (const key of Object.keys(obj)) {
@@ -71,15 +73,19 @@ function scanForbidden(obj, counts = { match_hash: 0, source_record_fingerprint:
   assert.equal(typeof sanitizeResponse, "function", "sanitizeResponse must be a function");
   assert.equal(typeof publicEvent, "function", "publicEvent must be a function");
   assert.ok(INTERNAL_FIELDS instanceof Set, "INTERNAL_FIELDS must be a Set");
-  assert.equal(INTERNAL_FIELDS.size, 4, "INTERNAL_FIELDS must contain exactly 4 items");
+  assert.equal(INTERNAL_FIELDS.size, 6, "INTERNAL_FIELDS must contain exactly 6 items");
   assert.equal(rawResult.match_hash, 1, "raw fixture must contain match_hash");
   assert.equal(rawResult.source_record_fingerprint, 1, "raw fixture must contain source_record_fingerprint");
   assert.equal(rawResult.input_digest, 1, "raw fixture must contain input_digest");
   assert.equal(rawResult.source_digest, 1, "raw fixture must contain source_digest");
+  assert.equal(rawResult.client_nonce_digest, 1, "raw fixture must contain client_nonce_digest");
+  assert.equal(rawResult.payload_digest, 1, "raw fixture must contain payload_digest");
   assert.equal(sanitizedResult.match_hash, 0, "publicEvent must remove match_hash");
   assert.equal(sanitizedResult.source_record_fingerprint, 0, "publicEvent must remove source_record_fingerprint");
   assert.equal(sanitizedResult.input_digest, 0, "publicEvent must remove input_digest");
   assert.equal(sanitizedResult.source_digest, 0, "publicEvent must remove source_digest");
+  assert.equal(sanitizedResult.client_nonce_digest, 0, "publicEvent must remove client_nonce_digest");
+  assert.equal(sanitizedResult.payload_digest, 0, "publicEvent must remove payload_digest");
 }
 
 // ===== Test: sanitizeResponse positive control =====

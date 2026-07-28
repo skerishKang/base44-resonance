@@ -616,6 +616,120 @@
 .entry-choice small { color: rgba(244, 236, 221, 0.48); line-height: 1.6; }
 .entry-choice input[type="file"] { max-width: 100%; color: rgba(244, 236, 221, 0.58); }
 
+.url-collection {
+  display: grid;
+  gap: 1rem;
+}
+
+.url-collection--inline {
+  margin-bottom: 0.25rem;
+}
+
+.url-input-row {
+  display: flex;
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.url-input-row input[type="url"] {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--wt-line);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--wt-ivory);
+  padding: 0.7rem 0.95rem;
+  font-size: 0.95rem;
+  min-height: 2.8rem;
+}
+
+.url-input-row input[type="url"]::placeholder {
+  color: rgba(244, 236, 221, 0.35);
+}
+
+.url-input-row input[type="url"]:focus {
+  outline: none;
+  border-color: var(--wt-amber);
+  box-shadow: 0 0 0 1px rgba(215, 169, 111, 0.25);
+}
+
+.url-preview-card {
+  border: 1px solid var(--wt-line);
+  background: rgba(18, 19, 41, 0.55);
+  padding: clamp(1.25rem, 3vw, 2.4rem);
+  display: grid;
+  gap: 1rem;
+}
+
+.url-preview-card h3 {
+  margin: 0;
+}
+
+.url-preview-thumbnail {
+  width: 100%;
+  max-width: 20rem;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border: 1px solid var(--wt-line);
+  border-radius: 0.3rem;
+}
+
+.url-preview-details {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.url-preview-details strong {
+  font-size: 1.1rem;
+  line-height: 1.35;
+}
+
+.url-preview-details small {
+  color: rgba(244, 236, 221, 0.48);
+  font-size: 0.85rem;
+}
+
+.entry-choice--advanced {
+  cursor: default;
+}
+
+.entry-choice--advanced > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.entry-choice--advanced > summary::-webkit-details-marker {
+  display: none;
+}
+
+.entry-choice--advanced > summary strong {
+  display: block;
+}
+
+.entry-choice--advanced > summary small {
+  display: block;
+  margin-top: 0.35rem;
+}
+
+.file-input-label {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--wt-line);
+  display: grid;
+  gap: 0.5rem;
+}
+
+.file-input-label small {
+  font-size: 0.8rem;
+}
+
+.insufficient-signal {
+  border: 1px solid var(--wt-line);
+  padding: 1rem;
+  color: rgba(244, 236, 221, 0.48);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
 .preview-card,
 .privacy-console,
 .tree-result,

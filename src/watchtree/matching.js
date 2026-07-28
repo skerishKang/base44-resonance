@@ -6,6 +6,8 @@ const intersection = (a, b) => [...a].filter((value) => b.has(value));
 const jaccard = (a, b) => { const union = new Set([...a, ...b]); return union.size ? intersection(a, b).length / union.size : 0; };
 const clamp = (value) => Math.max(0, Math.min(1, value));
 
+export const MIN_EVENTS_FOR_MATCHING = 4;
+
 function counts(events) {
   const map = new Map();
   for (const event of events.filter(eligible)) map.set(event.normalized_content_id, (map.get(event.normalized_content_id) ?? 0) + 1);
@@ -65,6 +67,20 @@ function sequenceScore(aEvents,bEvents) {
   return { score:(unionBig+1.5*unionTri)?numerator/(unionBig+1.5*unionTri):0, sharedBigrams:intersection(a.bigrams,b.bigrams).length, sharedTrigrams:intersection(a.trigrams,b.trigrams).length };
 }
 
+function buildEvidenceTokens(candidate, shared, rareCount, seq, sharedCreators, ac, bc, difference) {
+  const tokens = [];
+  if (shared.length > 0) tokens.push({ id: `${candidate.id}:exact`, type: "exact", label: "Exact overlap", count: shared.length });
+  if (rareCount > 0) tokens.push({ id: `${candidate.id}:rare`, type: "rare", label: "Rare signal", count: rareCount });
+  const pathCount = seq.sharedBigrams + seq.sharedTrigrams;
+  if (pathCount > 0) tokens.push({ id: `${candidate.id}:path`, type: "path", label: "Shared path", count: pathCount });
+  if (difference > 0.15) tokens.push({ id: `${candidate.id}:difference`, type: "difference", label: "Meaningful difference", count: 1 });
+  const creatorCount = sharedCreators.length;
+  if (creatorCount > 0) tokens.push({ id: `${candidate.id}:creator`, type: "rare", label: "Shared creator", count: creatorCount });
+  const repeatedCount = shared.filter((id) => (ac.get(id) ?? 0) > 1 && (bc.get(id) ?? 0) > 1).length;
+  if (repeatedCount > 0) tokens.push({ id: `${candidate.id}:repeated`, type: "rare", label: "Repeated together", count: repeatedCount });
+  return tokens.slice(0, 6);
+}
+
 export function scoreCandidate(ownerEvents, candidate, corpus = []) {
   const a=set(ownerEvents), b=set(candidate.events);
   const shared=intersection(a,b);
@@ -97,17 +113,19 @@ export function scoreCandidate(ownerEvents, candidate, corpus = []) {
     repeated_overlap_count:shared.filter((id)=>(ac.get(id)??0)>1&&(bc.get(id)??0)>1).length,
     shared_path_count:seq.sharedBigrams+seq.sharedTrigrams,
     meaningful_difference_present:difference>0.15,
-    evidence_tokens:[
-      {id:`${candidate.id}:exact`,type:"exact",label:"Exact overlap",count:shared.length},
-      {id:`${candidate.id}:rare`,type:"rare",label:"Rare signal",count:rareCount},
-      {id:`${candidate.id}:path`,type:"path",label:"Shared path",count:seq.sharedBigrams+seq.sharedTrigrams},
-      {id:`${candidate.id}:difference`,type:"difference",label:"Meaningful difference",count:difference>0.15?1:0},
-    ],
+    evidence_tokens: buildEvidenceTokens(candidate, shared, rareCount, seq, sharedCreators, ac, bc, difference),
     components,
   };
 }
 
-export function orderCandidates(ownerEvents,candidates){return candidates.map((candidate)=>scoreCandidate(ownerEvents,candidate,candidates)).sort((a,b)=>b.score-a.score||b.rare_overlap_count-a.rare_overlap_count||b.shared_path_count-a.shared_path_count||b.exact_overlap_count-a.exact_overlap_count||a.id.localeCompare(b.id));}
+export function orderCandidates(ownerEvents, candidates) {
+  const activeEvents = ownerEvents.filter(eligible);
+  if (activeEvents.length < MIN_EVENTS_FOR_MATCHING) return [];
+  return candidates
+    .map((candidate) => scoreCandidate(ownerEvents, candidate, candidates))
+    .sort((a, b) => b.score - a.score || b.rare_overlap_count - a.rare_overlap_count || b.shared_path_count - a.shared_path_count || b.exact_overlap_count - a.exact_overlap_count || a.id.localeCompare(b.id))
+    .slice(0, 3);
+}
 
 export function selectedEvidenceTokensForCandidate(candidate, selectedTokens) {
   const allowedTokenIds = new Set(

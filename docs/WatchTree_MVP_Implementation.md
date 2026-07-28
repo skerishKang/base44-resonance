@@ -8,15 +8,20 @@ This source slice implements Issue #20 (original base `214cf519ea140fb97af875617
 - App: `base44-resonance` (public App ID `6a6538c71a8e3e1640117c91`, a public identifier rather than a secret)
 - Reviewed production baseline before Issue #30: `249332bbfe62f9c065c116f098165d87c46f6a9b`
 - Exact deployed commit: recorded in the corresponding production disposition
-- Backend: 13 owner-scoped Entity schemas and 12 caller-scoped Functions under Base44 Auth and `created_by_id` RLS.
+- Backend: 13 owner-scoped Entity schemas and 13 caller-scoped Functions under Base44 Auth and `created_by_id` RLS.
 
 ## Input and raw-file boundary
 
-Supported files:
+Supported inputs:
 
-- `watch-history.json`
-- `watch-history.html`
-- `watch-history.htm`
+- YouTube URL (primary, no API key required)
+- `watch-history.json` (advanced batch)
+- `watch-history.html` (advanced batch)
+- `watch-history.htm` (advanced batch)
+
+YouTube URL collection works without a platform API key, user API key, or external metadata request. The URL is parsed and canonicalized on the backend. User-entered title and creator labels are stored with `metadata_provenance: user_provided`; empty labels are marked `none`. No channel, duration, category, or published-date enrichment is available in the submission build.
+
+An optional future enhancement (Issue #38) may allow users to supply their own Google Cloud YouTube Data API key for verified metadata enrichment. In that mode, the user's own key, project, and quota apply; the key is never committed to the repository; and only public metadata lookup is performed (no OAuth, no watch-history access).
 
 The browser sends the selected `File` only to `src/watchtree/watch-history.worker.js`. The Worker enforces the 8 MiB, 5,000-record, JSON-depth, HTML-node, and eight-second budgets. It emits only bounded normalized event previews. Raw bytes are zeroed after parsing and are never sent to Base44, stored in Entities, localStorage, IndexedDB, logs, screenshots, or evidence.
 
@@ -25,10 +30,12 @@ HTML is processed by the locally bundled deterministic tokenizer in `parser-core
 ## Durable flow
 
 ```text
-local Worker parse
-→ parse-watch-history bounded validation
-→ explicit confirmation
-→ commit-watch-import chunk receipts
+YouTube URL (paste, parse, optional label, confirm)
+or
+local Worker parse (Takeout JSON/HTML)
+→ parse-watch-history bounded validation (or add-watch-url-event)
+→ explicit confirmation with chunk receipts / nonce idempotency
+→ commit-watch-import / add-watch-url-event
 → build-watch-tree
 → matching opt-in
 → server-defined synthetic candidates
@@ -38,16 +45,32 @@ local Worker parse
 
 `commit-watch-import` uses a confirmation token, file digest, client nonce, chunk digest, source-record fingerprint, and `ImportChunkReceipt`. Identical retries replay safely; conflicting nonce or chunk payloads fail closed.
 
+`add-watch-url-event` uses nonce-based per-event idempotency: same nonce + same payload → same event; same nonce + different payload → `NONCE_CONFLICT`. Explicit `rewatch=true` creates a new event per new nonce.
+
 ## Synthetic-only matching
 
-The MVP compares the caller's eligible events only with the versioned `demo-corpus-v1` corpus. It does not scan another user's Entities and never invokes service role. Candidate evidence is causal and bounded:
+The MVP compares the caller's eligible events only with the versioned `demo-corpus-v1` corpus of **11 synthetic viewing profiles** (3 competition demo + 8 archetypes). It does not scan another user's Entities and never invokes service role. Candidate evidence is causal and bounded:
 
 - Exact overlap
 - Rare signal
 - Shared path
 - Meaningful difference
+- Shared creator
+- Repeated together
 
 The deterministic weights are `0.25 / 0.25 / 0.15 / 0.15 / 0.08 / 0.07 / 0.05`. No compatibility percentage or soulmate claim is rendered.
+
+Matching requires at least `MIN_EVENTS_FOR_MATCHING = 4` eligible events. 0–3 events return an empty candidate list (`insufficient_signal`). 4+ events with sufficient signal produce up to 3 candidates.
+
+In the no-key submission build, only signals actually available in stored records are used:
+- Exact video repetition
+- Repeat ratio
+- Watched-time rhythm
+- Sequence concentration
+- Collection size and diversity
+- Optional user-provided title/creator labels
+
+Duration, category, channel-ID, and published-date evidence are never manufactured when those fields are absent.
 
 ## Privacy defaults
 

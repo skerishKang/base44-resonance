@@ -21,8 +21,8 @@ The App ID is a public application identifier, not a credential or secret.
 
 1. Open the production URL.
 2. Sign in or create a verified Base44 account.
-3. Enter WatchTree and choose to start with synthetic data — no real watch history is required.
-4. Opt in to matching and review three clearly labeled synthetic candidates with bounded causal evidence.
+3. Enter WatchTree and paste a YouTube URL (no API key required), or start with synthetic data.
+4. Confirm the video, then opt in to matching and review up to three clearly labeled synthetic candidates with bounded causal evidence.
 5. Select the evidence you are willing to reveal, record explicit reveal consent, and inspect the revealed shared path.
 6. Run the explicitly labeled **simulated** mutual-resonance state.
 
@@ -31,29 +31,33 @@ All candidates are server-defined synthetic profiles. The mutual state is a simu
 ## WatchTree product journey
 
 ```text
+YouTube URL (paste, parse, optional label, confirm)
+or
 local Worker parse (raw bytes never leave the browser)
-→ parse-watch-history bounded validation
-→ explicit confirmation with chunk receipts
+→ parse-watch-history bounded validation (or add-watch-url-event)
+→ explicit confirmation with chunk receipts / nonce idempotency
 → build-watch-tree
 → matching opt-in
-→ three server-defined synthetic candidates
+→ up to three server-defined synthetic candidates
 → selected-evidence reveal consent
 → explicitly simulated mutual state
 ```
 
 Raw viewing history is parsed only inside a browser Worker, is never sent to Base44 or stored in Entities, and candidate evidence stays causal and bounded: exact overlap, rare signal, shared path, and meaningful difference. No compatibility percentage or soulmate claim is rendered.
 
+YouTube URL collection works without an API key and without external metadata enrichment. User-entered title and creator labels are marked as unverified. An optional future enhancement may allow users to supply their own YouTube Data API key for verified metadata enrichment (see Issue #38).
+
 ## Durable Base44 resources
 
-Base44 Auth establishes caller identity. All **13 Entity schemas** are owner-scoped through Base44’s built-in `created_by_id` metadata (RLS): create is allowed for authenticated `user` and `admin` roles, while read, update, and delete are owner-only. No private Entity uses `read: true`, public mutation, client-controlled owner fields, or a browser service-role path.
+Base44 Auth establishes caller identity. All **13 Entity schemas** are owner-scoped through Base44's built-in `created_by_id` metadata (RLS): create is allowed for authenticated `user` and `admin` roles, while read, update, and delete are owner-only. No private Entity uses `read: true`, public mutation, client-controlled owner fields, or a browser service-role path.
 
 Entity schemas (13):
 
 `CapabilityProbe` · `ConsentRecord` · `ImportChunkReceipt` · `MatchDecision` · `MemoryCard` · `MutualResonance` · `ResonanceFingerprint` · `RevealConsent` · `SharedPathCandidate` · `WatchEvent` · `WatchImport` · `WatchMatchSignal` · `WatchTreeFingerprint`
 
-Caller-scoped Functions (12):
+Caller-scoped Functions (13):
 
-`build-watch-tree` · `commit-watch-import` · `compute-matches` · `delete-watch-data` · `find-shared-paths` · `generate-fingerprint` · `parse-watch-history` · `reconcile-watch-data` · `seed-demo-history` · `set-reveal-consent` · `simulate-mutual` · `verify-capability`
+`add-watch-url-event` · `build-watch-tree` · `commit-watch-import` · `compute-matches` · `delete-watch-data` · `find-shared-paths` · `generate-fingerprint` · `parse-watch-history` · `reconcile-watch-data` · `seed-demo-history` · `set-reveal-consent` · `simulate-mutual` · `verify-capability`
 
 No Function uses service role, live AI, Agents, Integrations, or raw authentication material. Secret values — the protected `WATCHTREE_HMAC_KEY` used for internal HMAC digests — are never exposed to the browser, repository, logs, or response payloads. Inaccessible and nonexistent resource IDs share the same unavailable error class.
 

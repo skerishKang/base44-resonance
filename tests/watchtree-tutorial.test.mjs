@@ -1,19 +1,6 @@
-/**
- * watchtree-tutorial.test.mjs
- *
- * Focused tests for the 6-step Next-only judge tutorial.
- * Uses in-memory adapter for deterministic, isolated scenarios.
- *
- * Baseline: 277 tests
- * New: 19 scenarios (1–19; 20–27 are browser/visual-only)
- * Total: 296
- */
-
-import { describe, it, before, after } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-// Mock sessionStorage for Node.js test environment
-// (inMemoryWatchTreeAdapter uses sessionStorage for persistence)
 if (typeof globalThis.sessionStorage === "undefined") {
   const store = new Map();
   globalThis.sessionStorage = {
@@ -26,6 +13,7 @@ if (typeof globalThis.sessionStorage === "undefined") {
 
 import {
   createTutorialState,
+  createInactiveState,
   reducer,
   TUTORIAL_STEPS,
   executeStepTransition,
@@ -34,9 +22,6 @@ import {
 import { getTutorialCopy } from "../src/watchtree/tutorial/tutorial-copy.js";
 import { createInMemoryWatchTreeAdapter } from "./harness/inMemoryWatchTreeAdapter.js";
 
-// ----------------------------------------------------------------
-// Helper: build a fresh adapter and seed it so Step 1 can run.
-// ----------------------------------------------------------------
 async function seededAdapter() {
   const adapter = createInMemoryWatchTreeAdapter("tutorial-test-" + Date.now());
   const result = await adapter.seedDemo();
@@ -44,9 +29,6 @@ async function seededAdapter() {
   return adapter;
 }
 
-// ----------------------------------------------------------------
-// Scenario 1 — Entry screen shows two CTAs
-// ----------------------------------------------------------------
 describe("1 — Entry CTAs", () => {
   it("entry state shows two CTA strings in both languages", () => {
     for (const lang of ["en", "ko"]) {
@@ -59,40 +41,36 @@ describe("1 — Entry CTAs", () => {
   });
 });
 
-// ----------------------------------------------------------------
-// Scenario 2 — Build my WatchTree preserves existing path
-// ----------------------------------------------------------------
 describe("2 — Build my WatchTree path", () => {
   it("'Build my WatchTree' exits tutorial without mutations", () => {
     const state = createTutorialState();
-    const afterStart = reducer(state, { type: "START_TUTORIAL" });
-    assert.equal(afterStart.status, "active");
-    assert.equal(afterStart.currentStep, TUTORIAL_STEPS.ENTRY);
+    assert.equal(state.status, "active");
+    assert.equal(state.currentStep, TUTORIAL_STEPS.ENTRY);
 
-    const afterExit = reducer(afterStart, { type: "EXIT" });
+    const afterExit = reducer(state, { type: "EXIT" });
     assert.equal(afterExit.status, "inactive");
     assert.equal(afterExit.currentStep, TUTORIAL_STEPS.INACTIVE);
   });
 });
 
-// ----------------------------------------------------------------
-// Scenario 3 — See Mina's WatchTree story starts
-// ----------------------------------------------------------------
-describe("3 — Tutorial start", () => {
-  it("START_TUTORIAL sets status='active' and step=ENTRY", () => {
+describe("3 — Tutorial mount at ENTRY", () => {
+  it("createTutorialState starts at ENTRY with status active", () => {
     const state = createTutorialState();
-    const result = reducer(state, { type: "START_TUTORIAL" });
-    assert.equal(result.status, "active");
-    assert.equal(result.currentStep, TUTORIAL_STEPS.ENTRY);
-    assert.equal(result.error, "");
+    assert.equal(state.status, "active");
+    assert.equal(state.currentStep, TUTORIAL_STEPS.ENTRY);
+    assert.equal(state.error, "");
+    assert.equal(state.transitionPending, false);
+  });
+
+  it("createInactiveState starts at INACTIVE", () => {
+    const state = createInactiveState();
+    assert.equal(state.status, "inactive");
+    assert.equal(state.currentStep, TUTORIAL_STEPS.INACTIVE);
   });
 });
 
-// ----------------------------------------------------------------
-// Scenario 4 — Exact 6-step sequence
-// ----------------------------------------------------------------
 describe("4 — Step sequence", () => {
-  it("reducer produces steps ENTRY=0 through COMPLETED=7 in order", () => {
+  it("reducer produces steps ENTRY=0 through DELETE_COMPLETE=8 in order", () => {
     assert.equal(TUTORIAL_STEPS.INACTIVE, -1);
     assert.equal(TUTORIAL_STEPS.ENTRY, 0);
     assert.equal(TUTORIAL_STEPS.STEP1, 1);
@@ -102,19 +80,16 @@ describe("4 — Step sequence", () => {
     assert.equal(TUTORIAL_STEPS.STEP5, 5);
     assert.equal(TUTORIAL_STEPS.STEP6, 6);
     assert.equal(TUTORIAL_STEPS.COMPLETED, 7);
+    assert.equal(TUTORIAL_STEPS.DELETE_COMPLETE, 8);
   });
 
   it("SET_STEP changes currentStep", () => {
     let state = createTutorialState();
-    state = reducer(state, { type: "START_TUTORIAL" });
     state = reducer(state, { type: "SET_STEP", step: 3 });
     assert.equal(state.currentStep, 3);
   });
 });
 
-// ----------------------------------------------------------------
-// Scenario 5 — One Next = one transition
-// ----------------------------------------------------------------
 describe("5 — Next transition", () => {
   it("TRANSITION_PENDING then TRANSITION_DONE toggles transitionPending", () => {
     const state = createTutorialState();
@@ -125,32 +100,45 @@ describe("5 — Next transition", () => {
   });
 });
 
-// ----------------------------------------------------------------
-// Scenario 6 — Duplicate Next = 0 extra backend mutations
-// ----------------------------------------------------------------
-describe("6 — Duplicate Next guard", () => {
-  it("SET_STEP_DATA clears transitionPending and error", () => {
+describe("6 — SET_STEP_DATA contract", () => {
+  it("SET_STEP_DATA uses action.currentStep and clears transitionPending", () => {
     const state = {
       ...createTutorialState(),
-      status: "active",
-      currentStep: 0,
       transitionPending: true,
       error: "pending",
+      completedSteps: [],
     };
     const result = reducer(state, {
       type: "SET_STEP_DATA",
-      currentStep: 1,
+      currentStep: TUTORIAL_STEPS.STEP1,
       payload: { events: [], tree: null },
     });
     assert.equal(result.transitionPending, false);
     assert.equal(result.error, "");
-    assert.equal(result.currentStep, 1);
+    assert.equal(result.currentStep, TUTORIAL_STEPS.STEP1);
+    assert.ok(result.completedSteps.includes(TUTORIAL_STEPS.STEP1));
+  });
+
+  it("SET_STEP_DATA tracks completedSteps for idempotency", () => {
+    let state = createTutorialState();
+    state = reducer(state, {
+      type: "SET_STEP_DATA",
+      currentStep: TUTORIAL_STEPS.STEP1,
+      payload: { events: [1], tree: { id: "t" }, importId: "imp" },
+    });
+    assert.ok(state.completedSteps.includes(TUTORIAL_STEPS.STEP1));
+    state = reducer(state, {
+      type: "SET_STEP_DATA",
+      currentStep: TUTORIAL_STEPS.STEP2,
+      payload: {},
+    });
+    assert.ok(state.completedSteps.includes(TUTORIAL_STEPS.STEP1));
+    assert.ok(state.completedSteps.includes(TUTORIAL_STEPS.STEP2));
   });
 
   it("COMPLETED clears transitionPending", () => {
     const state = {
       ...createTutorialState(),
-      status: "active",
       currentStep: 6,
       transitionPending: true,
     };
@@ -160,31 +148,24 @@ describe("6 — Duplicate Next guard", () => {
   });
 });
 
-// ----------------------------------------------------------------
-// Scenario 7 — Back works
-// ----------------------------------------------------------------
 describe("7 — Back navigation", () => {
   it("SET_STEP decrements currentStep if above STEP1", () => {
-    const state = { ...createTutorialState(), status: "active", currentStep: 3 };
+    const state = { ...createTutorialState(), currentStep: 3 };
     const result = reducer(state, { type: "SET_STEP", step: 2 });
     assert.equal(result.currentStep, 2);
   });
 
   it("SET_STEP does not go below STEP1", () => {
-    const state = { ...createTutorialState(), status: "active", currentStep: 1 };
+    const state = { ...createTutorialState(), currentStep: 1 };
     const result = reducer(state, { type: "SET_STEP", step: 0 });
     assert.equal(result.currentStep, 0);
   });
 });
 
-// ----------------------------------------------------------------
-// Scenario 8 — Exit works
-// ----------------------------------------------------------------
 describe("8 — Exit", () => {
   it("EXIT resets to inactive state", () => {
     const state = {
       ...createTutorialState(),
-      status: "active",
       currentStep: 4,
       events: [1, 2, 3],
     };
@@ -195,29 +176,32 @@ describe("8 — Exit", () => {
   });
 });
 
-// ----------------------------------------------------------------
-// Scenario 9 — Restart works
-// ----------------------------------------------------------------
-describe("9 — Restart", () => {
-  it("RESTART returns to active+ENTRY state", () => {
+describe("9 — Replay preserves data", () => {
+  it("RESTART returns to STEP1 preserving cached data", () => {
     const state = {
       ...createTutorialState(),
       status: "completed",
-      currentStep: 7,
-      events: [1],
+      currentStep: TUTORIAL_STEPS.COMPLETED,
+      events: [{ id: "e1" }],
       tree: { id: "tree" },
+      candidates: [{ id: "c1" }],
+      consent: { id: "consent_1" },
+      mutual: { id: "mutual_1" },
+      importId: "imp_demo",
+      completedSteps: [1, 2, 3, 4, 5],
     };
     const result = reducer(state, { type: "RESTART" });
     assert.equal(result.status, "active");
-    assert.equal(result.currentStep, TUTORIAL_STEPS.ENTRY);
-    assert.equal(result.events.length, 0);
-    assert.equal(result.tree, null);
+    assert.equal(result.currentStep, TUTORIAL_STEPS.STEP1);
+    assert.equal(result.events.length, 1);
+    assert.equal(result.tree.id, "tree");
+    assert.equal(result.candidates.length, 1);
+    assert.equal(result.consent.id, "consent_1");
+    assert.equal(result.mutual.id, "mutual_1");
+    assert.equal(result.importId, "imp_demo");
   });
 });
 
-// ----------------------------------------------------------------
-// Scenario 10 — synthetic seed calls adapter
-// ----------------------------------------------------------------
 describe("10 — seedDemo adapter call", () => {
   it("seedDemo returns synthetic import with id", async () => {
     const adapter = createInMemoryWatchTreeAdapter("tutorial-test-10");
@@ -228,9 +212,6 @@ describe("10 — seedDemo adapter call", () => {
   });
 });
 
-// ----------------------------------------------------------------
-// Scenario 11 — tree uses actual result
-// ----------------------------------------------------------------
 describe("11 — Tree uses actual result", () => {
   it("buildTree returns tree structure after seed", async () => {
     const adapter = createInMemoryWatchTreeAdapter("tutorial-test-11");
@@ -241,9 +222,6 @@ describe("11 — Tree uses actual result", () => {
   });
 });
 
-// ----------------------------------------------------------------
-// Scenario 12 — match uses actual result
-// ----------------------------------------------------------------
 describe("12 — Match uses actual result", () => {
   it("findCandidates returns candidates after matching enabled", async () => {
     const adapter = createInMemoryWatchTreeAdapter("tutorial-test-12");
@@ -260,9 +238,6 @@ describe("12 — Match uses actual result", () => {
   });
 });
 
-// ----------------------------------------------------------------
-// Scenario 13 — evidence matches candidate tokens
-// ----------------------------------------------------------------
 describe("13 — Evidence matches candidate tokens", () => {
   it("candidate.evidence_tokens contain id and label", async () => {
     const adapter = createInMemoryWatchTreeAdapter("tutorial-test-13");
@@ -284,9 +259,6 @@ describe("13 — Evidence matches candidate tokens", () => {
   });
 });
 
-// ----------------------------------------------------------------
-// Scenario 14 — reveal consent calls adapter
-// ----------------------------------------------------------------
 describe("14 — Consent adapter call", () => {
   it("setConsent with grant returns consent state", async () => {
     const adapter = createInMemoryWatchTreeAdapter("tutorial-test-14");
@@ -304,9 +276,6 @@ describe("14 — Consent adapter call", () => {
   });
 });
 
-// ----------------------------------------------------------------
-// Scenario 15 — simulated mutual calls adapter
-// ----------------------------------------------------------------
 describe("15 — Simulated mutual adapter call", () => {
   it("simulateMutual returns mutual with is_simulated", async () => {
     const adapter = createInMemoryWatchTreeAdapter("tutorial-test-15");
@@ -325,9 +294,6 @@ describe("15 — Simulated mutual adapter call", () => {
   });
 });
 
-// ----------------------------------------------------------------
-// Scenario 16 — synthetic/simulated labels in copy
-// ----------------------------------------------------------------
 describe("16 — Synthetic/simulated labels", () => {
   it("both languages contain truth labels", () => {
     for (const lang of ["en", "ko"]) {
@@ -339,32 +305,24 @@ describe("16 — Synthetic/simulated labels", () => {
   });
 });
 
-// ----------------------------------------------------------------
-// Scenario 17 — delete tutorial data calls actual delete path
-// ----------------------------------------------------------------
 describe("17 — Delete tutorial data", () => {
-  it("deleteTutorialData calls adapter.mutatePrivacy('delete_all')", async () => {
+  it("deleteTutorialData calls adapter.mutatePrivacy('delete_all') and verifies empty", async () => {
     const adapter = createInMemoryWatchTreeAdapter("tutorial-test-17");
     await adapter.seedDemo();
 
-    // Verify data exists before delete
     let state = await adapter.restore();
     assert.ok(state.import, "data exists before delete");
 
-    // Delete
     const result = await deleteTutorialData(adapter);
-    assert.ok(result.complete !== false, "delete returns complete");
-
-    // Verify state is empty
-    state = await adapter.restore();
-    assert.equal(state.import, null, "import cleared after delete");
-    assert.equal(state.events.length, 0, "events cleared after delete");
+    assert.equal(result.import, null);
+    assert.equal(result.events.length, 0);
+    assert.equal(result.tree, null);
+    assert.equal(result.candidates.length, 0);
+    assert.equal(result.consent, null);
+    assert.equal(result.mutual, null);
   });
 });
 
-// ----------------------------------------------------------------
-// Scenario 18 — deletion shows empty restored state
-// ----------------------------------------------------------------
 describe("18 — Post-deletion empty state", () => {
   it("restore returns empty state after delete_all", async () => {
     const adapter = createInMemoryWatchTreeAdapter("tutorial-test-18");
@@ -380,32 +338,160 @@ describe("18 — Post-deletion empty state", () => {
   });
 });
 
-// ----------------------------------------------------------------
-// Scenario 19 — realtime refresh doesn't conflict with transition
-// ----------------------------------------------------------------
 describe("19 — Realtime + tutorial compatibility", () => {
   it("tutorial state is independent of product state machine", () => {
-    // Tutorial uses its own reducer, separate from watchTreeReducer.
-    // This test verifies that tutorial actions don't affect product state.
     const tutorialState = createTutorialState();
-    const productStateKeys = ["status", "import", "preview", "urlPreview", "events", "tree", "candidates", "consent", "mutual", "matchingEnabled", "error"];
-
-    // Tutorial state should have different keys than product state
     const tutorialKeys = Object.keys(tutorialState);
     for (const key of tutorialKeys) {
-      assert.ok(key === "status" || key === "currentStep" || key === "transitionPending" || key === "error" || key === "events" || key === "tree" || key === "candidates" || key === "consent" || key === "mutual" || key === "importId" || key === "selectedTokenIds",
+      assert.ok(
+        ["status", "currentStep", "transitionPending", "error", "events", "tree", "candidates", "consent", "mutual", "importId", "selectedTokenIds", "completedSteps"].includes(key),
         `Unexpected tutorial key: ${key}`
       );
     }
   });
 
   it("tutorial actions do not dispatch RESTORED to product reducer", () => {
-    // The WatchTreeTutorial component uses its own useReducer.
-    // Tutorial transitions dispatch to tutorial state, not product state.
-    // The next button guards against transitionPending and inFlight ref.
-    // This is a structural/source-code test.
     const adapter = createInMemoryWatchTreeAdapter("tutorial-test-19");
     assert.ok(typeof adapter.seedDemo === "function");
     assert.ok(typeof adapter.mutatePrivacy === "function");
+  });
+});
+
+describe("20 — Mina CTA executes STEP1 transition", () => {
+  it("executeStepTransition(STEP1) seeds demo and returns SET_STEP_DATA with currentStep", async () => {
+    const adapter = createInMemoryWatchTreeAdapter("tutorial-test-20");
+    const state = createTutorialState();
+    const result = await executeStepTransition(TUTORIAL_STEPS.STEP1, adapter, state);
+    assert.equal(result.type, "SET_STEP_DATA");
+    assert.equal(result.currentStep, TUTORIAL_STEPS.STEP1);
+    assert.ok(result.payload.importId, "payload has importId");
+    assert.ok(result.payload.events.length > 0, "payload has events");
+    assert.ok(result.payload.tree, "payload has tree");
+  });
+
+  it("duplicate STEP1 transition with completedSteps skips seedDemo", async () => {
+    const adapter = createInMemoryWatchTreeAdapter("tutorial-test-20b");
+    let state = createTutorialState();
+    const result1 = await executeStepTransition(TUTORIAL_STEPS.STEP1, adapter, state);
+    state = reducer(state, result1);
+    assert.ok(state.completedSteps.includes(TUTORIAL_STEPS.STEP1));
+
+    const result2 = await executeStepTransition(TUTORIAL_STEPS.STEP1, adapter, state);
+    assert.equal(result2.type, "SET_STEP_DATA");
+    assert.equal(result2.currentStep, TUTORIAL_STEPS.STEP1);
+    assert.deepEqual(result2.payload, {});
+  });
+});
+
+describe("21 — Back idempotency prevents duplicate mutations", () => {
+  it("STEP5 re-entry after Back skips setConsent and simulateMutual", async () => {
+    const adapter = createInMemoryWatchTreeAdapter("tutorial-test-21");
+    let state = createTutorialState();
+
+    const r1 = await executeStepTransition(TUTORIAL_STEPS.STEP1, adapter, state);
+    state = reducer(state, r1);
+    const r2 = await executeStepTransition(TUTORIAL_STEPS.STEP2, adapter, state);
+    state = reducer(state, r2);
+    const r3 = await executeStepTransition(TUTORIAL_STEPS.STEP3, adapter, state);
+    state = reducer(state, r3);
+    const r4 = await executeStepTransition(TUTORIAL_STEPS.STEP4, adapter, state);
+    state = reducer(state, r4);
+    const r5 = await executeStepTransition(TUTORIAL_STEPS.STEP5, adapter, state);
+    state = reducer(state, r5);
+
+    assert.ok(state.consent, "consent set after STEP5");
+    assert.ok(state.mutual, "mutual set after STEP5");
+
+    state = reducer(state, { type: "SET_STEP", step: TUTORIAL_STEPS.STEP4 });
+    assert.equal(state.currentStep, TUTORIAL_STEPS.STEP4);
+
+    const r5again = await executeStepTransition(TUTORIAL_STEPS.STEP5, adapter, state);
+    assert.equal(r5again.type, "SET_STEP_DATA");
+    assert.deepEqual(r5again.payload, {});
+  });
+
+  it("STEP3 re-entry after Back skips enable_import_matching", async () => {
+    const adapter = createInMemoryWatchTreeAdapter("tutorial-test-21b");
+    let state = createTutorialState();
+
+    const r1 = await executeStepTransition(TUTORIAL_STEPS.STEP1, adapter, state);
+    state = reducer(state, r1);
+    const r2 = await executeStepTransition(TUTORIAL_STEPS.STEP2, adapter, state);
+    state = reducer(state, r2);
+    const r3 = await executeStepTransition(TUTORIAL_STEPS.STEP3, adapter, state);
+    state = reducer(state, r3);
+
+    assert.ok(state.candidates.length > 0, "candidates after STEP3");
+
+    state = reducer(state, { type: "SET_STEP", step: TUTORIAL_STEPS.STEP2 });
+    const r3again = await executeStepTransition(TUTORIAL_STEPS.STEP3, adapter, state);
+    assert.equal(r3again.type, "SET_STEP_DATA");
+    assert.deepEqual(r3again.payload, {});
+  });
+});
+
+describe("22 — Replay does not re-seed", () => {
+  it("RESTART preserves data and STEP1 re-entry skips seedDemo", async () => {
+    const adapter = createInMemoryWatchTreeAdapter("tutorial-test-22");
+    let state = createTutorialState();
+
+    const r1 = await executeStepTransition(TUTORIAL_STEPS.STEP1, adapter, state);
+    state = reducer(state, r1);
+    const importIdBefore = state.importId;
+
+    state = reducer(state, { type: "COMPLETED" });
+    state = reducer(state, { type: "RESTART" });
+    assert.equal(state.currentStep, TUTORIAL_STEPS.STEP1);
+    assert.equal(state.importId, importIdBefore);
+
+    const r1again = await executeStepTransition(TUTORIAL_STEPS.STEP1, adapter, state);
+    assert.deepEqual(r1again.payload, {});
+    assert.equal(state.importId, importIdBefore);
+  });
+});
+
+describe("23 — DELETE_COMPLETE state", () => {
+  it("DELETE_COMPLETE sets currentStep to DELETE_COMPLETE", () => {
+    const state = { ...createTutorialState(), currentStep: TUTORIAL_STEPS.COMPLETED };
+    const result = reducer(state, { type: "DELETE_COMPLETE" });
+    assert.equal(result.currentStep, TUTORIAL_STEPS.DELETE_COMPLETE);
+    assert.equal(result.status, "active");
+    assert.equal(result.events.length, 0);
+    assert.equal(result.tree, null);
+  });
+});
+
+describe("24 — Full 6-step executeStepTransition sequence", () => {
+  it("executes STEP1 through STEP6 in order with correct currentStep", async () => {
+    const adapter = createInMemoryWatchTreeAdapter("tutorial-test-24");
+    let state = createTutorialState();
+
+    for (const step of [TUTORIAL_STEPS.STEP1, TUTORIAL_STEPS.STEP2, TUTORIAL_STEPS.STEP3, TUTORIAL_STEPS.STEP4, TUTORIAL_STEPS.STEP5]) {
+      const result = await executeStepTransition(step, adapter, state);
+      assert.equal(result.type, "SET_STEP_DATA");
+      assert.equal(result.currentStep, step, `currentStep must be ${step}`);
+      state = reducer(state, result);
+      assert.equal(state.currentStep, step);
+    }
+
+    const r6 = await executeStepTransition(TUTORIAL_STEPS.STEP6, adapter, state);
+    assert.equal(r6.type, "SET_STEP_DATA");
+    assert.equal(r6.currentStep, TUTORIAL_STEPS.STEP6);
+    state = reducer(state, r6);
+    assert.equal(state.currentStep, TUTORIAL_STEPS.STEP6);
+  });
+});
+
+describe("25 — Delete loop tracks latest result", () => {
+  it("deleteTutorialData returns verified empty restore", async () => {
+    const adapter = createInMemoryWatchTreeAdapter("tutorial-test-25");
+    await adapter.seedDemo();
+    const result = await deleteTutorialData(adapter);
+    assert.equal(result.import, null);
+    assert.equal(result.events.length, 0);
+    assert.equal(result.tree, null);
+    assert.equal(result.candidates.length, 0);
+    assert.equal(result.consent, null);
+    assert.equal(result.mutual, null);
   });
 });

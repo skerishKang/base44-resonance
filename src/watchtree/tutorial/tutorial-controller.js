@@ -1,39 +1,22 @@
-/**
- * tutorial-controller.js
- *
- * State controller for the guided Next-only judge tutorial.
- *
- * Each Next click advances through exactly one step of a 6-step pipeline
- * that calls real adapter methods (seedDemo, buildTree, findCandidates,
- * setConsent, simulateMutual, mutatePrivacy). The controller never
- * modifies state directly — it delegates to the adapter and passes
- * results back via callbacks.
- *
- * State: inactive → active → step 1..6 → completed
- *
- * Duplicate-click guard: transitionPending prevents concurrent transitions.
- * Realtime guard: tutorial transitions are not affected by realtime events.
- */
-
 export const TUTORIAL_STEPS = Object.freeze({
   INACTIVE: -1,
   ENTRY: 0,
-  STEP1: 1,  // Deliberate collection
-  STEP2: 2,  // Private tree growth
-  STEP3: 3,  // Synthetic match
-  STEP4: 4,  // Explainable evidence
-  STEP5: 5,  // Consent and simulated mutual
-  STEP6: 6,  // Finish with control
+  STEP1: 1,
+  STEP2: 2,
+  STEP3: 3,
+  STEP4: 4,
+  STEP5: 5,
+  STEP6: 6,
   COMPLETED: 7,
+  DELETE_COMPLETE: 8,
 });
 
 export function createTutorialState() {
   return {
-    status: "inactive",  // inactive | active | completed
-    currentStep: TUTORIAL_STEPS.INACTIVE,
+    status: "active",
+    currentStep: TUTORIAL_STEPS.ENTRY,
     transitionPending: false,
     error: "",
-    // Cached tutorial data for display
     events: [],
     tree: null,
     candidates: [],
@@ -41,6 +24,24 @@ export function createTutorialState() {
     mutual: null,
     importId: null,
     selectedTokenIds: [],
+    completedSteps: [],
+  };
+}
+
+export function createInactiveState() {
+  return {
+    status: "inactive",
+    currentStep: TUTORIAL_STEPS.INACTIVE,
+    transitionPending: false,
+    error: "",
+    events: [],
+    tree: null,
+    candidates: [],
+    consent: null,
+    mutual: null,
+    importId: null,
+    selectedTokenIds: [],
+    completedSteps: [],
   };
 }
 
@@ -54,43 +55,55 @@ export function reducer(state, action) {
       return { ...state, transitionPending: true };
     case "TRANSITION_DONE":
       return { ...state, transitionPending: false };
-    case "SET_STEP_DATA":
-      return { ...state, ...action.payload, currentStep: action.currentStep, transitionPending: false, error: "" };
+    case "SET_STEP_DATA": {
+      const completedSteps = state.completedSteps.includes(action.currentStep)
+        ? state.completedSteps
+        : [...state.completedSteps, action.currentStep];
+      return { ...state, ...action.payload, currentStep: action.currentStep, transitionPending: false, error: "", completedSteps };
+    }
     case "SET_ERROR":
       return { ...state, transitionPending: false, error: action.error };
     case "EXIT":
-      return createTutorialState();
+      return createInactiveState();
     case "RESTART":
-      return { ...createTutorialState(), status: "active", currentStep: TUTORIAL_STEPS.ENTRY };
+      return {
+        ...state,
+        status: "active",
+        currentStep: TUTORIAL_STEPS.STEP1,
+        transitionPending: false,
+        error: "",
+      };
     case "COMPLETED":
       return { ...state, status: "completed", currentStep: TUTORIAL_STEPS.COMPLETED, transitionPending: false };
+    case "DELETE_COMPLETE":
+      return {
+        ...createInactiveState(),
+        status: "active",
+        currentStep: TUTORIAL_STEPS.DELETE_COMPLETE,
+      };
     default:
       return state;
   }
 }
 
-/**
- * Execute the transition for the given step.
- * Returns a promise that resolves when the step transition is complete.
- *
- * @param {number} step - The step to execute
- * @param {object} adapter - WatchTree adapter
- * @param {object} state - Current tutorial state
- * @returns {Promise<{type: string, payload?: object}>} - Action to dispatch
- */
 export async function executeStepTransition(step, adapter, state) {
   switch (step) {
     case TUTORIAL_STEPS.STEP1: {
-      // Step 1: seed demo — creates synthetic demo data
+      if (state.completedSteps.includes(TUTORIAL_STEPS.STEP1) && state.importId) {
+        return {
+          type: "SET_STEP_DATA",
+          currentStep: TUTORIAL_STEPS.STEP1,
+          payload: {},
+        };
+      }
       const result = await adapter.seedDemo();
       const importId = result?.import?.id;
       if (!importId) throw new Error("SEED_FAILED");
-      // Build tree for display
       const treeResult = await adapter.buildTree(importId);
       return {
         type: "SET_STEP_DATA",
+        currentStep: TUTORIAL_STEPS.STEP1,
         payload: {
-          currentStep: TUTORIAL_STEPS.STEP1,
           importId,
           events: result.events ?? [],
           tree: treeResult?.tree ?? null,
@@ -99,13 +112,19 @@ export async function executeStepTransition(step, adapter, state) {
     }
 
     case TUTORIAL_STEPS.STEP2: {
-      // Step 2: show tree — restore current state
+      if (state.completedSteps.includes(TUTORIAL_STEPS.STEP2) && state.tree) {
+        return {
+          type: "SET_STEP_DATA",
+          currentStep: TUTORIAL_STEPS.STEP2,
+          payload: {},
+        };
+      }
       const restored = await adapter.restore();
       if (!restored?.import) throw new Error("RESTORE_FAILED");
       return {
         type: "SET_STEP_DATA",
+        currentStep: TUTORIAL_STEPS.STEP2,
         payload: {
-          currentStep: TUTORIAL_STEPS.STEP2,
           importId: restored.import.id,
           events: restored.events ?? [],
           tree: restored.tree ?? null,
@@ -114,7 +133,13 @@ export async function executeStepTransition(step, adapter, state) {
     }
 
     case TUTORIAL_STEPS.STEP3: {
-      // Step 3: enable matching + find candidates
+      if (state.completedSteps.includes(TUTORIAL_STEPS.STEP3) && state.candidates.length > 0) {
+        return {
+          type: "SET_STEP_DATA",
+          currentStep: TUTORIAL_STEPS.STEP3,
+          payload: {},
+        };
+      }
       const importId = state.importId;
       if (!importId) throw new Error("NO_IMPORT");
       const mutation = await adapter.mutatePrivacy("enable_import_matching", { import_id: importId });
@@ -122,20 +147,10 @@ export async function executeStepTransition(step, adapter, state) {
       const treeResult = await adapter.buildTree(importId);
       const candidateResult = await adapter.findCandidates(treeResult?.tree?.id);
       const candidates = candidateResult?.candidates ?? [];
-      if (candidates.length === 0) {
-        return {
-          type: "SET_STEP_DATA",
-          payload: {
-            currentStep: TUTORIAL_STEPS.STEP3,
-            tree: treeResult?.tree ?? null,
-            candidates: [],
-          },
-        };
-      }
       return {
         type: "SET_STEP_DATA",
+        currentStep: TUTORIAL_STEPS.STEP3,
         payload: {
-          currentStep: TUTORIAL_STEPS.STEP3,
           tree: treeResult?.tree ?? null,
           candidates,
         },
@@ -143,22 +158,34 @@ export async function executeStepTransition(step, adapter, state) {
     }
 
     case TUTORIAL_STEPS.STEP4: {
-      // Step 4: show evidence — pick top candidate's tokens
+      if (state.completedSteps.includes(TUTORIAL_STEPS.STEP4) && state.selectedTokenIds.length > 0) {
+        return {
+          type: "SET_STEP_DATA",
+          currentStep: TUTORIAL_STEPS.STEP4,
+          payload: {},
+        };
+      }
       const topCandidate = state.candidates?.[0];
       if (!topCandidate) throw new Error("NO_CANDIDATES");
       const evidenceTokens = (topCandidate.evidence_tokens ?? []).slice(0, 3);
       const tokenIds = evidenceTokens.map((t) => t.id);
       return {
         type: "SET_STEP_DATA",
+        currentStep: TUTORIAL_STEPS.STEP4,
         payload: {
-          currentStep: TUTORIAL_STEPS.STEP4,
           selectedTokenIds: tokenIds,
         },
       };
     }
 
     case TUTORIAL_STEPS.STEP5: {
-      // Step 5: consent + simulate mutual
+      if (state.completedSteps.includes(TUTORIAL_STEPS.STEP5) && state.consent && state.mutual) {
+        return {
+          type: "SET_STEP_DATA",
+          currentStep: TUTORIAL_STEPS.STEP5,
+          payload: {},
+        };
+      }
       const topCandidate = state.candidates?.[0];
       if (!topCandidate) throw new Error("NO_CANDIDATES");
       const tokens = state.selectedTokenIds;
@@ -168,8 +195,8 @@ export async function executeStepTransition(step, adapter, state) {
       const mutualResult = await adapter.simulateMutual(topCandidate.id);
       return {
         type: "SET_STEP_DATA",
+        currentStep: TUTORIAL_STEPS.STEP5,
         payload: {
-          currentStep: TUTORIAL_STEPS.STEP5,
           consent: consentResult?.consent ?? null,
           mutual: mutualResult?.mutual ?? null,
         },
@@ -177,9 +204,10 @@ export async function executeStepTransition(step, adapter, state) {
     }
 
     case TUTORIAL_STEPS.STEP6:
-      // Step 6: finish — no transition needed, just show actions
       return {
-        type: "COMPLETED",
+        type: "SET_STEP_DATA",
+        currentStep: TUTORIAL_STEPS.STEP6,
+        payload: {},
       };
 
     default:
@@ -187,15 +215,31 @@ export async function executeStepTransition(step, adapter, state) {
   }
 }
 
-/**
- * Delete all tutorial data via adapter.mutatePrivacy("delete_all")
- */
 export async function deleteTutorialData(adapter) {
-  const result = await adapter.mutatePrivacy("delete_all", {});
-  let round = 0;
-  while (result?.complete === false && round < 40) {
-    round += 1;
-    await adapter.mutatePrivacy("delete_all", {});
+  let result = await adapter.mutatePrivacy("delete_all", {});
+  let rounds = 1;
+
+  while (result?.complete === false && rounds < 40) {
+    result = await adapter.mutatePrivacy("delete_all", {});
+    rounds += 1;
   }
-  return result;
+
+  if (result?.complete === false) {
+    throw new Error("DELETE_INCOMPLETE");
+  }
+
+  const restored = await adapter.restore();
+
+  if (
+    restored.import !== null ||
+    restored.events.length !== 0 ||
+    restored.tree !== null ||
+    restored.candidates.length !== 0 ||
+    restored.consent !== null ||
+    restored.mutual !== null
+  ) {
+    throw new Error("DELETE_NOT_EMPTY");
+  }
+
+  return restored;
 }

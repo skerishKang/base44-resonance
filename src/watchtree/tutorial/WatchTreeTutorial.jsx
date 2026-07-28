@@ -3,42 +3,42 @@ import { getTutorialCopy } from "./tutorial-copy.js";
 import { createTutorialState, reducer, TUTORIAL_STEPS, executeStepTransition, deleteTutorialData } from "./tutorial-controller.js";
 import { WatchTreeGraphic } from "../WatchTreeGraphic.jsx";
 
-/**
- * WatchTreeTutorial — 6-step Next-only guided tutorial.
- *
- * Props:
- *   language  - "en" | "ko"
- *   adapter   - WatchTree adapter (production or in-memory)
- *   onExit    - Called when user exits the tutorial
- *   onBuildOwn - Called when user chooses "Build my own WatchTree"
- */
 export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn }) {
   const copy = getTutorialCopy(language);
   const [state, dispatch] = useReducer(reducer, null, createTutorialState);
   const inFlight = useRef(false);
   const headingRef = useRef(null);
+  const mountedRef = useRef(true);
+  const generationRef = useRef(0);
 
-  // Focus heading on step change
+  useEffect(() => {
+    mountedRef.current = true;
+    generationRef.current += 1;
+    return () => {
+      mountedRef.current = false;
+      generationRef.current += 1;
+    };
+  }, []);
+
   useEffect(() => {
     if (state.currentStep > TUTORIAL_STEPS.INACTIVE) {
       headingRef.current?.focus();
     }
   }, [state.currentStep]);
 
-  const start = useCallback(() => {
-    dispatch({ type: "START_TUTORIAL" });
-  }, []);
-
   const next = useCallback(async () => {
     if (state.transitionPending || inFlight.current) return;
     inFlight.current = true;
+    const generation = generationRef.current;
     dispatch({ type: "TRANSITION_PENDING" });
 
     try {
       const nextStep = state.currentStep + 1;
       const result = await executeStepTransition(nextStep, adapter, state);
+      if (!mountedRef.current || generationRef.current !== generation) return;
       dispatch(result);
     } catch (error) {
+      if (!mountedRef.current || generationRef.current !== generation) return;
       dispatch({ type: "SET_ERROR", error: error?.message ?? "TRANSITION_FAILED" });
     } finally {
       inFlight.current = false;
@@ -62,23 +62,37 @@ export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn
   const handleDelete = useCallback(async () => {
     if (inFlight.current) return;
     inFlight.current = true;
+    const generation = generationRef.current;
     try {
       await deleteTutorialData(adapter);
-      dispatch({ type: "EXIT" });
-      onExit?.();
+      if (!mountedRef.current || generationRef.current !== generation) return;
+      dispatch({ type: "DELETE_COMPLETE" });
     } catch {
+      if (!mountedRef.current || generationRef.current !== generation) return;
       dispatch({ type: "SET_ERROR", error: "DELETE_FAILED" });
     } finally {
       inFlight.current = false;
     }
-  }, [adapter, onExit]);
+  }, [adapter]);
 
   const handleBuildOwn = useCallback(() => {
     dispatch({ type: "EXIT" });
     onBuildOwn?.();
   }, [onBuildOwn]);
 
-  // Entry screen — show two choices
+  if (state.currentStep === TUTORIAL_STEPS.DELETE_COMPLETE) {
+    return (
+      <section className="tutorial tutorial-delete-complete" data-testid="tutorial-delete-complete" aria-label="Tutorial data deleted">
+        <h2 ref={headingRef} tabIndex={-1} className="tutorial-step-title">Tutorial data deleted</h2>
+        <p className="tutorial-step-detail">All synthetic demo records have been removed.</p>
+        <div className="tutorial-finish-actions" data-testid="tutorial-delete-actions">
+          <button className="button button--primary" data-testid="tutorial-build-after-delete" type="button" onClick={handleBuildOwn}>{copy.buildOwn}</button>
+          <button className="button button--ghost" data-testid="tutorial-exit-after-delete" type="button" onClick={handleExit}>{copy.exit}</button>
+        </div>
+      </section>
+    );
+  }
+
   if (state.currentStep === TUTORIAL_STEPS.ENTRY) {
     return (
       <section className="tutorial tutorial-entry" data-testid="tutorial-entry" aria-label="Tutorial entry">
@@ -88,7 +102,7 @@ export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn
           <button className="button button--primary tutorial-entry-btn" data-testid="tutorial-build-own" type="button" onClick={handleBuildOwn}>
             <strong>{copy.entry.primary}</strong>
           </button>
-          <button className="button button--secondary tutorial-entry-btn" data-testid="tutorial-start-story" type="button" onClick={start}>
+          <button className="button button--secondary tutorial-entry-btn" data-testid="tutorial-start-story" type="button" onClick={next}>
             <strong>{copy.entry.secondary}</strong>
           </button>
         </div>
@@ -96,7 +110,6 @@ export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn
     );
   }
 
-  // Step screens
   if (state.currentStep >= TUTORIAL_STEPS.STEP1 && state.currentStep <= TUTORIAL_STEPS.STEP6) {
     const stepIndex = state.currentStep - 1;
     const step = copy.steps[stepIndex];
@@ -111,21 +124,17 @@ export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn
         aria-label={`Tutorial step ${state.currentStep}`}
         aria-busy={state.transitionPending}
       >
-        {/* Progress */}
         <div className="tutorial-progress" role="progressbar" aria-valuenow={state.currentStep} aria-valuemin={1} aria-valuemax={6} aria-label={copy.progress.replace("{current}", state.currentStep)}>
           <div className="tutorial-progress-bar" style={{ width: `${(state.currentStep / 6) * 100}%` }} />
           <span className="tutorial-progress-text">{copy.progress.replace("{current}", state.currentStep)}</span>
         </div>
 
-        {/* Error */}
         {state.error ? <p className="form-message form-message--error" role="alert">{state.error}</p> : null}
 
-        {/* Step content */}
         <div className="tutorial-step-content">
           <h2 ref={headingRef} tabIndex={-1} className="tutorial-step-title">{step.title}</h2>
           <p className="tutorial-step-subtitle">{step.subtitle}</p>
 
-          {/* Step-specific visual */}
           {state.currentStep === TUTORIAL_STEPS.STEP1 && (
             <div className="tutorial-visual tutorial-visual--collection" data-testid="tutorial-visual-step1">
               <span className="tutorial-label">{step.label}</span>
@@ -211,10 +220,8 @@ export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn
             </div>
           )}
 
-          {/* Step detail */}
           <p className="tutorial-step-detail">{step.detail}</p>
 
-          {/* Truth boundaries */}
           <div className="tutorial-truth">
             <span className="tutorial-label tutorial-label--small">{copy.truth.synthetic}</span>
             <span className="tutorial-label tutorial-label--small">{copy.truth.simulated}</span>
@@ -222,7 +229,6 @@ export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn
           </div>
         </div>
 
-        {/* Controls */}
         <div className="tutorial-controls">
           {!isLastStep ? (
             <button
@@ -245,7 +251,6 @@ export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn
           )}
         </div>
 
-        {/* Back / Exit */}
         <div className="tutorial-secondary-controls">
           {state.currentStep > TUTORIAL_STEPS.STEP1 && !isLastStep ? (
             <button className="button button--ghost tutorial-btn-back" data-testid="tutorial-back" type="button" onClick={back} disabled={state.transitionPending}>
@@ -259,7 +264,6 @@ export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn
           ) : null}
         </div>
 
-        {/* Base44 proof disclosure */}
         {isLastStep && (
           <details className="tutorial-base44-details" data-testid="tutorial-base44">
             <summary>{copy.base44.title}</summary>
@@ -274,6 +278,5 @@ export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn
     );
   }
 
-  // Fallback: entry not started
   return null;
 }

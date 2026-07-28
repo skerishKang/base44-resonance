@@ -1300,6 +1300,130 @@ try {
     await context.close();
   }
 
+  // ── Tutorial flow — desktop 1440×900 ──────────────────────────────────
+  {
+    const { context, page, diagnostics } = await openContext(browser);
+
+    await page.getByTestId("start-tutorial").click();
+    await page.getByTestId("tutorial-entry").waitFor({ state: "visible" });
+    assert.ok(await page.getByTestId("tutorial-build-own").isVisible(), "tutorial entry: Build my WatchTree visible");
+    assert.ok(await page.getByTestId("tutorial-start-story").isVisible(), "tutorial entry: See Mina's story visible");
+
+    await page.getByTestId("tutorial-start-story").click();
+    await page.getByTestId("tutorial-step-1").waitFor({ state: "visible" });
+    assert.ok(await page.getByTestId("tutorial-visual-step1").isVisible(), "STEP1 visual rendered");
+
+    await page.getByTestId("tutorial-next").click();
+    await page.getByTestId("tutorial-step-2").waitFor({ state: "visible" });
+
+    await page.getByTestId("tutorial-next").click();
+    await page.getByTestId("tutorial-step-3").waitFor({ state: "visible" });
+    await page.locator(".tutorial-label--synthetic").first().waitFor({ state: "visible" });
+    const syntheticLabel = (await page.locator(".tutorial-label--synthetic").first().textContent()).trim();
+    assert.ok(syntheticLabel.length > 0, "STEP3 shows synthetic label");
+
+    await page.getByTestId("tutorial-next").click();
+    await page.getByTestId("tutorial-step-4").waitFor({ state: "visible" });
+
+    await page.getByTestId("tutorial-next").click();
+    await page.getByTestId("tutorial-step-5").waitFor({ state: "visible" });
+    await page.locator(".tutorial-label--simulated").first().waitFor({ state: "visible" });
+    const simulatedLabel = (await page.locator(".tutorial-label--simulated").first().textContent()).trim();
+    assert.ok(simulatedLabel.length > 0, "STEP5 shows simulated label");
+    await page.locator(".tutorial-label--small").first().waitFor({ state: "visible" });
+    const noRealUser = (await page.locator(".tutorial-label--small").first().textContent()).trim();
+    assert.ok(noRealUser.length > 0, "STEP5 shows no-real-user label");
+
+    await page.getByTestId("tutorial-back").click();
+    await page.getByTestId("tutorial-step-4").waitFor({ state: "visible" });
+    await page.getByTestId("tutorial-next").click();
+    await page.getByTestId("tutorial-step-5").waitFor({ state: "visible" });
+
+    await page.getByTestId("tutorial-next").click();
+    await page.getByTestId("tutorial-step-6").waitFor({ state: "visible" });
+    assert.ok(await page.getByTestId("tutorial-finish-actions").isVisible(), "STEP6 finish actions visible");
+
+    await page.getByTestId("tutorial-replay").click();
+    await page.getByTestId("tutorial-step-1").waitFor({ state: "visible" });
+
+    await page.getByTestId("tutorial-next").click();
+    await page.getByTestId("tutorial-step-2").waitFor({ state: "visible" });
+    await page.getByTestId("tutorial-next").click();
+    await page.getByTestId("tutorial-step-3").waitFor({ state: "visible" });
+    await page.getByTestId("tutorial-next").click();
+    await page.getByTestId("tutorial-step-4").waitFor({ state: "visible" });
+    await page.getByTestId("tutorial-next").click();
+    await page.getByTestId("tutorial-step-5").waitFor({ state: "visible" });
+    await page.getByTestId("tutorial-next").click();
+    await page.getByTestId("tutorial-step-6").waitFor({ state: "visible" });
+
+    await page.getByTestId("tutorial-delete-data").click();
+    await page.getByTestId("tutorial-delete-complete").waitFor({ state: "visible" });
+    assert.ok(await page.getByTestId("tutorial-build-after-delete").isVisible(), "delete-complete: Build visible");
+    assert.ok(await page.getByTestId("tutorial-exit-after-delete").isVisible(), "delete-complete: Exit visible");
+
+    await page.getByTestId("tutorial-build-after-delete").click();
+    await page.getByTestId("tutorial-delete-complete").waitFor({ state: "detached" });
+    await page.getByTestId("url-collection").waitFor({ state: "visible" });
+
+    await capture(page, "tutorial-desktop-complete", { tutorial_flow: "complete" });
+    assert.deepEqual(diagnostics.consoleErrors, []);
+    assert.deepEqual(diagnostics.pageErrors, []);
+    assert.deepEqual(diagnostics.externalRequests, []);
+    await context.close();
+  }
+
+  // ── Tutorial flow — mobile 390×844 ────────────────────────────────────
+  {
+    const { context, page, diagnostics } = await openContext(browser, { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+
+    await page.getByTestId("start-tutorial").click();
+    await page.getByTestId("tutorial-entry").waitFor({ state: "visible" });
+
+    await page.getByTestId("tutorial-start-story").click();
+    await page.getByTestId("tutorial-step-1").waitFor({ state: "visible" });
+
+    for (let step = 2; step <= 6; step += 1) {
+      await page.getByTestId("tutorial-next").click();
+      await page.getByTestId(`tutorial-step-${step}`).waitFor({ state: "visible" });
+    }
+
+    await page.getByTestId("tutorial-delete-data").click();
+    await page.getByTestId("tutorial-delete-complete").waitFor({ state: "visible" });
+    await page.getByTestId("tutorial-exit-after-delete").click();
+    await page.getByTestId("url-collection").waitFor({ state: "visible" });
+
+    const mobileLayout = await layoutState(page);
+    assert.equal(mobileLayout.horizontalOverflow, false, "tutorial mobile: no horizontal overflow");
+    await capture(page, "tutorial-mobile-complete", { tutorial_flow: "mobile" });
+    assert.deepEqual(diagnostics.consoleErrors, []);
+    assert.deepEqual(diagnostics.pageErrors, []);
+    assert.deepEqual(diagnostics.externalRequests, []);
+    await context.close();
+  }
+
+  // ── Tutorial flow — reduced motion ────────────────────────────────────
+  {
+    const { context, page, diagnostics } = await openContext(browser, { reducedMotion: "reduce" });
+
+    await page.getByTestId("start-tutorial").click();
+    await page.getByTestId("tutorial-entry").waitFor({ state: "visible" });
+
+    await page.getByTestId("tutorial-start-story").click();
+    await page.getByTestId("tutorial-step-1").waitFor({ state: "visible" });
+
+    for (let step = 2; step <= 6; step += 1) {
+      await page.getByTestId("tutorial-next").click();
+      await page.getByTestId(`tutorial-step-${step}`).waitFor({ state: "visible" });
+    }
+
+    await capture(page, "tutorial-reduced-motion", { tutorial_flow: "reduced-motion" });
+    assert.deepEqual(diagnostics.consoleErrors, []);
+    assert.deepEqual(diagnostics.pageErrors, []);
+    assert.deepEqual(diagnostics.externalRequests, []);
+    await context.close();
+  }
+
   manifest.assertions = {
     console_errors: 0,
     page_errors: 0,
@@ -1325,6 +1449,9 @@ try {
     header_language_custom_style_verified: true,
     internal_field_exposure_verified: true,
     vite_port_closed_after_cleanup: true,
+    tutorial_desktop_flow_verified: true,
+    tutorial_mobile_flow_verified: true,
+    tutorial_reduced_motion_verified: true,
   };
   await writeFile(new URL("watchtree-browser-evidence.json", evidenceDir), `${JSON.stringify(manifest, null, 2)}\n`);
   await Promise.all([

@@ -1,18 +1,87 @@
 import { createClientFromRequest } from "npm:@base44/sdk";
-import { authenticate, deleteRecords, fail, json, publicEvent, requirePostJson, readInput, unavailable, updateRecords, validNonce } from "./_shared/watchtree.js";
-const ACTIONS=new Set(["enable_import_matching","disable_import_matching","exclude_event","exclude_creator","exclude_date_range","delete_import","delete_all"]);
-async function clearDerived(base44,importId){const trees=await base44.entities.WatchTreeFingerprint.filter({import_id:importId},"-created_date",20,0);for(const tree of trees){const candidates=await base44.entities.SharedPathCandidate.filter({fingerprint_id:tree.id},"candidate_rank",20,0);for(const candidate of candidates){const consents=await base44.entities.RevealConsent.filter({candidate_id:candidate.id},"-created_date",20,0);const mutuals=await base44.entities.MutualResonance.filter({candidate_id:candidate.id},"-created_date",20,0);await deleteRecords(base44.entities.MutualResonance,mutuals);await deleteRecords(base44.entities.RevealConsent,consents);}await deleteRecords(base44.entities.SharedPathCandidate,candidates);}await deleteRecords(base44.entities.WatchTreeFingerprint,trees);}
-async function deleteImport(base44,watchImport){await clearDerived(base44,watchImport.id);const events=await base44.entities.WatchEvent.filter({import_id:watchImport.id},"watched_at",5000,0);const receipts=await base44.entities.ImportChunkReceipt.filter({import_id:watchImport.id},"chunk_index",200,0);const signals=await base44.entities.WatchMatchSignal.filter({import_id:watchImport.id},"-created_date",5000,0);await deleteRecords(base44.entities.WatchEvent,events);await deleteRecords(base44.entities.ImportChunkReceipt,receipts);await deleteRecords(base44.entities.WatchMatchSignal,signals);await base44.entities.WatchImport.delete(watchImport.id);}
-Deno.serve(async(req)=>{
- const rejected=await requirePostJson(req);if(rejected)return rejected;const base44=createClientFromRequest(req);if(!await authenticate(base44))return fail("AUTH_REQUIRED",401);const input=await readInput(req);if(!validNonce(input))return fail("INVALID_CLIENT_NONCE",400);if(!ACTIONS.has(input.action))return fail("ACTION_UNSUPPORTED",400);
- if(input.action==="delete_all"){const imports=await base44.entities.WatchImport.list("-created_date",20,0);for(const item of imports)await deleteImport(base44,item);return json({ok:true,deleted:true,events:[],tree:null,candidates:[]});}
- const watchImport=await unavailable(()=>base44.entities.WatchImport.get(input.import_id));if(!watchImport)return fail("RESOURCE_UNAVAILABLE",404);
- if(input.action==="delete_import"){await deleteImport(base44,watchImport);return json({ok:true,deleted:true,events:[],tree:null,candidates:[]});}
- const events=await base44.entities.WatchEvent.filter({import_id:watchImport.id},"watched_at",5000,0);
- if(input.action==="enable_import_matching"){await updateRecords(base44.entities.WatchEvent,events,(event)=>event.sensitivity_excluded?{matching_enabled:false}:{matching_enabled:true,visibility_state:"matchable_private",exclusion_reason:""});await base44.entities.WatchImport.update(watchImport.id,{matching_enabled:true});}
- if(input.action==="disable_import_matching"){await updateRecords(base44.entities.WatchEvent,events,(event)=>({matching_enabled:false,visibility_state:"owner_only",exclusion_reason:event.sensitivity_excluded?event.exclusion_reason:"import_disabled"}));await base44.entities.WatchImport.update(watchImport.id,{matching_enabled:false});await clearDerived(base44,watchImport.id);}
- if(input.action==="exclude_event"){const event=await unavailable(()=>base44.entities.WatchEvent.get(input.event_id));if(!event||event.import_id!==watchImport.id)return fail("RESOURCE_UNAVAILABLE",404);await base44.entities.WatchEvent.update(event.id,{matching_enabled:false,sensitivity_excluded:true,exclusion_reason:"item"});await clearDerived(base44,watchImport.id);}
- if(input.action==="exclude_creator"){const label=String(input.creator_label??"").trim();if(!label)return fail("CREATOR_INVALID",400);await updateRecords(base44.entities.WatchEvent,events.filter((event)=>event.bounded_creator_label===label),()=>({matching_enabled:false,sensitivity_excluded:true,exclusion_reason:"creator"}));await clearDerived(base44,watchImport.id);}
- if(input.action==="exclude_date_range"){const from=String(input.from??""),to=String(input.to??"");if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(from)||!/^\\d{4}-\\d{2}-\\d{2}$/.test(to)||from>to)return fail("DATE_RANGE_INVALID",400);await updateRecords(base44.entities.WatchEvent,events.filter((event)=>event.watched_at.slice(0,10)>=from&&event.watched_at.slice(0,10)<=to),()=>({matching_enabled:false,sensitivity_excluded:true,exclusion_reason:"date_range"}));await clearDerived(base44,watchImport.id);}
- const current=await base44.entities.WatchEvent.filter({import_id:watchImport.id},"watched_at",5000,0);return json({ok:true,events:current.map(publicEvent),tree:null,candidates:[]});
+import {
+  authenticate,
+  clearDerivedRecords,
+  createDeleteBudget,
+  deleteAllRecords,
+  deleteImportRecords,
+  fail,
+  json,
+  listAllRecords,
+  publicEvent,
+  requirePostJson,
+  readInput,
+  unavailable,
+  updateRecords,
+  validNonce,
+} from "./_shared/watchtree.js";
+
+const ACTIONS = new Set(["enable_import_matching", "disable_import_matching", "exclude_event", "exclude_creator", "exclude_date_range", "delete_import", "delete_all"]);
+
+function deletionResponse(result, budget) {
+  const progress = { ...result.progress, budget_remaining: budget.remaining };
+  return json({ ok: true, deleted: result.complete, complete: result.complete, progress, events: [], tree: null, candidates: [] });
+}
+
+// Privacy cleanup actions report expected budget exhaustion as complete:false
+// with bounded progress instead of an exception, so the client can idempotently
+// resume the same action with a fresh budget. Refreshed events are returned
+// only once derived cleanup has fully completed.
+function privacyResponse(cleanup, budget, events) {
+  const progress = { ...cleanup.progress, budget_remaining: budget.remaining };
+  return json({ ok: true, complete: cleanup.complete, progress, events, tree: null, candidates: [] });
+}
+
+Deno.serve(async (req) => {
+  const rejected = await requirePostJson(req); if (rejected) return rejected;
+  const base44 = createClientFromRequest(req);
+  if (!await authenticate(base44)) return fail("AUTH_REQUIRED", 401);
+  const input = await readInput(req);
+  if (!validNonce(input)) return fail("INVALID_CLIENT_NONCE", 400);
+  if (!ACTIONS.has(input.action)) return fail("ACTION_UNSUPPORTED", 400);
+  try {
+    if (input.action === "delete_all") {
+      const budget = createDeleteBudget();
+      return deletionResponse(await deleteAllRecords(base44, budget), budget);
+    }
+    const watchImport = await unavailable(() => base44.entities.WatchImport.get(input.import_id));
+    if (!watchImport) return fail("RESOURCE_UNAVAILABLE", 404);
+    if (input.action === "delete_import") {
+      const budget = createDeleteBudget();
+      return deletionResponse(await deleteImportRecords(base44, watchImport, budget), budget);
+    }
+    const events = await listAllRecords(base44.entities.WatchEvent, { import_id: watchImport.id }, "watched_at");
+    if (input.action === "enable_import_matching") {
+      await updateRecords(base44.entities.WatchEvent, events, (event) => event.sensitivity_excluded?{matching_enabled:false}:{ matching_enabled: true, visibility_state: "matchable_private", exclusion_reason: "" });
+      await base44.entities.WatchImport.update(watchImport.id, { matching_enabled: true });
+      const current = await listAllRecords(base44.entities.WatchEvent, { import_id: watchImport.id }, "watched_at");
+      return json({ ok: true, complete: true, events: current.map(publicEvent), tree: null, candidates: [] });
+    }
+    if (input.action === "disable_import_matching") {
+      await updateRecords(base44.entities.WatchEvent, events, (event) => ({ matching_enabled: false, visibility_state: "owner_only", exclusion_reason: event.sensitivity_excluded ? event.exclusion_reason : "import_disabled" }));
+      await base44.entities.WatchImport.update(watchImport.id, { matching_enabled: false });
+    }
+    if (input.action === "exclude_event") {
+      const event = await unavailable(() => base44.entities.WatchEvent.get(input.event_id));
+      if (!event || event.import_id !== watchImport.id) return fail("RESOURCE_UNAVAILABLE", 404);
+      await base44.entities.WatchEvent.update(event.id, { matching_enabled: false, sensitivity_excluded:true, exclusion_reason: "item" });
+    }
+    if (input.action === "exclude_creator") {
+      const label = String(input.creator_label ?? "").trim();
+      if (!label) return fail("CREATOR_INVALID", 400);
+      await updateRecords(base44.entities.WatchEvent, events.filter((event) => event.bounded_creator_label === label), () => ({ matching_enabled: false, sensitivity_excluded:true, exclusion_reason: "creator" }));
+    }
+    if (input.action === "exclude_date_range") {
+      const from = String(input.from ?? "");
+      const to = String(input.to ?? "");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) return fail("DATE_RANGE_INVALID", 400);
+      await updateRecords(base44.entities.WatchEvent, events.filter((event) => event.watched_at.slice(0, 10) >= from && event.watched_at.slice(0, 10) <= to), () => ({ matching_enabled: false, sensitivity_excluded:true, exclusion_reason: "date_range" }));
+    }
+    const budget = createDeleteBudget();
+    const cleanup = await clearDerivedRecords(base44, watchImport.id, budget);
+    const current = cleanup.complete ? await listAllRecords(base44.entities.WatchEvent, { import_id: watchImport.id }, "watched_at") : [];
+    return privacyResponse(cleanup, budget, current.map(publicEvent));
+  } catch {
+    return fail("DELETE_INCOMPLETE", 500, true);
+  }
 });

@@ -1,5 +1,6 @@
 import { getBase44Client } from "@/api/base44Client";
 import { LIMITS, WATCHTREE_VERSIONS } from "./constants.js";
+import { restoreScopedMatching } from "./restore.js";
 
 const unwrap = (response) => response?.data ?? response ?? {};
 const nonce = () => crypto.randomUUID();
@@ -27,6 +28,57 @@ async function invokeWithRetry(name, payload, attempts = 3) {
     }
   }
   throw lastError;
+}
+
+// delete_import-specific retry policy. When the same request (same nonce,
+// same payload) has already survived a retryable transport/5xx ambiguity, a
+// later RESOURCE_UNAVAILABLE means the first attempt completed the deletion
+// server-side and only its response was lost, so it is read as completion.
+// A RESOURCE_UNAVAILABLE on the first attempt (nonexistent or cross-user id)
+// remains an error; every other failure keeps the normal retry contract.
+async function invokeDestructiveWithAmbiguity(base44, name, payload, attempts = 3) {
+  let sawRetryableAmbiguity = false;
+  let lastError;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const result = unwrap(await base44.functions.invoke(name, payload));
+      if (result?.ok === false) {
+        if (sawRetryableAmbiguity && result.error?.code === "RESOURCE_UNAVAILABLE") {
+          return { ok: true, deleted: true, complete: true, progress: {}, events: [], tree: null, candidates: [], ambiguity_resolved: true };
+        }
+        const error = new Error(result.error?.code ?? "FUNCTION_FAILED");
+        error.code = result.error?.code;
+        error.retryable = result.error?.retryable === true;
+        throw error;
+      }
+      return result;
+    } catch (error) {
+      lastError = error;
+      const status = error?.response?.status ?? error?.status;
+      const retryable = error?.retryable === true || status === 429 || status >= 500;
+      if (!retryable || attempt === attempts - 1) throw error;
+      sawRetryableAmbiguity = true;
+      await new Promise((resolve) => setTimeout(resolve, 120 * (2 ** attempt)));
+    }
+  }
+  throw lastError;
+}
+
+// Caller-scoped ownership preflight for delete_import. The ambiguity-success
+// policy is armed only for an import the caller provably owns under RLS. A
+// nonexistent or cross-user id fails here before any destructive Function
+// invocation, so a pre-backend 503 followed by a 404 can never be misread as
+// a completed deletion, and other users' rows are never probed or exposed.
+async function invokeOwnedDeleteImportWithAmbiguity(payload) {
+  const base44 = await getBase44Client();
+  try {
+    await base44.entities.WatchImport.get(payload.import_id);
+  } catch {
+    const error = new Error("RESOURCE_UNAVAILABLE");
+    error.code = "RESOURCE_UNAVAILABLE";
+    throw error;
+  }
+  return invokeDestructiveWithAmbiguity(base44, "delete-watch-data", payload);
 }
 
 export function splitTransportChunks(records) {
@@ -65,18 +117,15 @@ export function createProductionWatchTreeAdapter() {
         base44.entities.WatchTreeFingerprint.filter({ import_id: completed.id, stale: false }, "-created_date", 1, 0),
       ]);
       const tree = trees?.[0] ?? null;
-      const [candidates, consents, mutuals] = await Promise.all([
-        tree ? base44.entities.SharedPathCandidate.filter({ fingerprint_id: tree.id }, "candidate_rank", 20, 0) : [],
-        base44.entities.RevealConsent.list("-created_date", 20, 0),
-        base44.entities.MutualResonance.list("-created_date", 20, 0),
-      ]);
+      const candidates = tree ? (await base44.entities.SharedPathCandidate.filter({ fingerprint_id: tree.id }, "candidate_rank", 20, 0)) ?? [] : [];
+      const { consent, mutual } = await restoreScopedMatching(base44, candidates);
       return {
         import: completed,
         events,
         tree,
         candidates,
-        consent: consents.find((item) => item.state === "granted") ?? null,
-        mutual: mutuals.find((item) => item.state === "mutual") ?? null,
+        consent,
+        mutual,
         matchingEnabled: Boolean(completed.matching_enabled),
       };
     },
@@ -184,12 +233,14 @@ export function createProductionWatchTreeAdapter() {
     },
 
     async mutatePrivacy(action, payload) {
-      return invokeWithRetry("delete-watch-data", {
+      const request = {
         schema_version: 1,
         client_nonce: nonce(),
         action,
         ...payload,
-      });
+      };
+      if (action === "delete_import") return invokeOwnedDeleteImportWithAmbiguity(request);
+      return invokeWithRetry("delete-watch-data", request);
     },
   };
 }

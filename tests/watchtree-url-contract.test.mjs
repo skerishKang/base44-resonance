@@ -2,10 +2,12 @@ import { describe, it } from "node:test";
 import * as assert from "node:assert";
 import { readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { tmpdir } from "node:os";
 
 async function loadAndCaptureHandler(filePath) {
   const content = readFileSync(filePath, "utf-8");
+  const sharedDirUrl = pathToFileURL(join(import.meta.dirname, "../base44/functions/_shared/")).href;
   const replaced = content
     .replace(
       /from "npm:@base44\/sdk"/g,
@@ -13,7 +15,7 @@ async function loadAndCaptureHandler(filePath) {
     )
     .replace(
       /from "\.\/_shared\//g,
-      `from "file://${join(import.meta.dirname, "../base44/functions/_shared/")}/`
+      `from "${sharedDirUrl}`
     );
   const tmpFile = join(tmpdir(), `test-entry-${Date.now()}-${Math.random()}.mjs`);
   writeFileSync(tmpFile, replaced);

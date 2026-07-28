@@ -1,0 +1,1612 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-28T22:50:23.317Z",
+  "states": [
+    {
+      "name": "desktop-1440-initial",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "capture_mode": "viewport",
+      "scroll_y": 0,
+      "viewport_width": 1440,
+      "viewport_height": 900,
+      "document_scroll_height": 1932,
+      "image_width": 1440,
+      "image_height": 900,
+      "screenshot_sha256": "d919fb7f6d689015da2a895a43bb3280fd2c37c7406834ceb80bd3e3cc1af9ac",
+      "screenshot_bytes": 850794,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "header": {
+          "pass": true,
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "header_visible": true,
+          "wordmark_count": 1,
+          "story_visible": true,
+          "privacy_visible": true,
+          "language_visible": true,
+          "enter_visible": true,
+          "mobile_compact_nav_allowed": false,
+          "header_rect": {
+            "x": 130,
+            "y": 0,
+            "width": 1180,
+            "height": 74.375,
+            "top": 0,
+            "right": 1310,
+            "bottom": 74.375,
+            "left": 130
+          },
+          "hero_title_rect": {
+            "x": 86.390625,
+            "y": 207.359375,
+            "width": 430.265625,
+            "height": 440.453125,
+            "top": 207.359375,
+            "right": 516.65625,
+            "bottom": 647.8125,
+            "left": 86.390625
+          },
+          "children": [
+            {
+              "className": "wordmark",
+              "rect": {
+                "x": 130,
+                "y": 21.1875,
+                "width": 134.90625,
+                "height": 31,
+                "top": 21.1875,
+                "right": 264.90625,
+                "bottom": 52.1875,
+                "left": 130
+              }
+            },
+            {
+              "className": "",
+              "rect": {
+                "x": 911.453125,
+                "y": 16,
+                "width": 398.546875,
+                "height": 41.375,
+                "top": 16,
+                "right": 1310,
+                "bottom": 57.375,
+                "left": 911.453125
+              }
+            },
+            {
+              "className": "",
+              "rect": {
+                "x": 911.453125,
+                "y": 28.1875,
+                "width": 41.875,
+                "height": 17,
+                "top": 28.1875,
+                "right": 953.328125,
+                "bottom": 45.1875,
+                "left": 911.453125
+              }
+            },
+            {
+              "className": "",
+              "rect": {
+                "x": 978.921875,
+                "y": 28.1875,
+                "width": 55.234375,
+                "height": 17,
+                "top": 28.1875,
+                "right": 1034.15625,
+                "bottom": 45.1875,
+                "left": 978.921875
+              }
+            },
+            {
+              "className": "language-switch",
+              "rect": {
+                "x": 1059.75,
+                "y": 20.8125,
+                "width": 99.078125,
+                "height": 31.75,
+                "top": 20.8125,
+                "right": 1158.828125,
+                "bottom": 52.5625,
+                "left": 1059.75
+              }
+            },
+            {
+              "className": "nav-enter",
+              "rect": {
+                "x": 1184.421875,
+                "y": 16,
+                "width": 125.578125,
+                "height": 41.375,
+                "top": 16,
+                "right": 1310,
+                "bottom": 57.375,
+                "left": 1184.421875
+              }
+            }
+          ],
+          "child_clipping_count": 0,
+          "hero_title_overlap_count": 0,
+          "base44_badge_collision_count": 0,
+          "language_custom_style": true,
+          "horizontal_overflow": false,
+          "desktop_nav_complete": true,
+          "top_safe": true,
+          "title_clear": true
+        }
+      }
+    },
+    {
+      "name": "desktop-scene-1",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "capture_mode": "viewport",
+      "scroll_y": 0,
+      "viewport_width": 1440,
+      "viewport_height": 900,
+      "document_scroll_height": 1932,
+      "image_width": 1440,
+      "image_height": 900,
+      "screenshot_sha256": "81a68b45b5625bb5291aef550099f278a0ed3ff724b36bbf2025e3e64ca3ae5c",
+      "screenshot_bytes": 850684,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {}
+    },
+    {
+      "name": "desktop-scene-2",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "capture_mode": "viewport",
+      "scroll_y": 0,
+      "viewport_width": 1440,
+      "viewport_height": 900,
+      "document_scroll_height": 1932,
+      "image_width": 1440,
+      "image_height": 900,
+      "screenshot_sha256": "780bd8cd8c0ff2f8b2d7b85fcec74e2093728e1a3ba4250d6dcb2dd4c229864f",
+      "screenshot_bytes": 834561,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {}
+    },
+    {
+      "name": "desktop-scene-3",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "capture_mode": "viewport",
+      "scroll_y": 0,
+      "viewport_width": 1440,
+      "viewport_height": 900,
+      "document_scroll_height": 1932,
+      "image_width": 1440,
+      "image_height": 900,
+      "screenshot_sha256": "6e372fa465e3f8f485ee3049ecd226b264aa2916aafbe6a9f1095f419af0b4a7",
+      "screenshot_bytes": 841328,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {}
+    },
+    {
+      "name": "desktop-scene-4",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "capture_mode": "viewport",
+      "scroll_y": 0,
+      "viewport_width": 1440,
+      "viewport_height": 900,
+      "document_scroll_height": 1932,
+      "image_width": 1440,
+      "image_height": 900,
+      "screenshot_sha256": "c92f351387915e3448f11fbfdbb13563e9ce2c3494d99b79cf5abdb14caf8e29",
+      "screenshot_bytes": 874398,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {}
+    },
+    {
+      "name": "desktop-scene-5",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "capture_mode": "viewport",
+      "scroll_y": 0,
+      "viewport_width": 1440,
+      "viewport_height": 900,
+      "document_scroll_height": 1932,
+      "image_width": 1440,
+      "image_height": 900,
+      "screenshot_sha256": "5415d0aa8d0266888311494bf4690872020eb480c258d8002c47a44c50c4023a",
+      "screenshot_bytes": 873501,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {}
+    },
+    {
+      "name": "desktop-1440-scene-6",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "capture_mode": "viewport",
+      "scroll_y": 98,
+      "viewport_width": 1440,
+      "viewport_height": 900,
+      "document_scroll_height": 1932,
+      "image_width": 1440,
+      "image_height": 900,
+      "screenshot_sha256": "a89d227afda6d96439152f7922cd9fa0a300f832cb5e75114124e97e84caf9db",
+      "screenshot_bytes": 875321,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "active": true,
+        "aria_hidden": "false",
+        "visibility": "visible",
+        "opacity": 1,
+        "rendered_bounds": {
+          "x": 589.65625,
+          "y": 189.40625,
+          "width": 762.953125,
+          "height": 547.796875
+        },
+        "trees": 2,
+        "shared_leaves": 8,
+        "shared_path": 1,
+        "evidence": [
+          "Exact overlap",
+          "Rare signal",
+          "Shared path",
+          "Meaningful difference"
+        ],
+        "viewer_a": 1,
+        "viewer_b": 1,
+        "path_geometry": {
+          "orientation": "horizontal",
+          "pass": true,
+          "bounds_pass": true,
+          "endpoint_pass": true,
+          "node_count": 4,
+          "path": {
+            "x": 887.7500610351562,
+            "y": 466.546875,
+            "width": 166.73431396484375,
+            "height": 0,
+            "top": 466.546875,
+            "right": 1054.484375,
+            "bottom": 466.546875,
+            "left": 887.7500610351562
+          },
+          "treeA": {
+            "x": 674.4375,
+            "y": 378.28125,
+            "width": 245.1875,
+            "height": 245.1875,
+            "top": 378.28125,
+            "right": 919.625,
+            "bottom": 623.46875,
+            "left": 674.4375
+          },
+          "treeB": {
+            "x": 1022.625,
+            "y": 378.28125,
+            "width": 245.1875,
+            "height": 245.1875,
+            "top": 378.28125,
+            "right": 1267.8125,
+            "bottom": 623.46875,
+            "left": 1022.625
+          },
+          "anchorA": {
+            "x": 882.15625,
+            "y": 460.953125,
+            "width": 11.1875,
+            "height": 11.1875,
+            "top": 460.953125,
+            "right": 893.34375,
+            "bottom": 472.140625,
+            "left": 882.15625
+          },
+          "anchorB": {
+            "x": 1048.890625,
+            "y": 460.953125,
+            "width": 11.1875,
+            "height": 11.1875,
+            "top": 460.953125,
+            "right": 1060.078125,
+            "bottom": 472.140625,
+            "left": 1048.890625
+          },
+          "start_point": {
+            "x": 887.7500630581379,
+            "y": 466.5468808066845
+          },
+          "end_point": {
+            "x": 1054.4843565648794,
+            "y": 466.5468808066845
+          },
+          "start_distance_px": 0.00006332492671530235,
+          "end_distance_px": 0.00001932799156074345
+        }
+      }
+    },
+    {
+      "name": "desktop-scene-7",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "capture_mode": "viewport",
+      "scroll_y": 98,
+      "viewport_width": 1440,
+      "viewport_height": 900,
+      "document_scroll_height": 1932,
+      "image_width": 1440,
+      "image_height": 900,
+      "screenshot_sha256": "0a43ad31a7a4339647f99cdb46b031591af9a2a5990b34b4b93a93a0cc6a7d0d",
+      "screenshot_bytes": 824831,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {}
+    },
+    {
+      "name": "mobile-390-initial",
+      "css_viewport": "390x844",
+      "physical_pixels": "780x1688",
+      "device_scale_factor": 2,
+      "capture_mode": "viewport",
+      "scroll_y": 0,
+      "viewport_width": 390,
+      "viewport_height": 844,
+      "document_scroll_height": 2025,
+      "image_width": 390,
+      "image_height": 844,
+      "screenshot_sha256": "ae47af3b84813a929c505dbc0ea456a19eefb164ffb4e1dda22555c23fc892d1",
+      "screenshot_bytes": 890960,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "scroll_y": 0,
+        "proposition": 1,
+        "primary_cta": 1,
+        "cta_in_viewport": true,
+        "viewer_a": 1,
+        "visible_fragments": 2,
+        "personal_trees": 2,
+        "viewer_b": 1,
+        "connection_signal": 1,
+        "header": {
+          "pass": true,
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "header_visible": true,
+          "wordmark_count": 1,
+          "story_visible": false,
+          "privacy_visible": false,
+          "language_visible": true,
+          "enter_visible": true,
+          "mobile_compact_nav_allowed": true,
+          "header_rect": {
+            "x": 8,
+            "y": 0,
+            "width": 374,
+            "height": 59.1875,
+            "top": 0,
+            "right": 382,
+            "bottom": 59.1875,
+            "left": 8
+          },
+          "hero_title_rect": {
+            "x": 16,
+            "y": 119.375,
+            "width": 358,
+            "height": 122.8125,
+            "top": 119.375,
+            "right": 374,
+            "bottom": 242.1875,
+            "left": 16
+          },
+          "children": [
+            {
+              "className": "wordmark",
+              "rect": {
+                "x": 8,
+                "y": 18.09375,
+                "width": 99.1875,
+                "height": 22,
+                "top": 18.09375,
+                "right": 107.1875,
+                "bottom": 40.09375,
+                "left": 8
+              }
+            },
+            {
+              "className": "",
+              "rect": {
+                "x": 216.046875,
+                "y": 13.09375,
+                "width": 165.953125,
+                "height": 32,
+                "top": 13.09375,
+                "right": 382,
+                "bottom": 45.09375,
+                "left": 216.046875
+              }
+            },
+            {
+              "className": "language-switch",
+              "rect": {
+                "x": 216.046875,
+                "y": 16.484375,
+                "width": 67.03125,
+                "height": 25.21875,
+                "top": 16.484375,
+                "right": 283.078125,
+                "bottom": 41.703125,
+                "left": 216.046875
+              }
+            },
+            {
+              "className": "nav-enter",
+              "rect": {
+                "x": 288.671875,
+                "y": 13.09375,
+                "width": 93.328125,
+                "height": 32,
+                "top": 13.09375,
+                "right": 382,
+                "bottom": 45.09375,
+                "left": 288.671875
+              }
+            }
+          ],
+          "child_clipping_count": 0,
+          "hero_title_overlap_count": 0,
+          "base44_badge_collision_count": 0,
+          "language_custom_style": true,
+          "horizontal_overflow": false,
+          "desktop_nav_complete": true,
+          "top_safe": true,
+          "title_clear": true
+        }
+      }
+    },
+    {
+      "name": "mobile-initial",
+      "css_viewport": "390x844",
+      "physical_pixels": "780x1688",
+      "device_scale_factor": 2,
+      "capture_mode": "viewport",
+      "scroll_y": 0,
+      "viewport_width": 390,
+      "viewport_height": 844,
+      "document_scroll_height": 2025,
+      "image_width": 390,
+      "image_height": 844,
+      "screenshot_sha256": "57f8fa734a3da3d2426573f64ee25dbc4a989bc9838d76591f1ce504eb26c185",
+      "screenshot_bytes": 897509,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "scroll_y": 0,
+        "proposition": 1,
+        "primary_cta": 1,
+        "cta_in_viewport": true,
+        "viewer_a": 1,
+        "visible_fragments": 2,
+        "personal_trees": 2,
+        "viewer_b": 1,
+        "connection_signal": 1
+      }
+    },
+    {
+      "name": "mobile-390-scene-6",
+      "css_viewport": "390x844",
+      "physical_pixels": "780x1688",
+      "device_scale_factor": 2,
+      "capture_mode": "viewport",
+      "scroll_y": 660,
+      "viewport_width": 390,
+      "viewport_height": 844,
+      "document_scroll_height": 2025,
+      "image_width": 390,
+      "image_height": 844,
+      "screenshot_sha256": "799441438711a7510c4934a6afb6f6aee3fe340e2e2b196269f5ff99b7373a46",
+      "screenshot_bytes": 617821,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "active": true,
+        "aria_hidden": "false",
+        "visibility": "visible",
+        "opacity": 1,
+        "rendered_bounds": {
+          "x": 17,
+          "y": 158.921875,
+          "width": 356,
+          "height": 382
+        },
+        "trees": 2,
+        "shared_leaves": 8,
+        "shared_path": 1,
+        "evidence": [
+          "Exact overlap",
+          "Rare signal",
+          "Shared path",
+          "Meaningful difference"
+        ],
+        "viewer_a": 1,
+        "viewer_b": 1,
+        "path_geometry": {
+          "orientation": "horizontal",
+          "pass": true,
+          "bounds_pass": true,
+          "endpoint_pass": true,
+          "node_count": 4,
+          "path": {
+            "x": 162.67185974121094,
+            "y": 335.390625,
+            "width": 64.62501525878906,
+            "height": 0.015625,
+            "top": 335.390625,
+            "right": 227.296875,
+            "bottom": 335.40625,
+            "left": 162.67185974121094
+          },
+          "treeA": {
+            "x": 58.59375,
+            "y": 292.34375,
+            "width": 119.640625,
+            "height": 119.640625,
+            "top": 292.34375,
+            "right": 178.234375,
+            "bottom": 411.984375,
+            "left": 58.59375
+          },
+          "treeB": {
+            "x": 211.75,
+            "y": 292.328125,
+            "width": 119.65625,
+            "height": 119.65625,
+            "top": 292.328125,
+            "right": 331.40625,
+            "bottom": 411.984375,
+            "left": 211.75
+          },
+          "anchorA": {
+            "x": 158.0390625,
+            "y": 330.7734375,
+            "width": 9.265625,
+            "height": 9.265625,
+            "top": 330.7734375,
+            "right": 167.3046875,
+            "bottom": 340.0390625,
+            "left": 158.0390625
+          },
+          "anchorB": {
+            "x": 222.6640625,
+            "y": 330.7578125,
+            "width": 9.265625,
+            "height": 9.265625,
+            "top": 330.7578125,
+            "right": 231.9296875,
+            "bottom": 340.0234375,
+            "left": 222.6640625
+          },
+          "start_point": {
+            "x": 162.67186641335488,
+            "y": 335.4062552058697
+          },
+          "end_point": {
+            "x": 227.29687567114829,
+            "y": 335.3906328314543
+          },
+          "start_distance_px": 0.000010041491603922652,
+          "end_distance_px": 0.000007860160076922725
+        }
+      }
+    },
+    {
+      "name": "desktop-reduced-initial",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "capture_mode": "viewport",
+      "scroll_y": 0,
+      "viewport_width": 1440,
+      "viewport_height": 900,
+      "document_scroll_height": 1932,
+      "image_width": 1440,
+      "image_height": 900,
+      "screenshot_sha256": "cd02f2929e16883ceb330d0bddc9fcdf780cbadeeb30a1ec7d9635dc3fedb999",
+      "screenshot_bytes": 901236,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "persons": 2,
+        "fragments": 3,
+        "trees": 2,
+        "evidence": [
+          "Exact overlap",
+          "Rare signal",
+          "Shared path",
+          "Meaningful difference"
+        ],
+        "product_choices": 3,
+        "cta": 1,
+        "header": {
+          "pass": true,
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          },
+          "header_visible": true,
+          "wordmark_count": 1,
+          "story_visible": true,
+          "privacy_visible": true,
+          "language_visible": true,
+          "enter_visible": true,
+          "mobile_compact_nav_allowed": false,
+          "header_rect": {
+            "x": 130,
+            "y": 0,
+            "width": 1180,
+            "height": 74.375,
+            "top": 0,
+            "right": 1310,
+            "bottom": 74.375,
+            "left": 130
+          },
+          "hero_title_rect": {
+            "x": 86.390625,
+            "y": 207.359375,
+            "width": 430.265625,
+            "height": 440.453125,
+            "top": 207.359375,
+            "right": 516.65625,
+            "bottom": 647.8125,
+            "left": 86.390625
+          },
+          "children": [
+            {
+              "className": "wordmark",
+              "rect": {
+                "x": 130,
+                "y": 21.1875,
+                "width": 134.90625,
+                "height": 31,
+                "top": 21.1875,
+                "right": 264.90625,
+                "bottom": 52.1875,
+                "left": 130
+              }
+            },
+            {
+              "className": "",
+              "rect": {
+                "x": 911.453125,
+                "y": 16,
+                "width": 398.546875,
+                "height": 41.375,
+                "top": 16,
+                "right": 1310,
+                "bottom": 57.375,
+                "left": 911.453125
+              }
+            },
+            {
+              "className": "",
+              "rect": {
+                "x": 911.453125,
+                "y": 28.1875,
+                "width": 41.875,
+                "height": 17,
+                "top": 28.1875,
+                "right": 953.328125,
+                "bottom": 45.1875,
+                "left": 911.453125
+              }
+            },
+            {
+              "className": "",
+              "rect": {
+                "x": 978.921875,
+                "y": 28.1875,
+                "width": 55.234375,
+                "height": 17,
+                "top": 28.1875,
+                "right": 1034.15625,
+                "bottom": 45.1875,
+                "left": 978.921875
+              }
+            },
+            {
+              "className": "language-switch",
+              "rect": {
+                "x": 1059.75,
+                "y": 20.8125,
+                "width": 99.078125,
+                "height": 31.75,
+                "top": 20.8125,
+                "right": 1158.828125,
+                "bottom": 52.5625,
+                "left": 1059.75
+              }
+            },
+            {
+              "className": "nav-enter",
+              "rect": {
+                "x": 1184.421875,
+                "y": 16,
+                "width": 125.578125,
+                "height": 41.375,
+                "top": 16,
+                "right": 1310,
+                "bottom": 57.375,
+                "left": 1184.421875
+              }
+            }
+          ],
+          "child_clipping_count": 0,
+          "hero_title_overlap_count": 0,
+          "base44_badge_collision_count": 0,
+          "language_custom_style": true,
+          "horizontal_overflow": false,
+          "desktop_nav_complete": true,
+          "top_safe": true,
+          "title_clear": true
+        },
+        "path_geometry": {
+          "orientation": "horizontal",
+          "pass": true,
+          "bounds_pass": true,
+          "endpoint_pass": true,
+          "node_count": 4,
+          "path": {
+            "x": 893.375,
+            "y": 359.359375,
+            "width": 159.84375,
+            "height": 0.015625,
+            "top": 359.359375,
+            "right": 1053.21875,
+            "bottom": 359.375,
+            "left": 893.375
+          },
+          "treeA": {
+            "x": 710.390625,
+            "y": 283.65625,
+            "width": 210.328125,
+            "height": 210.328125,
+            "top": 283.65625,
+            "right": 920.71875,
+            "bottom": 493.984375,
+            "left": 710.390625
+          },
+          "treeB": {
+            "x": 1025.875,
+            "y": 283.65625,
+            "width": 210.34375,
+            "height": 210.34375,
+            "top": 283.65625,
+            "right": 1236.21875,
+            "bottom": 494,
+            "left": 1025.875
+          },
+          "anchorA": {
+            "x": 887.78125,
+            "y": 353.765625,
+            "width": 11.1875,
+            "height": 11.1875,
+            "top": 353.765625,
+            "right": 898.96875,
+            "bottom": 364.953125,
+            "left": 887.78125
+          },
+          "anchorB": {
+            "x": 1047.625,
+            "y": 353.78125,
+            "width": 11.1875,
+            "height": 11.1875,
+            "top": 353.78125,
+            "right": 1058.8125,
+            "bottom": 364.96875,
+            "left": 1047.625
+          },
+          "start_point": {
+            "x": 893.3749973255397,
+            "y": 359.35937606215475
+          },
+          "end_point": {
+            "x": 1053.2187519073486,
+            "y": 359.3750024855137
+          },
+          "start_distance_px": 0.0000028776571836179734,
+          "end_distance_px": 0.0000031330108585044963
+        }
+      }
+    },
+    {
+      "name": "desktop-reduced-full",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "capture_mode": "fullPage",
+      "scroll_y": 0,
+      "viewport_width": 1440,
+      "viewport_height": 900,
+      "document_scroll_height": 1932,
+      "image_width": 1440,
+      "image_height": 1932,
+      "screenshot_sha256": "41fabec23ee3921e96d9c82a722cf7afd0ee03bf68e6043ffc46710fa9a64e9d",
+      "screenshot_bytes": 1098997,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "persons": 2,
+        "fragments": 3,
+        "trees": 2,
+        "evidence": [
+          "Exact overlap",
+          "Rare signal",
+          "Shared path",
+          "Meaningful difference"
+        ],
+        "product_choices": 3,
+        "cta": 1,
+        "path_geometry": {
+          "orientation": "horizontal",
+          "pass": true,
+          "bounds_pass": true,
+          "endpoint_pass": true,
+          "node_count": 4,
+          "path": {
+            "x": 893.375,
+            "y": 359.359375,
+            "width": 159.84375,
+            "height": 0.015625,
+            "top": 359.359375,
+            "right": 1053.21875,
+            "bottom": 359.375,
+            "left": 893.375
+          },
+          "treeA": {
+            "x": 710.390625,
+            "y": 283.65625,
+            "width": 210.328125,
+            "height": 210.328125,
+            "top": 283.65625,
+            "right": 920.71875,
+            "bottom": 493.984375,
+            "left": 710.390625
+          },
+          "treeB": {
+            "x": 1025.875,
+            "y": 283.65625,
+            "width": 210.34375,
+            "height": 210.34375,
+            "top": 283.65625,
+            "right": 1236.21875,
+            "bottom": 494,
+            "left": 1025.875
+          },
+          "anchorA": {
+            "x": 887.78125,
+            "y": 353.765625,
+            "width": 11.1875,
+            "height": 11.1875,
+            "top": 353.765625,
+            "right": 898.96875,
+            "bottom": 364.953125,
+            "left": 887.78125
+          },
+          "anchorB": {
+            "x": 1047.625,
+            "y": 353.78125,
+            "width": 11.1875,
+            "height": 11.1875,
+            "top": 353.78125,
+            "right": 1058.8125,
+            "bottom": 364.96875,
+            "left": 1047.625
+          },
+          "start_point": {
+            "x": 893.3749973255397,
+            "y": 359.35937606215475
+          },
+          "end_point": {
+            "x": 1053.2187519073486,
+            "y": 359.3750024855137
+          },
+          "start_distance_px": 0.0000028776571836179734,
+          "end_distance_px": 0.0000031330108585044963
+        }
+      }
+    },
+    {
+      "name": "mobile-reduced-initial",
+      "css_viewport": "390x844",
+      "physical_pixels": "390x844",
+      "device_scale_factor": 1,
+      "capture_mode": "viewport",
+      "scroll_y": 0,
+      "viewport_width": 390,
+      "viewport_height": 844,
+      "document_scroll_height": 2164,
+      "image_width": 390,
+      "image_height": 844,
+      "screenshot_sha256": "3f1abdcc685ec8660665b0701e1c43b2b2fc29847802202a537a1fa867e97dad",
+      "screenshot_bytes": 260453,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "persons": 2,
+        "fragments": 3,
+        "trees": 2,
+        "evidence": [
+          "Exact overlap",
+          "Rare signal",
+          "Shared path",
+          "Meaningful difference"
+        ],
+        "product_choices": 3,
+        "cta": 1,
+        "header": {
+          "pass": true,
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "header_visible": true,
+          "wordmark_count": 1,
+          "story_visible": false,
+          "privacy_visible": false,
+          "language_visible": true,
+          "enter_visible": true,
+          "mobile_compact_nav_allowed": true,
+          "header_rect": {
+            "x": 8,
+            "y": 0,
+            "width": 374,
+            "height": 59.1875,
+            "top": 0,
+            "right": 382,
+            "bottom": 59.1875,
+            "left": 8
+          },
+          "hero_title_rect": {
+            "x": 16,
+            "y": 119.375,
+            "width": 358,
+            "height": 122.8125,
+            "top": 119.375,
+            "right": 374,
+            "bottom": 242.1875,
+            "left": 16
+          },
+          "children": [
+            {
+              "className": "wordmark",
+              "rect": {
+                "x": 8,
+                "y": 18.09375,
+                "width": 99.1875,
+                "height": 22,
+                "top": 18.09375,
+                "right": 107.1875,
+                "bottom": 40.09375,
+                "left": 8
+              }
+            },
+            {
+              "className": "",
+              "rect": {
+                "x": 216.046875,
+                "y": 13.09375,
+                "width": 165.953125,
+                "height": 32,
+                "top": 13.09375,
+                "right": 382,
+                "bottom": 45.09375,
+                "left": 216.046875
+              }
+            },
+            {
+              "className": "language-switch",
+              "rect": {
+                "x": 216.046875,
+                "y": 16.484375,
+                "width": 67.03125,
+                "height": 25.21875,
+                "top": 16.484375,
+                "right": 283.078125,
+                "bottom": 41.703125,
+                "left": 216.046875
+              }
+            },
+            {
+              "className": "nav-enter",
+              "rect": {
+                "x": 288.671875,
+                "y": 13.09375,
+                "width": 93.328125,
+                "height": 32,
+                "top": 13.09375,
+                "right": 382,
+                "bottom": 45.09375,
+                "left": 288.671875
+              }
+            }
+          ],
+          "child_clipping_count": 0,
+          "hero_title_overlap_count": 0,
+          "base44_badge_collision_count": 0,
+          "language_custom_style": true,
+          "horizontal_overflow": false,
+          "desktop_nav_complete": true,
+          "top_safe": true,
+          "title_clear": true
+        },
+        "path_geometry": {
+          "orientation": "vertical",
+          "pass": true,
+          "bounds_pass": true,
+          "endpoint_pass": true,
+          "node_count": 4,
+          "path": {
+            "x": 154.4375,
+            "y": 714.6875,
+            "width": 81.109375,
+            "height": 154.65625,
+            "top": 714.6875,
+            "right": 235.546875,
+            "bottom": 869.34375,
+            "left": 154.4375
+          },
+          "treeA": {
+            "x": 117,
+            "y": 580.53125,
+            "width": 156,
+            "height": 156,
+            "top": 580.53125,
+            "right": 273,
+            "bottom": 736.53125,
+            "left": 117
+          },
+          "treeB": {
+            "x": 117,
+            "y": 847.515625,
+            "width": 156,
+            "height": 156,
+            "top": 847.515625,
+            "right": 273,
+            "bottom": 1003.515625,
+            "left": 117
+          },
+          "anchorA": {
+            "x": 230.9140625,
+            "y": 710.0546875,
+            "width": 9.265625,
+            "height": 9.265625,
+            "top": 710.0546875,
+            "right": 240.1796875,
+            "bottom": 719.3203125,
+            "left": 230.9140625
+          },
+          "anchorB": {
+            "x": 149.8046875,
+            "y": 864.7109375,
+            "width": 9.265625,
+            "height": 9.265625,
+            "top": 864.7109375,
+            "right": 159.0703125,
+            "bottom": 873.9765625,
+            "left": 149.8046875
+          },
+          "start_point": {
+            "x": 235.5468780517578,
+            "y": 714.6875030219555
+          },
+          "end_point": {
+            "x": 154.43750610351563,
+            "y": 869.3437415540218
+          },
+          "start_distance_px": 0.000004294815588105152,
+          "end_distance_px": 0.000010420530263873137
+        }
+      }
+    },
+    {
+      "name": "mobile-390-reduced-full",
+      "css_viewport": "390x844",
+      "physical_pixels": "390x844",
+      "device_scale_factor": 1,
+      "capture_mode": "fullPage",
+      "scroll_y": 0,
+      "viewport_width": 390,
+      "viewport_height": 844,
+      "document_scroll_height": 2164,
+      "image_width": 390,
+      "image_height": 2164,
+      "screenshot_sha256": "7dde7413bc6ed0dee29012ae09172ea8b87a7b57a72b92b86e662806fc8a0758",
+      "screenshot_bytes": 458079,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "persons": 2,
+        "fragments": 3,
+        "trees": 2,
+        "evidence": [
+          "Exact overlap",
+          "Rare signal",
+          "Shared path",
+          "Meaningful difference"
+        ],
+        "product_choices": 3,
+        "cta": 1,
+        "path_geometry": {
+          "orientation": "vertical",
+          "pass": true,
+          "bounds_pass": true,
+          "endpoint_pass": true,
+          "node_count": 4,
+          "path": {
+            "x": 154.4375,
+            "y": 714.6875,
+            "width": 81.109375,
+            "height": 154.65625,
+            "top": 714.6875,
+            "right": 235.546875,
+            "bottom": 869.34375,
+            "left": 154.4375
+          },
+          "treeA": {
+            "x": 117,
+            "y": 580.53125,
+            "width": 156,
+            "height": 156,
+            "top": 580.53125,
+            "right": 273,
+            "bottom": 736.53125,
+            "left": 117
+          },
+          "treeB": {
+            "x": 117,
+            "y": 847.515625,
+            "width": 156,
+            "height": 156,
+            "top": 847.515625,
+            "right": 273,
+            "bottom": 1003.515625,
+            "left": 117
+          },
+          "anchorA": {
+            "x": 230.9140625,
+            "y": 710.0546875,
+            "width": 9.265625,
+            "height": 9.265625,
+            "top": 710.0546875,
+            "right": 240.1796875,
+            "bottom": 719.3203125,
+            "left": 230.9140625
+          },
+          "anchorB": {
+            "x": 149.8046875,
+            "y": 864.7109375,
+            "width": 9.265625,
+            "height": 9.265625,
+            "top": 864.7109375,
+            "right": 159.0703125,
+            "bottom": 873.9765625,
+            "left": 149.8046875
+          },
+          "start_point": {
+            "x": 235.5468780517578,
+            "y": 714.6875030219555
+          },
+          "end_point": {
+            "x": 154.43750610351563,
+            "y": 869.3437415540218
+          },
+          "start_distance_px": 0.000004294815588105152,
+          "end_distance_px": 0.000010420530263873137
+        }
+      }
+    },
+    {
+      "name": "mobile-390-reduced-path",
+      "css_viewport": "390x844",
+      "physical_pixels": "390x844",
+      "device_scale_factor": 1,
+      "capture_mode": "viewport",
+      "scroll_y": 651,
+      "viewport_width": 390,
+      "viewport_height": 844,
+      "document_scroll_height": 2164,
+      "image_width": 390,
+      "image_height": 844,
+      "screenshot_sha256": "8dca6bfacac3c26458ab2b43a11e8c679d4f3c6570e803cef509c63cd403cdbc",
+      "screenshot_bytes": 187351,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "persons": 2,
+        "fragments": 3,
+        "trees": 2,
+        "evidence": [
+          "Exact overlap",
+          "Rare signal",
+          "Shared path",
+          "Meaningful difference"
+        ],
+        "product_choices": 3,
+        "cta": 1,
+        "path_geometry": {
+          "orientation": "vertical",
+          "pass": true,
+          "bounds_pass": true,
+          "endpoint_pass": true,
+          "node_count": 4,
+          "path": {
+            "x": 154.4375,
+            "y": 714.6875,
+            "width": 81.109375,
+            "height": 154.65625,
+            "top": 714.6875,
+            "right": 235.546875,
+            "bottom": 869.34375,
+            "left": 154.4375
+          },
+          "treeA": {
+            "x": 117,
+            "y": 580.53125,
+            "width": 156,
+            "height": 156,
+            "top": 580.53125,
+            "right": 273,
+            "bottom": 736.53125,
+            "left": 117
+          },
+          "treeB": {
+            "x": 117,
+            "y": 847.515625,
+            "width": 156,
+            "height": 156,
+            "top": 847.515625,
+            "right": 273,
+            "bottom": 1003.515625,
+            "left": 117
+          },
+          "anchorA": {
+            "x": 230.9140625,
+            "y": 710.0546875,
+            "width": 9.265625,
+            "height": 9.265625,
+            "top": 710.0546875,
+            "right": 240.1796875,
+            "bottom": 719.3203125,
+            "left": 230.9140625
+          },
+          "anchorB": {
+            "x": 149.8046875,
+            "y": 864.7109375,
+            "width": 9.265625,
+            "height": 9.265625,
+            "top": 864.7109375,
+            "right": 159.0703125,
+            "bottom": 873.9765625,
+            "left": 149.8046875
+          },
+          "start_point": {
+            "x": 235.5468780517578,
+            "y": 714.6875030219555
+          },
+          "end_point": {
+            "x": 154.43750610351563,
+            "y": 869.3437415540218
+          },
+          "start_distance_px": 0.000004294815588105152,
+          "end_distance_px": 0.000010420530263873137
+        }
+      }
+    },
+    {
+      "name": "mobile-390-experience",
+      "css_viewport": "390x844",
+      "physical_pixels": "390x844",
+      "device_scale_factor": 1,
+      "capture_mode": "viewport",
+      "scroll_y": 1320,
+      "viewport_width": 390,
+      "viewport_height": 844,
+      "document_scroll_height": 2164,
+      "image_width": 390,
+      "image_height": 844,
+      "screenshot_sha256": "b0118bd4baf40355a54693265e3b30c3f05fa8ba7b1ebe32bee88fee1ad40db9",
+      "screenshot_bytes": 84443,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "persons": 2,
+        "fragments": 3,
+        "trees": 2,
+        "evidence": [
+          "Exact overlap",
+          "Rare signal",
+          "Shared path",
+          "Meaningful difference"
+        ],
+        "product_choices": 3,
+        "cta": 1,
+        "path_geometry": {
+          "orientation": "vertical",
+          "pass": true,
+          "bounds_pass": true,
+          "endpoint_pass": true,
+          "node_count": 4,
+          "path": {
+            "x": 154.4375,
+            "y": 714.6875,
+            "width": 81.109375,
+            "height": 154.65625,
+            "top": 714.6875,
+            "right": 235.546875,
+            "bottom": 869.34375,
+            "left": 154.4375
+          },
+          "treeA": {
+            "x": 117,
+            "y": 580.53125,
+            "width": 156,
+            "height": 156,
+            "top": 580.53125,
+            "right": 273,
+            "bottom": 736.53125,
+            "left": 117
+          },
+          "treeB": {
+            "x": 117,
+            "y": 847.515625,
+            "width": 156,
+            "height": 156,
+            "top": 847.515625,
+            "right": 273,
+            "bottom": 1003.515625,
+            "left": 117
+          },
+          "anchorA": {
+            "x": 230.9140625,
+            "y": 710.0546875,
+            "width": 9.265625,
+            "height": 9.265625,
+            "top": 710.0546875,
+            "right": 240.1796875,
+            "bottom": 719.3203125,
+            "left": 230.9140625
+          },
+          "anchorB": {
+            "x": 149.8046875,
+            "y": 864.7109375,
+            "width": 9.265625,
+            "height": 9.265625,
+            "top": 864.7109375,
+            "right": 159.0703125,
+            "bottom": 873.9765625,
+            "left": 149.8046875
+          },
+          "start_point": {
+            "x": 235.5468780517578,
+            "y": 714.6875030219555
+          },
+          "end_point": {
+            "x": 154.43750610351563,
+            "y": 869.3437415540218
+          },
+          "start_distance_px": 0.000004294815588105152,
+          "end_distance_px": 0.000010420530263873137
+        }
+      }
+    },
+    {
+      "name": "synthetic-mutual",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "capture_mode": "viewport",
+      "scroll_y": 4903,
+      "viewport_width": 1440,
+      "viewport_height": 900,
+      "document_scroll_height": 6137,
+      "image_width": 1440,
+      "image_height": 900,
+      "screenshot_sha256": "3aa7731d43db05c8ab8b9d3592384cabec34cf50156db1d640b8435b5e89d51b",
+      "screenshot_bytes": 141003,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "synthetic_label": "SIMULATED MUTUAL RESONANCE · NO REAL PERSON\nTwo synthetic paths now resonate."
+      }
+    },
+    {
+      "name": "korean-restored-private",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "capture_mode": "viewport",
+      "scroll_y": 0,
+      "viewport_width": 1440,
+      "viewport_height": 900,
+      "document_scroll_height": 5484,
+      "image_width": 1440,
+      "image_height": 900,
+      "screenshot_sha256": "3a950a6dd8c154231e30a24afeab5fe129b092815943d4e79002608a848daa85",
+      "screenshot_bytes": 791981,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "locale": "ko",
+        "mutual_visible": 0
+      }
+    },
+    {
+      "name": "json-import",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "capture_mode": "viewport",
+      "scroll_y": 780,
+      "viewport_width": 1440,
+      "viewport_height": 900,
+      "document_scroll_height": 2560,
+      "image_width": 1440,
+      "image_height": 900,
+      "screenshot_sha256": "2966aef8af417144bb08c93095c9f895e776717daed3ee24d7c0872562a4156a",
+      "screenshot_bytes": 194931,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "preview": "accepted",
+        "raw_file_network_uploads": 0
+      }
+    },
+    {
+      "name": "html-import",
+      "css_viewport": "1440x900",
+      "physical_pixels": "1440x900",
+      "device_scale_factor": 1,
+      "capture_mode": "viewport",
+      "scroll_y": 780,
+      "viewport_width": 1440,
+      "viewport_height": 900,
+      "document_scroll_height": 2560,
+      "image_width": 1440,
+      "image_height": 900,
+      "screenshot_sha256": "2966aef8af417144bb08c93095c9f895e776717daed3ee24d7c0872562a4156a",
+      "screenshot_bytes": 194931,
+      "horizontal_overflow": false,
+      "overlap_count": 0,
+      "clipping_count": 0,
+      "required": {
+        "preview": "accepted",
+        "raw_file_network_uploads": 0
+      }
+    }
+  ],
+  "assertions": {
+    "console_errors": 0,
+    "page_errors": 0,
+    "unexpected_external_requests": 0,
+    "raw_file_network_uploads": 0,
+    "scene_count": 7,
+    "reduced_motion_complete": true,
+    "mobile_css_viewport": "390x844",
+    "primary_cta_visible_count": 1,
+    "mobile_scene_6_foreground_verified": true,
+    "mobile_initial_composition_verified": true,
+    "desktop_scene_6_people_verified": true,
+    "mobile_scene_6_people_verified": true,
+    "desktop_scene_6_path_geometry_verified": true,
+    "mobile_scene_6_path_geometry_verified": true,
+    "desktop_reduced_path_geometry_verified": true,
+    "mobile_reduced_path_geometry_verified": true,
+    "shared_path_nodes_verified": true,
+    "desktop_header_verified": true,
+    "mobile_header_verified": true,
+    "reduced_motion_header_verified": true,
+    "header_child_geometry_verified": true,
+    "header_language_custom_style_verified": true,
+    "internal_field_exposure_verified": true,
+    "vite_port_closed_after_cleanup": true
+  },
+  "indexeddb": {
+    "databases_scanned": 0,
+    "object_stores_scanned": 0,
+    "keys_scanned": 0,
+    "values_scanned": 0,
+    "read_failures": 0,
+    "indexeddb_scan_executed": true
+  },
+  "cache_storage": {
+    "caches_scanned": 0,
+    "entries_scanned": 0,
+    "request_bodies_scanned": 0,
+    "response_bodies_scanned": 0,
+    "body_read_failures": 0,
+    "cache_storage_scan_executed": true
+  },
+  "internal_field_exposure": {
+    "requests_scanned": 0,
+    "request_bodies_scanned": 0,
+    "responses_scanned": 0,
+    "response_bodies_scanned": 0,
+    "websocket_frames_scanned": 0,
+    "rendered_html_scanned": 0,
+    "react_state_surfaces_scanned": 0,
+    "local_storage_entries_scanned": 0,
+    "session_storage_entries_scanned": 0,
+    "indexeddb_databases_scanned": 0,
+    "indexeddb_object_stores_scanned": 0,
+    "indexeddb_keys_scanned": 0,
+    "indexeddb_values_scanned": 0,
+    "cache_storage_caches_scanned": 0,
+    "cache_storage_entries_scanned": 0,
+    "body_read_failures": 0,
+    "match_hash": 0,
+    "source_record_fingerprint": 0,
+    "input_digest": 0,
+    "source_digest": 0
+  },
+  "browser_response_sanitizer_control": {
+    "executed": true,
+    "runtime": "browser",
+    "shared_production_sanitizer_used": true,
+    "raw_fixture": {
+      "match_hash": 1,
+      "source_record_fingerprint": 1,
+      "input_digest": 1,
+      "source_digest": 1,
+      "total": 6
+    },
+    "sanitized_fixture": {
+      "match_hash": 0,
+      "source_record_fingerprint": 0,
+      "input_digest": 0,
+      "source_digest": 0,
+      "total": 0
+    },
+    "serialized_raw_fixture_detected": true,
+    "serialized_sanitized_fixture_clean": true,
+    "allowed_fields_preserved": true,
+    "input_mutated": false
+  }
+}

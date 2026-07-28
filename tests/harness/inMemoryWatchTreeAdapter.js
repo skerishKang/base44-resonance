@@ -48,5 +48,20 @@ export function createInMemoryWatchTreeAdapter(storageKey="watchtree-test-state"
       persist();
       return {ok:true,import:clone(state.import),event:clone(event)};
     },
+
+    /**
+     * In-memory mock for realtime subscription.
+     * Stores the callback so tests can simulate WatchEvent changes.
+     *
+     * @param {(event: object) => void} callback
+     * @returns {() => void} unsubscribe function
+     */
+    subscribe(callback) {
+      state._realtimeCallbacks = state._realtimeCallbacks || [];
+      state._realtimeCallbacks.push(callback);
+      return () => {
+        state._realtimeCallbacks = (state._realtimeCallbacks || []).filter((cb) => cb !== callback);
+      };
+    },
   };
 }

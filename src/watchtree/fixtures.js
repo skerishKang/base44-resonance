@@ -66,13 +66,11 @@ export function createDemoEventsA() {
   const events = [];
   const creatorFor = (id) => id <= 10 ? "quiet" : id <= 17 ? "ember" : id <= 23 ? "night" : "field";
 
-  // Thirty unique leaves. IDs 3→4→5 form a deliberate same-evening path.
   for (let id = 1; id <= 30; id += 1) {
     const at = id === 3 ? time(7, 19) : id === 4 ? time(7, 20) : id === 5 ? time(7, 21) : time(1 + id * 2, 8 + (id % 12), (id * 7) % 60);
     events.push(rawEvent({ index: id, at, creator: creatorFor(id) }));
   }
 
-  // Eighteen genuine revisits, including four shared repeated leaves.
   const revisits = [1, 2, 3, 4, 1, 2, 3, 4, 9, 10, 12, 14, 16, 18, 20, 22, 24, 26];
   revisits.forEach((id, offset) => events.push(rawEvent({
     index: id,
@@ -83,7 +81,7 @@ export function createDemoEventsA() {
   return decorateRepeats(events).slice(0, 48);
 }
 
-function createCandidate({ id, label, exactIds, repeatedIds, uniqueStart, creatorShift = 0, path = [] }) {
+function createCandidate({ id, label, syntheticLabel, exactIds, repeatedIds, uniqueStart, creatorShift = 0, path = [] }) {
   const events = [];
   exactIds.forEach((content, index) => {
     const pathIndex = path.indexOf(content);
@@ -104,13 +102,14 @@ function createCandidate({ id, label, exactIds, repeatedIds, uniqueStart, creato
     next += 1;
     if (next > 80) next = uniqueStart;
   }
-  return { id, label, synthetic_label: "Synthetic viewer · competition demo", events: decorateRepeats(events.slice(0, 46)) };
+  return { id, label, synthetic_label: syntheticLabel, events: decorateRepeats(events.slice(0, 46)) };
 }
 
 export const SYNTHETIC_CANDIDATES = Object.freeze([
   createCandidate({
     id: "viewer-b",
     label: "Viewer B · Same quiet arc",
+    syntheticLabel: "Synthetic viewer · competition demo",
     exactIds: [1, 2, 3, 4, 5, 6, 7, 8],
     repeatedIds: [1, 2, 3, 4],
     uniqueStart: 31,
@@ -120,6 +119,7 @@ export const SYNTHETIC_CANDIDATES = Object.freeze([
   createCandidate({
     id: "viewer-c",
     label: "Viewer C · Repeated night path",
+    syntheticLabel: "Synthetic viewer · competition demo",
     exactIds: [2, 3, 4, 5, 9, 12],
     repeatedIds: [2, 3],
     uniqueStart: 45,
@@ -129,9 +129,90 @@ export const SYNTHETIC_CANDIDATES = Object.freeze([
   createCandidate({
     id: "viewer-d",
     label: "Viewer D · Adjacent creator trail",
+    syntheticLabel: "Synthetic viewer · competition demo",
     exactIds: [1, 3, 9, 11],
     repeatedIds: [1],
     uniqueStart: 58,
+    creatorShift: 4,
+    path: [],
+  }),
+  createCandidate({
+    id: "archetype-quiet-rewatcher",
+    label: "Quiet Rewatcher · 조용한 반복 감상자",
+    syntheticLabel: "Synthetic archetype · 시청 유형",
+    exactIds: [1, 2, 3, 4, 5, 6],
+    repeatedIds: [1, 1, 2, 2, 3, 4],
+    uniqueStart: 31,
+    creatorShift: 0,
+    path: [1, 2, 3],
+  }),
+  createCandidate({
+    id: "archetype-night-documentary",
+    label: "Night Documentary Explorer · 심야 다큐 탐험가",
+    syntheticLabel: "Synthetic archetype · 시청 유형",
+    exactIds: [7, 8, 9, 10, 11, 12],
+    repeatedIds: [9, 10],
+    uniqueStart: 35,
+    creatorShift: 1,
+    path: [9, 10, 11],
+  }),
+  createCandidate({
+    id: "archetype-learning-trail",
+    label: "Learning Trail Builder · 학습 경로 수집가",
+    syntheticLabel: "Synthetic archetype · 시청 유형",
+    exactIds: [13, 14, 15, 16, 17, 18],
+    repeatedIds: [14, 16],
+    uniqueStart: 40,
+    creatorShift: 2,
+    path: [14, 15, 16],
+  }),
+  createCandidate({
+    id: "archetype-music-loop",
+    label: "Music Loop Listener · 음악 반복 청취자",
+    syntheticLabel: "Synthetic archetype · 시청 유형",
+    exactIds: [3, 4, 8, 9, 12],
+    repeatedIds: [3, 3, 4, 4, 8, 9],
+    uniqueStart: 44,
+    creatorShift: 3,
+    path: [],
+  }),
+  createCandidate({
+    id: "archetype-longform-cinema",
+    label: "Long-form Cinema Viewer · 장편 영상 감상자",
+    syntheticLabel: "Synthetic archetype · 시청 유형",
+    exactIds: [19, 20, 21, 22, 23, 24],
+    repeatedIds: [20, 22],
+    uniqueStart: 50,
+    creatorShift: 0,
+    path: [20, 21, 22],
+  }),
+  createCandidate({
+    id: "archetype-creator-loyalist",
+    label: "Creator Loyalist · 특정 크리에이터 집중형",
+    syntheticLabel: "Synthetic archetype · 시청 유형",
+    exactIds: [1, 2, 3, 6, 7, 8, 25],
+    repeatedIds: [1, 2, 3],
+    uniqueStart: 55,
+    creatorShift: 0,
+    path: [1, 2, 3],
+  }),
+  createCandidate({
+    id: "archetype-rabbit-hole",
+    label: "Topic Rabbit-hole Explorer · 연관 주제 탐험형",
+    syntheticLabel: "Synthetic archetype · 시청 유형",
+    exactIds: [10, 11, 12, 13, 14, 15],
+    repeatedIds: [12, 14],
+    uniqueStart: 60,
+    creatorShift: 1,
+    path: [12, 13, 14],
+  }),
+  createCandidate({
+    id: "archetype-eclectic-wanderer",
+    label: "Eclectic Wanderer · 다양한 주제 유랑형",
+    syntheticLabel: "Synthetic archetype · 시청 유형",
+    exactIds: [5, 11, 17, 23, 29],
+    repeatedIds: [],
+    uniqueStart: 65,
     creatorShift: 4,
     path: [],
   }),

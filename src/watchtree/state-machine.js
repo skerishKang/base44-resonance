@@ -2,6 +2,7 @@ export const initialState = Object.freeze({
   status: "idle",
   import: null,
   preview: null,
+  urlPreview: null,
   events: [],
   tree: null,
   candidates: [],
@@ -21,8 +22,12 @@ export function watchTreeReducer(state, action) {
       return { ...state, status: "preview", preview: action.preview, error: "" };
     case "CANCEL_PREVIEW":
       return { ...state, status: state.import ? "ready" : "idle", preview: null, error: "" };
+    case "URL_PREVIEW":
+      return { ...state, status: "url_preview", urlPreview: action.urlPreview, error: "" };
+    case "CANCEL_URL_PREVIEW":
+      return { ...state, status: state.import ? "ready" : "idle", urlPreview: null, error: "" };
     case "READY":
-      return { ...state, ...action.payload, status: "ready", preview: null, error: "" };
+      return { ...state, ...action.payload, status: "ready", preview: null, urlPreview: null, error: "" };
     case "MATCHING_DISABLED":
       return { ...state, status: "ready", import: { ...state.import, matching_enabled: false }, matchingEnabled: false, tree: null, candidates: [], consent: null, mutual: null, error: "" };
     case "CONSENT":

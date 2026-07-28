@@ -1,5 +1,6 @@
 import { buildWatchTree, orderCandidates } from "../../src/watchtree/matching.js";
 import { createDemoFixture } from "../../src/watchtree/fixtures.js";
+import { parseYouTubeUrl } from "../../src/watchtree/url.js";
 
 const clone=(value)=>structuredClone(value);
 const assignIds=(events,importId)=>events.map((event,index)=>({...event,id:`evt_${index+1}`,import_id:importId}));
@@ -27,6 +28,25 @@ export function createInMemoryWatchTreeAdapter(storageKey="watchtree-test-state"
       if(action==="delete_import"||action==="delete_all"){state={import:null,events:[],tree:null,candidates:[],consent:null,mutual:null,matchingEnabled:false};sessionStorage.removeItem(storageKey);return {...clone(state),complete:true};}
       state.consent=null;state.mutual=null;
       return {...rebuild(),complete:true};
+    },
+    async resolveYouTubeVideo(videoUrl){
+      const parsed=parseYouTubeUrl(videoUrl);
+      if(parsed.error)return{ok:true,metadata:{video_id:parsed.error,videoUrl},confirmation_token:"mock_token"};
+      return {ok:true,metadata:{video_id:parsed.videoId,canonical_url:parsed.canonicalUrl,bounded_title:`Test Video ${parsed.videoId.slice(0,6)}`,channel_id:"UC-mock",bounded_creator_label:"Test Channel",published_at:"2024-01-01T00:00:00.000Z",duration_seconds:180,category_id:"22",thumbnail_url:"",embeddable:true,privacy_status:"public"},confirmation_token:`confirm_${parsed.videoId}`};
+    },
+    async addWatchUrlEvent(payload){
+      const existingImport=state.import?.source_type==="url_collection"?state.import:null;
+      let importId=existingImport?.id??"imp_url";
+      if(!existingImport){
+        state.import={id:importId,status:"completed",source_type:"url_collection",source_platform:"youtube",is_synthetic:false,matching_enabled:false,client_nonce:"test-nonce",file_sha256_or_fixture_digest:"url-collection-v1",normalization_version:"yt-takeout-v1",record_count:0,accepted_count:0,excluded_count:0,rejected_count:0,committed_count:0,consent_version:"watchtree-consent-v1",source_disposition:"browser_local_not_uploaded",schema_version:1};
+      }
+      const eventId=`evt_${state.events.length+1}`;
+      const event={id:eventId,source_platform:"youtube",source_type:"url_collection",normalized_content_id:payload.videoId,bounded_title:`Test Video ${payload.videoId.slice(0,6)}`,bounded_creator_label:"Test Channel",canonical_public_url:`https://www.youtube.com/watch?v=${payload.videoId}`,watched_at:payload.watchedAt??new Date().toISOString(),repeat_count:1,first_watched_at:payload.watchedAt??new Date().toISOString(),last_watched_at:payload.watchedAt??new Date().toISOString(),occurrence_index:1,same_second_ordinal:0,visibility_state:"owner_only",matching_enabled:false,sensitivity_excluded:false,exclusion_reason:"",optional_owner_note:payload.privateNote??"",import_id:importId,normalization_version:"yt-takeout-v1",canonicalization_version:"youtube-id-v1",creator_key:"youtube:channel:Test Channel",is_synthetic:false,schema_version:1,source_ordinal:state.events.length+1};
+      state.events=[...state.events,event];
+      state.import.committed_count=state.events.length;
+      state.import.record_count=state.events.length;
+      persist();
+      return {ok:true,import:clone(state.import),event:clone(event)};
     },
   };
 }

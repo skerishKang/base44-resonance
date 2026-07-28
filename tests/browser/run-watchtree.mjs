@@ -1238,8 +1238,11 @@ try {
     assert.deepEqual(await firstCandidate.locator(".evidence strong").allTextContents(), ["Exact overlap", "Rare signal", "Shared path", "Meaningful difference"]);
     await page.getByTestId("exclude-event").first().click();
     await page.getByTestId("candidate-list").waitFor();
+    const revealConsent = firstCandidate.getByTestId("reveal-consent");
+    assert.equal(await revealConsent.isDisabled(), true, "reveal consent must start disabled before any evidence token is selected");
     await firstCandidate.locator('input[type="checkbox"]').first().check();
-    await firstCandidate.getByTestId("reveal-consent").click();
+    assert.equal(await revealConsent.isDisabled(), false, "reveal consent must enable once candidate evidence is selected");
+    await revealConsent.click();
     await page.getByTestId("consent-state").waitFor();
     await page.getByTestId("simulate-mutual").click();
     await page.getByTestId("simulated-mutual").waitFor();

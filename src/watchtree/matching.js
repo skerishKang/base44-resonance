@@ -109,6 +109,22 @@ export function scoreCandidate(ownerEvents, candidate, corpus = []) {
 
 export function orderCandidates(ownerEvents,candidates){return candidates.map((candidate)=>scoreCandidate(ownerEvents,candidate,candidates)).sort((a,b)=>b.score-a.score||b.rare_overlap_count-a.rare_overlap_count||b.shared_path_count-a.shared_path_count||b.exact_overlap_count-a.exact_overlap_count||a.id.localeCompare(b.id));}
 
+export function selectedEvidenceTokensForCandidate(candidate, selectedTokens) {
+  const allowedTokenIds = new Set(
+    (candidate?.evidence_tokens ?? [])
+      .map((token) => token?.id)
+      .filter((id) => typeof id === "string" && id.length > 0),
+  );
+  const chosen = [];
+  const seen = new Set();
+  for (const id of selectedTokens ?? []) {
+    if (typeof id !== "string" || seen.has(id) || !allowedTokenIds.has(id)) continue;
+    seen.add(id);
+    chosen.push(id);
+  }
+  return chosen;
+}
+
 export function buildWatchTree(events){
   const active=events.filter((e)=>!e.sensitivity_excluded);
   const creators=new Map(); for(const event of active){const key=event.bounded_creator_label||"Unknown creator";const entry=creators.get(key)??{label:key,count:0,ids:new Set()};entry.count+=1;entry.ids.add(event.normalized_content_id);creators.set(key,entry);}

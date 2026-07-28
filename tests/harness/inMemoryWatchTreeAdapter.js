@@ -24,7 +24,8 @@ export function createInMemoryWatchTreeAdapter(storageKey="watchtree-test-state"
       if(action==="exclude_event")state.events=state.events.map((e)=>e.id===payload.event_id?{...e,sensitivity_excluded:true,matching_enabled:false}:e);
       if(action==="exclude_creator")state.events=state.events.map((e)=>e.bounded_creator_label===payload.creator_label?{...e,sensitivity_excluded:true,matching_enabled:false}:e);
       if(action==="exclude_date_range")state.events=state.events.map((e)=>e.watched_at.slice(0,10)>=payload.from&&e.watched_at.slice(0,10)<=payload.to?{...e,sensitivity_excluded:true,matching_enabled:false}:e);
-      if(action==="delete_import"||action==="delete_all"){state={import:null,events:[],tree:null,candidates:[],consent:null,mutual:null,matchingEnabled:false};sessionStorage.removeItem(storageKey);return clone(state);}
+      if(action==="delete_import"||action==="delete_all"){state={import:null,events:[],tree:null,candidates:[],consent:null,mutual:null,matchingEnabled:false};sessionStorage.removeItem(storageKey);return {...clone(state),complete:true};}
+      state.consent=null;state.mutual=null;
       return rebuild();
     },
   };

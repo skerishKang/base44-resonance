@@ -125,6 +125,18 @@ export function selectedEvidenceTokensForCandidate(candidate, selectedTokens) {
   return chosen;
 }
 
+// Restore consent/mutual only when their candidate belongs to the candidate
+// set of the active restored tree, never from another import or tree.
+export function scopeRestoredMatching(candidates, consents, mutuals) {
+  const candidateIds = new Set(
+    (candidates ?? []).map((candidate) => candidate?.id).filter((id) => typeof id === "string" && id.length > 0),
+  );
+  return {
+    consent: (consents ?? []).find((item) => item?.state === "granted" && candidateIds.has(item.candidate_id)) ?? null,
+    mutual: (mutuals ?? []).find((item) => item?.state === "mutual" && candidateIds.has(item.candidate_id)) ?? null,
+  };
+}
+
 export function buildWatchTree(events){
   const active=events.filter((e)=>!e.sensitivity_excluded);
   const creators=new Map(); for(const event of active){const key=event.bounded_creator_label||"Unknown creator";const entry=creators.get(key)??{label:key,count:0,ids:new Set()};entry.count+=1;entry.ids.add(event.normalized_content_id);creators.set(key,entry);}

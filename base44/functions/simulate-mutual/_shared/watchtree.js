@@ -126,6 +126,125 @@ export async function updateRecords(entity, records, payloadFor) {
   for (let offset = 0; offset < records.length; offset += BATCH_SIZE) await Promise.all(records.slice(offset, offset + BATCH_SIZE).map((record) => entity.update(record.id, payloadFor(record))));
 }
 
+export const DELETE_PAGE_SIZE = 100;
+export const DELETE_MAX_PASSES = 80;
+
+// Fetch every page for a criteria/list query instead of trusting a single capped page.
+export async function listAllRecords(entity, criteria, sort, pageSize = DELETE_PAGE_SIZE) {
+  const all = [];
+  let offset = 0;
+  for (;;) {
+    const page = criteria ? await entity.filter(criteria, sort, pageSize, offset) : await entity.list(sort, pageSize, offset);
+    const records = page ?? [];
+    all.push(...records);
+    if (records.length < pageSize) break;
+    offset += pageSize;
+  }
+  return all;
+}
+
+// Delete records matching criteria until none remain, in parallel batches.
+// Re-lists from offset 0 on every pass so an interrupted run resumes idempotently.
+// Returns complete:false when maxPasses is exhausted before the scope is empty.
+export async function drainRecords(entity, criteria, sort, options = {}) {
+  const pageSize = options.pageSize ?? DELETE_PAGE_SIZE;
+  const maxPasses = options.maxPasses ?? DELETE_MAX_PASSES;
+  let deleted = 0;
+  for (let pass = 0; pass < maxPasses; pass += 1) {
+    const page = criteria ? await entity.filter(criteria, sort, pageSize, 0) : await entity.list(sort, pageSize, 0);
+    const records = (page ?? []).filter((record) => record?.id);
+    if (records.length === 0) return { deleted, complete: true };
+    await Promise.all(records.map((record) => entity.delete(record.id).catch(() => {})));
+    deleted += records.length;
+  }
+  return { deleted, complete: false };
+}
+
+async function drainWithVisit(entity, criteria, sort, visit, options) {
+  const pageSize = options.pageSize ?? DELETE_PAGE_SIZE;
+  const maxPasses = options.maxPasses ?? DELETE_MAX_PASSES;
+  let deleted = 0;
+  for (let pass = 0; pass < maxPasses; pass += 1) {
+    const records = ((await entity.filter(criteria, sort, pageSize, 0)) ?? []).filter((record) => record?.id);
+    if (records.length === 0) return { deleted, complete: true };
+    for (const record of records) {
+      await visit(record);
+      await entity.delete(record.id).catch(() => {});
+      deleted += 1;
+    }
+  }
+  return { deleted, complete: false };
+}
+
+// Remove every derived matching record for one import: trees, candidates,
+// consents, and mutuals. Mutuals are drained independently of consents so an
+// orphan mutual is removed even when no RevealConsent remains.
+export async function clearDerivedRecords(base44, importId, options = {}) {
+  const progress = { trees: 0, candidates: 0, consents: 0, mutuals: 0 };
+  let complete = true;
+  const trees = await drainWithVisit(base44.entities.WatchTreeFingerprint, { import_id: importId }, "-created_date", async (tree) => {
+    const candidates = await drainWithVisit(base44.entities.SharedPathCandidate, { fingerprint_id: tree.id }, "candidate_rank", async (candidate) => {
+      const [mutuals, consents] = await Promise.all([
+        drainRecords(base44.entities.MutualResonance, { candidate_id: candidate.id }, "-created_date", options),
+        drainRecords(base44.entities.RevealConsent, { candidate_id: candidate.id }, "-created_date", options),
+      ]);
+      progress.mutuals += mutuals.deleted;
+      progress.consents += consents.deleted;
+      if (!mutuals.complete || !consents.complete) complete = false;
+    }, options);
+    progress.candidates += candidates.deleted;
+    if (!candidates.complete) complete = false;
+  }, options);
+  progress.trees += trees.deleted;
+  if (!trees.complete) complete = false;
+  return { progress, complete };
+}
+
+// Fully delete one import and everything derived from it. The import record is
+// removed only after every child drain completes, so an interrupted run still
+// sees the import and resumes from it.
+export async function deleteImportRecords(base44, watchImport, options = {}) {
+  const derived = await clearDerivedRecords(base44, watchImport.id, options);
+  const [events, receipts, signals] = await Promise.all([
+    drainRecords(base44.entities.WatchEvent, { import_id: watchImport.id }, "watched_at", options),
+    drainRecords(base44.entities.ImportChunkReceipt, { import_id: watchImport.id }, "chunk_index", options),
+    drainRecords(base44.entities.WatchMatchSignal, { import_id: watchImport.id }, "-created_date", options),
+  ]);
+  const childrenComplete = derived.complete && events.complete && receipts.complete && signals.complete;
+  if (childrenComplete) await base44.entities.WatchImport.delete(watchImport.id).catch(() => {});
+  const remaining = await unavailable(() => base44.entities.WatchImport.get(watchImport.id));
+  const progress = {
+    imports: remaining ? 0 : 1,
+    trees: derived.progress.trees,
+    candidates: derived.progress.candidates,
+    consents: derived.progress.consents,
+    mutuals: derived.progress.mutuals,
+    events: events.deleted,
+    receipts: receipts.deleted,
+    signals: signals.deleted,
+  };
+  return { progress, complete: childrenComplete && !remaining };
+}
+
+// Delete every caller-owned import (RLS scoped by the request client) until
+// none remain. Bounded by maxPasses; reports complete:false when the budget is
+// exhausted so the caller can retry and resume.
+export async function deleteAllRecords(base44, options = {}) {
+  const pageSize = options.pageSize ?? DELETE_PAGE_SIZE;
+  const maxPasses = options.maxPasses ?? DELETE_MAX_PASSES;
+  const progress = { imports: 0, trees: 0, candidates: 0, consents: 0, mutuals: 0, events: 0, receipts: 0, signals: 0 };
+  for (let pass = 0; pass < maxPasses; pass += 1) {
+    const imports = ((await base44.entities.WatchImport.list("-created_date", pageSize, 0)) ?? []).filter((record) => record?.id);
+    if (imports.length === 0) return { progress, complete: true };
+    for (const watchImport of imports) {
+      const result = await deleteImportRecords(base44, watchImport, options);
+      for (const key of Object.keys(progress)) progress[key] += result.progress[key] ?? 0;
+    }
+  }
+  const remaining = (await base44.entities.WatchImport.list("-created_date", 1, 0)) ?? [];
+  return { progress, complete: remaining.length === 0 };
+}
+
 const CREATORS = ["Quiet Signal", "Studio Ember", "Night Archive", "Field Notes", "Long Light", "Small Frame"];
 const pad = (value) => String(value).padStart(3, "0");
 const at = (day, hour = 20, minute = 0) => new Date(Date.UTC(2026, 3, day, hour, minute)).toISOString();

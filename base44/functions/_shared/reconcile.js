@@ -1,6 +1,8 @@
 // Shared reconciliation utilities for WatchTree data consistency.
 // Used by reconcile-watch-data function to clean up orphaned and partial data.
 
+import { listAllRecords } from "./watchtree.js";
+
 export const ALLOWED_ACTIONS = new Set([
   "reconcile_import",
   "reconcile_orphans",
@@ -94,22 +96,12 @@ export async function reconcileImports(base44, ownerId, cursor) {
 }
 
 export async function reconcileOrphans(base44, ownerId) {
-  const allImports = await base44.entities.WatchImport.filter(
-    { created_by_id: ownerId },
-    "created_date",
-    MAX_RECORDS,
-    0,
-  );
+  const allImports = await listAllRecords(base44.entities.WatchImport, { created_by_id: ownerId }, "created_date");
   const validImportIds = new Set(allImports.map((item) => item.id));
   const results = [];
 
   // Find orphaned events (events whose import no longer exists)
-  const allEvents = await base44.entities.WatchEvent.filter(
-    { created_by_id: ownerId },
-    "watched_at",
-    MAX_RECORDS,
-    0,
-  );
+  const allEvents = await listAllRecords(base44.entities.WatchEvent, { created_by_id: ownerId }, "watched_at");
   for (const event of allEvents) {
     if (!validImportIds.has(event.import_id)) {
       await base44.entities.WatchEvent.delete(event.id).catch(() => {});
@@ -118,12 +110,7 @@ export async function reconcileOrphans(base44, ownerId) {
   }
 
   // Find orphaned chunk receipts
-  const allReceipts = await base44.entities.ImportChunkReceipt.filter(
-    { created_by_id: ownerId },
-    "chunk_index",
-    MAX_RECORDS,
-    0,
-  );
+  const allReceipts = await listAllRecords(base44.entities.ImportChunkReceipt, { created_by_id: ownerId }, "chunk_index");
   for (const receipt of allReceipts) {
     if (!validImportIds.has(receipt.import_id)) {
       await base44.entities.ImportChunkReceipt.delete(receipt.id).catch(() => {});
@@ -131,47 +118,53 @@ export async function reconcileOrphans(base44, ownerId) {
     }
   }
 
-  // Find orphaned trees, candidates, consents, mutuals
-  const allTrees = await base44.entities.WatchTreeFingerprint.filter(
-    { created_by_id: ownerId },
-    "-created_date",
-    MAX_RECORDS,
-    0,
-  );
+  // Find orphaned trees, candidates, consents, mutuals. Mutuals are listed
+  // independently of consents so an orphan mutual is deleted even when no
+  // RevealConsent remains for its candidate.
+  const allTrees = await listAllRecords(base44.entities.WatchTreeFingerprint, { created_by_id: ownerId }, "-created_date");
+  const validCandidateIds = new Set();
   for (const tree of allTrees) {
-    if (!validImportIds.has(tree.import_id)) {
-      const candidates = await base44.entities.SharedPathCandidate.filter(
-        { fingerprint_id: tree.id },
-        "candidate_rank",
-        MAX_RECORDS,
-        0,
-      );
-      for (const candidate of candidates) {
-        const consents = await base44.entities.RevealConsent.filter(
-          { candidate_id: candidate.id },
-          "-created_date",
-          MAX_RECORDS,
-          0,
-        );
-        for (const consent of consents) {
-          const mutuals = await base44.entities.MutualResonance.filter(
-            { candidate_id: candidate.id },
-            "-created_date",
-            MAX_RECORDS,
-            0,
-          );
-          for (const mutual of mutuals) {
-            await base44.entities.MutualResonance.delete(mutual.id).catch(() => {});
-            results.push({ resource: "MutualResonance", id: mutual.id, action: "deleted_orphan" });
-          }
-          await base44.entities.RevealConsent.delete(consent.id).catch(() => {});
-          results.push({ resource: "RevealConsent", id: consent.id, action: "deleted_orphan" });
-        }
-        await base44.entities.SharedPathCandidate.delete(candidate.id).catch(() => {});
-        results.push({ resource: "SharedPathCandidate", id: candidate.id, action: "deleted_orphan" });
+    const candidates = await listAllRecords(base44.entities.SharedPathCandidate, { fingerprint_id: tree.id }, "candidate_rank");
+    if (validImportIds.has(tree.import_id)) {
+      for (const candidate of candidates) validCandidateIds.add(candidate.id);
+      continue;
+    }
+    for (const candidate of candidates) {
+      const [consents, mutuals] = await Promise.all([
+        listAllRecords(base44.entities.RevealConsent, { candidate_id: candidate.id }, "-created_date"),
+        listAllRecords(base44.entities.MutualResonance, { candidate_id: candidate.id }, "-created_date"),
+      ]);
+      for (const mutual of mutuals) {
+        await base44.entities.MutualResonance.delete(mutual.id).catch(() => {});
+        results.push({ resource: "MutualResonance", id: mutual.id, action: "deleted_orphan" });
       }
-      await base44.entities.WatchTreeFingerprint.delete(tree.id).catch(() => {});
-      results.push({ resource: "WatchTreeFingerprint", id: tree.id, action: "deleted_orphan" });
+      for (const consent of consents) {
+        await base44.entities.RevealConsent.delete(consent.id).catch(() => {});
+        results.push({ resource: "RevealConsent", id: consent.id, action: "deleted_orphan" });
+      }
+      await base44.entities.SharedPathCandidate.delete(candidate.id).catch(() => {});
+      results.push({ resource: "SharedPathCandidate", id: candidate.id, action: "deleted_orphan" });
+    }
+    await base44.entities.WatchTreeFingerprint.delete(tree.id).catch(() => {});
+    results.push({ resource: "WatchTreeFingerprint", id: tree.id, action: "deleted_orphan" });
+  }
+
+  // Sweep consent and mutual records whose candidate no longer exists at all,
+  // independent of whether a consent record remains.
+  const [allConsents, allMutuals] = await Promise.all([
+    listAllRecords(base44.entities.RevealConsent, { created_by_id: ownerId }, "-created_date"),
+    listAllRecords(base44.entities.MutualResonance, { created_by_id: ownerId }, "-created_date"),
+  ]);
+  for (const consent of allConsents) {
+    if (!validCandidateIds.has(consent.candidate_id)) {
+      await base44.entities.RevealConsent.delete(consent.id).catch(() => {});
+      results.push({ resource: "RevealConsent", id: consent.id, action: "deleted_orphan" });
+    }
+  }
+  for (const mutual of allMutuals) {
+    if (!validCandidateIds.has(mutual.candidate_id)) {
+      await base44.entities.MutualResonance.delete(mutual.id).catch(() => {});
+      results.push({ resource: "MutualResonance", id: mutual.id, action: "deleted_orphan" });
     }
   }
 

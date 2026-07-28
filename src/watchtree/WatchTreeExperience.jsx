@@ -2,6 +2,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { getWatchTreeCopy } from "./copy.js";
 import { selectedEvidenceTokensForCandidate } from "./matching.js";
 import { initialState, watchTreeReducer } from "./state-machine.js";
+import { LIMITS } from "./constants.js";
 import { WatchTreeGraphic } from "./WatchTreeGraphic.jsx";
 
 const createWorker = () => new Worker(new URL("./watch-history.worker.js", import.meta.url), { type: "module" });
@@ -133,7 +134,17 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
     const mutation = await adapter.mutatePrivacy(action, payload);
     setSelectedTokens([]);
     const refreshed = await refreshAfterPrivacy();
-    dispatch({ type: "READY", payload: { ...mutation, ...refreshed, import: state.import, matchingEnabled: state.matchingEnabled } });
+    dispatch({
+      type: "READY",
+      payload: {
+        ...mutation,
+        ...refreshed,
+        import: state.import,
+        matchingEnabled: state.matchingEnabled,
+        consent: null,
+        mutual: null,
+      },
+    });
   });
 
   const consent = (candidate) => run(`consent:${candidate.id}`, async () => {
@@ -155,7 +166,10 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
   });
 
   const clear = (action, payload = {}) => run(action, async () => {
-    await adapter.mutatePrivacy(action, payload);
+    let result = await adapter.mutatePrivacy(action, payload);
+    for (let pass = 0; result?.complete === false && pass < LIMITS.deleteResumePasses; pass += 1) {
+      result = await adapter.mutatePrivacy(action, payload);
+    }
     setSelectedTokens([]);
     dispatch({ type: "CLEARED" });
   });

@@ -75,7 +75,7 @@ Base44 capabilities audited for the Build-Off submission build. Status values: `
 | **Merged SHA** | Not applicable — not implemented. |
 | **Production verification** | N/A. |
 | **Submission checkbox eligible** | No — not implemented. |
-| **Notes** | Optional enhancement tracked in Issue #41. Would reduce Privacy mutation latency from poll-based to push-based. Not required for submission. |
+| **Notes** | Optional enhancement tracked in Issue #41. Would reduce Privacy mutation latency from poll-based to push-based. Not required for submission. Pending Issue #41 remote review. |
 
 ---
 
@@ -89,8 +89,8 @@ Base44 capabilities audited for the Build-Off submission build. Status values: `
 | **Source path** | `src/watchtree/watch-history.worker.js` — browser Worker. |
 | **Merged SHA** | `959afdc`. |
 | **Production verification** | Worker runs in production site. Network tab shows no file uploads to Base44. |
-| **Submission checkbox eligible** | Yes — intentionally not used. Filing this as a privacy-positive design choice rather than a missing capability. |
-| **Notes** | Base44 file storage exists but was never required. The privacy-by-design choice to keep raw data in the browser worker is stronger than uploading and trusting server-side deletion. |
+| **Submission checkbox eligible** | No — the product does not use Base44 File & media storage. Raw watch-history files are parsed in a browser Worker and never uploaded. |
+| **Notes** | The privacy-by-design choice to keep raw data in the browser worker is stronger than uploading and trusting server-side deletion. |
 
 ---
 
@@ -100,7 +100,7 @@ Base44 capabilities audited for the Build-Off submission build. Status values: `
 |------------|--------|-----------------|
 | Authentication & user management | `VERIFIED_PRODUCTION` | AuthPanel UI, Function auth guards |
 | Database / Entities | `VERIFIED_PRODUCTION` | 13 schema files, RLS declarations |
-| Backend Functions (Deno) | `VERIFIED_PRODUCTION` | 13 entry.ts files, CI verifies shared module parity |
+| Backend Functions (Deno) | `VERIFIED_PRODUCTION` (12-function baseline); `add-watch-url-event` `MERGED_NOT_DEPLOYED` | 13 entry.ts files (source), CI verifies shared module parity |
 | AI / LLM / Agents | `ROADMAP_ONLY` | No AI imports in matching code |
 | Realtime subscriptions | `ROADMAP_ONLY` | No realtime calls in source |
 | File & media storage | `NOT_USED` | Worker-local parsing, no upload endpoints |
@@ -134,7 +134,7 @@ Base44 capabilities audited for the Build-Off submission build. Status values: `
 | `add-watch-url-event` | URL collection commit | No |
 | `build-watch-tree` | Tree computation after import | No |
 | `commit-watch-import` | Takeout import commit | No |
-| `compute-matches` | Legacy matching | Vesitigal |
+| `compute-matches` | Legacy matching | Vestigial |
 | `delete-watch-data` | Privacy deletion | No |
 | `find-shared-paths` | Deterministic scoring | No |
 | `generate-fingerprint` | Legacy fingerprint | Vestigial |

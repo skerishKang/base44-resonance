@@ -90,7 +90,7 @@ A chronological account of building **WatchTree** on Base44 with external agenti
 
 **Date:** 2026-07-26 – 2026-07-28
 
-**Problem:** Each backend function needed authenticated caller identity, bounded request validation, and deterministic deterministic (non-AI) logic. Functions could not use service role, live AI, or Base44 Agents.
+**Problem:** Each backend function needed authenticated caller identity, bounded request validation, and deterministic (non-AI) logic. Functions could not use service role, live AI, or Base44 Agents.
 
 **Decision:** Build 13 caller-scoped Deno Functions following a uniform entrypoint pattern:
 
@@ -109,7 +109,7 @@ Shared modules (`watchtree.js`, `sanitizer.js`, `watchtree-archetypes.js`, `reco
 
 **Issue / PR / SHA:** All Functions across PR #32, #36, #37; final inventory at `959afdc`.
 
-**Failure or risk:** Initial Functions used `context.base44` (invalid entrypoint pattern for Base44 functions). The AI AI CTO review caught this — converted all to `Deno.serve` + `createClientFromRequest`.
+**Failure or risk:** Initial Functions used `context.base44` (invalid entrypoint pattern for Base44 functions). The AI CTO review caught this — converted all to `Deno.serve` + `createClientFromRequest`.
 
 **Correction:** After first AI CTO review, all Functions were rewritten to the canonical pattern. Two new Functions (`resolve-youtube-video`, `add-watch-url-event`) were also converted and `resolve-youtube-video` was later removed.
 
@@ -133,7 +133,7 @@ For API-key-free URL collections, a grounded 4-archetype subset is used: Quiet R
 
 **Base44 capability used:** `orderCandidates` runs inside the `find-shared-paths` Function, creating `SharedPathCandidate` records with HMAC-deduplicated source digests.
 
-**Issue / PR / SHA:** PR #37, base `959afdc`.
+**Issue / PR / SHA:** PR #37; base `a4975906a81eacfd2c07f7c9bd7a5ecc24bd569b`, reviewed head `cb385a56795a8d0a0918c5a4d0245e164f30e82d`, squash merge `959afdcc85e352665e58efc6394a0db91809ab5d`.
 
 **Failure or risk:** Early backend had a hardcoded 10-unique-ID threshold that returned `NO_ELIGIBLE_EVENTS` for real URL collections. AI CTO review identified the incorrect threshold. Also, empty creator labels were counted as real creator buckets, producing false Creator Loyalist evidence.
 
@@ -253,19 +253,25 @@ Both jobs trigger on PR and push to `main` plus two retained feature branches. C
 
 **Problem:** The Build-Off submission required judge-facing documentation, a demo video script, architecture diagrams, and a clear separation between deployed features and roadmap items.
 
-**Decision:** Create `docs/submission/` directory with:
-- `DEV_BUILD_OFF_SUBMISSION.md` — portal-ready answers
-- `BASE44_ARCHITECTURE.md` — Entity/Function/Rol diagram
-- `JUDGE_GUIDE.md` — 60-second and 3-minute walkthrough
-- `PRIVACY_AND_SECURITY.md` — privacy model
-- `ROADMAP.md` — post-submission plans
-- `VIDEO_SCRIPT.md` — demo video narration
-- `BUILD_JOURNAL.md` — this document
+**Decision:** Begin creating `docs/submission/` with the narrative foundation:
+- `BUILD_JOURNAL.md` — chronological milestone log
 - `WHY_BASE44.md` — platform discovery story
 - `BACKEND_CAPABILITY_LEDGER.md` — capability audit
 - `AGENTIC_DEVELOPMENT_METHOD.md` — agentic workflow
 
-**Base44 capability used:** All 13 Entities, 13 Functions, Auth/RLS, hosting, SDK.
+Additional documents (DEV_BUILD_OFF_SUBMISSION.md, BASE44_ARCHITECTURE.md, JUDGE_GUIDE.md, PRIVACY_AND_SECURITY.md, ROADMAP.md, VIDEO_SCRIPT.md) are required/planned under Issues #39 and #40.
+
+**Base44 capability used:** All Entities (13 schemas), Functions (12 deployed baseline + 1 merged not deployed), Auth/RLS, hosting, SDK.
+
+**Issue / PR / SHA:** Issue #39; branch `docs/submission-base44-discovery-journal-42`.
+
+**Failure or risk:** Documentation could claim deployed status for un-merged or undeployed features.
+
+**Correction:** Every capability claim cross-references its exact merge SHA and deployment status. `MERGED_NOT_DEPLOYED` used for merged-but-undeployed features.
+
+**Verification evidence:** All documents reference actual source paths and SHAs. No fabricated capabilities.
+
+**Product result:** Submission narrative and capability-audit foundation prepared.
 
 **Issue / PR / SHA:** Issue #39; branch `docs/submission-base44-discovery-journal-42`.
 

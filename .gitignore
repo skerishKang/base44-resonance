@@ -19,3 +19,7 @@ dist
 .app.json*
 .types/
 visual-evidence-v7/
+
+# Video work
+.video-work/
+video-output/

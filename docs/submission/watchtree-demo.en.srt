@@ -1,0 +1,85 @@
+1
+00:00:00,000 --> 00:00:12,000
+Your viewing history can say something
+about how you remember.
+But it should never become
+another surveillance profile.
+WatchTree lets you build a private memory tree —
+from links you choose, not data taken from you.
+
+2
+00:00:12,000 --> 00:00:20,000
+WatchTree never reads your YouTube account.
+There is no OAuth, no API key,
+no automatic history import.
+
+3
+00:00:20,000 --> 00:00:38,000
+You paste a public YouTube URL.
+WatchTree validates it and stores
+only what you deliberately add.
+You can attach a watched date, mark a rewatch,
+or leave a private note.
+Every record enters your collection
+only because you chose it.
+
+4
+00:00:38,000 --> 00:01:03,000
+As your collection grows,
+WatchTree builds your private tree.
+It shows your event count,
+repeat tendency, and time rhythm.
+These signals come only
+from records you provided.
+User-added labels are shown as unverified.
+WatchTree does not generate an AI profile.
+It reflects what you chose to remember.
+
+5
+00:01:03,000 --> 00:01:28,000
+WatchTree compares your records against
+clearly synthetic viewing archetypes —
+not real people.
+Matching is deterministic and explainable.
+Each candidate shows bounded evidence
+drawn from your own records.
+When signal is insufficient,
+WatchTree says so.
+There is no soulmate score.
+There is no real-person scan.
+
+6
+00:01:28,000 --> 00:01:48,000
+Before any result is revealed,
+you select which evidence to share
+and give explicit consent.
+The mutual state shown here is simulated —
+it does not represent another real user.
+Your consent choices persist across reloads.
+
+7
+00:01:48,000 --> 00:02:06,000
+Privacy is a product feature,
+not a footer promise.
+You can turn matching off,
+exclude specific records,
+or delete your entire collection.
+After deletion, WatchTree restores
+a clean empty state.
+Your data lifecycle is always in your hands.
+
+8
+00:02:06,000 --> 00:02:16,000
+Base44 is not only where WatchTree is hosted.
+It is the authenticated data, permission,
+function, and deployment layer
+behind the entire privacy model.
+Base44 Auth verifies every caller.
+Owner-scoped Entities enforce row-level security.
+Caller-authenticated Deno Functions
+protect server state.
+
+9
+00:02:16,000 --> 00:02:20,000
+WatchTree by Resonance.
+Built for the Base44 Dev Build-Off.

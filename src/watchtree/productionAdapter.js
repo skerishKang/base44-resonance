@@ -30,6 +30,41 @@ async function invokeWithRetry(name, payload, attempts = 3) {
   throw lastError;
 }
 
+// delete_import-specific retry policy. When the same request (same nonce,
+// same payload) has already survived a retryable transport/5xx ambiguity, a
+// later RESOURCE_UNAVAILABLE means the first attempt completed the deletion
+// server-side and only its response was lost, so it is read as completion.
+// A RESOURCE_UNAVAILABLE on the first attempt (nonexistent or cross-user id)
+// remains an error; every other failure keeps the normal retry contract.
+async function invokeDestructiveWithAmbiguity(name, payload, attempts = 3) {
+  const base44 = await getBase44Client();
+  let sawRetryableAmbiguity = false;
+  let lastError;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const result = unwrap(await base44.functions.invoke(name, payload));
+      if (result?.ok === false) {
+        if (sawRetryableAmbiguity && result.error?.code === "RESOURCE_UNAVAILABLE") {
+          return { ok: true, deleted: true, complete: true, progress: {}, events: [], tree: null, candidates: [], ambiguity_resolved: true };
+        }
+        const error = new Error(result.error?.code ?? "FUNCTION_FAILED");
+        error.code = result.error?.code;
+        error.retryable = result.error?.retryable === true;
+        throw error;
+      }
+      return result;
+    } catch (error) {
+      lastError = error;
+      const status = error?.response?.status ?? error?.status;
+      const retryable = error?.retryable === true || status === 429 || status >= 500;
+      if (!retryable || attempt === attempts - 1) throw error;
+      sawRetryableAmbiguity = true;
+      await new Promise((resolve) => setTimeout(resolve, 120 * (2 ** attempt)));
+    }
+  }
+  throw lastError;
+}
+
 export function splitTransportChunks(records) {
   const chunks = [];
   let current = [];
@@ -182,12 +217,14 @@ export function createProductionWatchTreeAdapter() {
     },
 
     async mutatePrivacy(action, payload) {
-      return invokeWithRetry("delete-watch-data", {
+      const request = {
         schema_version: 1,
         client_nonce: nonce(),
         action,
         ...payload,
-      });
+      };
+      if (action === "delete_import") return invokeDestructiveWithAmbiguity("delete-watch-data", request);
+      return invokeWithRetry("delete-watch-data", request);
     },
   };
 }

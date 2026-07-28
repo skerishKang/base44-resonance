@@ -1,0 +1,279 @@
+import { useEffect, useReducer, useRef, useCallback } from "react";
+import { getTutorialCopy } from "./tutorial-copy.js";
+import { createTutorialState, reducer, TUTORIAL_STEPS, executeStepTransition, deleteTutorialData } from "./tutorial-controller.js";
+import { WatchTreeGraphic } from "../WatchTreeGraphic.jsx";
+
+/**
+ * WatchTreeTutorial — 6-step Next-only guided tutorial.
+ *
+ * Props:
+ *   language  - "en" | "ko"
+ *   adapter   - WatchTree adapter (production or in-memory)
+ *   onExit    - Called when user exits the tutorial
+ *   onBuildOwn - Called when user chooses "Build my own WatchTree"
+ */
+export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn }) {
+  const copy = getTutorialCopy(language);
+  const [state, dispatch] = useReducer(reducer, null, createTutorialState);
+  const inFlight = useRef(false);
+  const headingRef = useRef(null);
+
+  // Focus heading on step change
+  useEffect(() => {
+    if (state.currentStep > TUTORIAL_STEPS.INACTIVE) {
+      headingRef.current?.focus();
+    }
+  }, [state.currentStep]);
+
+  const start = useCallback(() => {
+    dispatch({ type: "START_TUTORIAL" });
+  }, []);
+
+  const next = useCallback(async () => {
+    if (state.transitionPending || inFlight.current) return;
+    inFlight.current = true;
+    dispatch({ type: "TRANSITION_PENDING" });
+
+    try {
+      const nextStep = state.currentStep + 1;
+      const result = await executeStepTransition(nextStep, adapter, state);
+      dispatch(result);
+    } catch (error) {
+      dispatch({ type: "SET_ERROR", error: error?.message ?? "TRANSITION_FAILED" });
+    } finally {
+      inFlight.current = false;
+    }
+  }, [state, adapter]);
+
+  const back = useCallback(() => {
+    if (state.currentStep <= TUTORIAL_STEPS.STEP1) return;
+    dispatch({ type: "SET_STEP", step: state.currentStep - 1 });
+  }, [state.currentStep]);
+
+  const handleExit = useCallback(() => {
+    dispatch({ type: "EXIT" });
+    onExit?.();
+  }, [onExit]);
+
+  const handleRestart = useCallback(() => {
+    dispatch({ type: "RESTART" });
+  }, []);
+
+  const handleDelete = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    try {
+      await deleteTutorialData(adapter);
+      dispatch({ type: "EXIT" });
+      onExit?.();
+    } catch {
+      dispatch({ type: "SET_ERROR", error: "DELETE_FAILED" });
+    } finally {
+      inFlight.current = false;
+    }
+  }, [adapter, onExit]);
+
+  const handleBuildOwn = useCallback(() => {
+    dispatch({ type: "EXIT" });
+    onBuildOwn?.();
+  }, [onBuildOwn]);
+
+  // Entry screen — show two choices
+  if (state.currentStep === TUTORIAL_STEPS.ENTRY) {
+    return (
+      <section className="tutorial tutorial-entry" data-testid="tutorial-entry" aria-label="Tutorial entry">
+        <h2 ref={headingRef} tabIndex={-1} className="tutorial-entry-title">{copy.entry.title}</h2>
+        <p className="tutorial-entry-body">{copy.entry.body}</p>
+        <div className="tutorial-entry-choices">
+          <button className="button button--primary tutorial-entry-btn" data-testid="tutorial-build-own" type="button" onClick={handleBuildOwn}>
+            <strong>{copy.entry.primary}</strong>
+          </button>
+          <button className="button button--secondary tutorial-entry-btn" data-testid="tutorial-start-story" type="button" onClick={start}>
+            <strong>{copy.entry.secondary}</strong>
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  // Step screens
+  if (state.currentStep >= TUTORIAL_STEPS.STEP1 && state.currentStep <= TUTORIAL_STEPS.STEP6) {
+    const stepIndex = state.currentStep - 1;
+    const step = copy.steps[stepIndex];
+    const isLastStep = state.currentStep === TUTORIAL_STEPS.STEP6;
+    const isCompleted = state.status === "completed";
+
+    return (
+      <section
+        className="tutorial tutorial-step"
+        data-testid={`tutorial-step-${state.currentStep}`}
+        data-step={state.currentStep}
+        aria-label={`Tutorial step ${state.currentStep}`}
+        aria-busy={state.transitionPending}
+      >
+        {/* Progress */}
+        <div className="tutorial-progress" role="progressbar" aria-valuenow={state.currentStep} aria-valuemin={1} aria-valuemax={6} aria-label={copy.progress.replace("{current}", state.currentStep)}>
+          <div className="tutorial-progress-bar" style={{ width: `${(state.currentStep / 6) * 100}%` }} />
+          <span className="tutorial-progress-text">{copy.progress.replace("{current}", state.currentStep)}</span>
+        </div>
+
+        {/* Error */}
+        {state.error ? <p className="form-message form-message--error" role="alert">{state.error}</p> : null}
+
+        {/* Step content */}
+        <div className="tutorial-step-content">
+          <h2 ref={headingRef} tabIndex={-1} className="tutorial-step-title">{step.title}</h2>
+          <p className="tutorial-step-subtitle">{step.subtitle}</p>
+
+          {/* Step-specific visual */}
+          {state.currentStep === TUTORIAL_STEPS.STEP1 && (
+            <div className="tutorial-visual tutorial-visual--collection" data-testid="tutorial-visual-step1">
+              <span className="tutorial-label">{step.label}</span>
+              {state.events.length > 0 ? (
+                <p className="tutorial-stat">{state.events.length} events collected</p>
+              ) : state.transitionPending ? (
+                <p className="tutorial-pending">Seeding demo data...</p>
+              ) : null}
+            </div>
+          )}
+
+          {state.currentStep === TUTORIAL_STEPS.STEP2 && (
+            <div className="tutorial-visual" data-testid="tutorial-visual-step2">
+              <span className="tutorial-label">{step.label}</span>
+              {state.tree ? (
+                <>
+                  <p className="tutorial-stat">{state.tree.unique_content_count ?? 0} unique leaves · {state.tree.repeat_signal_count ?? 0} revisits</p>
+                  <WatchTreeGraphic events={state.events} label="Tutorial WatchTree" />
+                </>
+              ) : state.transitionPending ? (
+                <p className="tutorial-pending">Building WatchTree...</p>
+              ) : null}
+            </div>
+          )}
+
+          {state.currentStep === TUTORIAL_STEPS.STEP3 && (
+            <div className="tutorial-visual" data-testid="tutorial-visual-step3">
+              <span className="tutorial-label tutorial-label--synthetic">{copy.truth.synthetic}</span>
+              {state.candidates.length > 0 ? (
+                <div className="tutorial-candidates">
+                  {state.candidates.slice(0, 3).map((candidate, i) => (
+                    <div key={candidate.id ?? i} className="tutorial-candidate">
+                      <strong>{candidate.label ?? candidate.candidate_label ?? `Candidate ${i + 1}`}</strong>
+                      <span className="score-band">{candidate.score_band ?? "matched"}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="tutorial-stat">Insufficient signal — add more events to see matches.</p>
+              )}
+            </div>
+          )}
+
+          {state.currentStep === TUTORIAL_STEPS.STEP4 && (
+            <div className="tutorial-visual" data-testid="tutorial-visual-step4">
+              <span className="tutorial-label">{step.label}</span>
+              {state.candidates?.[0]?.evidence_tokens ? (
+                <div className="tutorial-evidence">
+                  {state.candidates[0].evidence_tokens.slice(0, 3).map((token) => (
+                    <div key={token.id} className={`tutorial-evidence-item tutorial-evidence--${token.type}`}>
+                      <strong>{token.label}</strong>
+                      <span>{token.count} {token.count === 1 ? "match" : "matches"}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="tutorial-stat">No evidence tokens available.</p>
+              )}
+            </div>
+          )}
+
+          {state.currentStep === TUTORIAL_STEPS.STEP5 && (
+            <div className="tutorial-visual" data-testid="tutorial-visual-step5">
+              <span className="tutorial-label tutorial-label--synthetic">{copy.truth.synthetic}</span>
+              {state.consent ? (
+                <p className="tutorial-stat">Consent granted for selected evidence</p>
+              ) : state.transitionPending ? (
+                <p className="tutorial-pending">Processing consent and mutual...</p>
+              ) : null}
+              {state.mutual ? (
+                <div className="tutorial-mutual">
+                  <p className="tutorial-label tutorial-label--simulated">{copy.truth.simulated}</p>
+                  <p>{state.mutual.message ?? "Two synthetic paths now resonate."}</p>
+                  <p className="tutorial-label tutorial-label--small">{copy.truth.noRealUser}</p>
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {state.currentStep === TUTORIAL_STEPS.STEP6 && (
+            <div className="tutorial-visual" data-testid="tutorial-visual-step6">
+              <p className="tutorial-stat">{step.detail}</p>
+            </div>
+          )}
+
+          {/* Step detail */}
+          <p className="tutorial-step-detail">{step.detail}</p>
+
+          {/* Truth boundaries */}
+          <div className="tutorial-truth">
+            <span className="tutorial-label tutorial-label--small">{copy.truth.synthetic}</span>
+            <span className="tutorial-label tutorial-label--small">{copy.truth.simulated}</span>
+            <span className="tutorial-label tutorial-label--small">{copy.truth.noRealUser}</span>
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="tutorial-controls">
+          {!isLastStep ? (
+            <button
+              className="button button--primary tutorial-btn-next"
+              data-testid="tutorial-next"
+              type="button"
+              onClick={next}
+              disabled={state.transitionPending}
+              aria-busy={state.transitionPending}
+            >
+              {state.transitionPending ? "Working..." : copy.next}
+            </button>
+          ) : (
+            <div className="tutorial-finish-actions" data-testid="tutorial-finish-actions">
+              <button className="button button--primary" data-testid="tutorial-build-own-after" type="button" onClick={handleBuildOwn}>{copy.buildOwn}</button>
+              <button className="button button--ghost" data-testid="tutorial-replay" type="button" onClick={handleRestart}>{copy.replay}</button>
+              <button className="button button--ghost" data-testid="tutorial-delete-data" type="button" onClick={handleDelete}>{copy.deleteData}</button>
+              <button className="button button--ghost" type="button" onClick={handleExit}>{copy.exit}</button>
+            </div>
+          )}
+        </div>
+
+        {/* Back / Exit */}
+        <div className="tutorial-secondary-controls">
+          {state.currentStep > TUTORIAL_STEPS.STEP1 && !isLastStep ? (
+            <button className="button button--ghost tutorial-btn-back" data-testid="tutorial-back" type="button" onClick={back} disabled={state.transitionPending}>
+              {copy.back}
+            </button>
+          ) : null}
+          {!isLastStep ? (
+            <button className="button button--ghost tutorial-btn-exit" type="button" onClick={handleExit}>
+              {copy.exit}
+            </button>
+          ) : null}
+        </div>
+
+        {/* Base44 proof disclosure */}
+        {isLastStep && (
+          <details className="tutorial-base44-details" data-testid="tutorial-base44">
+            <summary>{copy.base44.title}</summary>
+            <ul>
+              {copy.base44.items.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </details>
+        )}
+      </section>
+    );
+  }
+
+  // Fallback: entry not started
+  return null;
+}

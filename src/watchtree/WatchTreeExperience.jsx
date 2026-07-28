@@ -5,10 +5,12 @@ import { initialState, watchTreeReducer } from "./state-machine.js";
 import { LIMITS } from "./constants.js";
 import { WatchTreeGraphic } from "./WatchTreeGraphic.jsx";
 import { createWatchTreeRealtime } from "./realtime/createWatchTreeRealtime.js";
+import { WatchTreeTutorial } from "./tutorial/WatchTreeTutorial.jsx";
 
 const createWorker = () => new Worker(new URL("./watch-history.worker.js", import.meta.url), { type: "module" });
 
 export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
+  const [tutorialActive, setTutorialActive] = useState(false);
   const copy = useMemo(() => getWatchTreeCopy(language), [language]);
   const [state, dispatch] = useReducer(watchTreeReducer, initialState);
   const [selectedTokens, setSelectedTokens] = useState([]);
@@ -294,7 +296,17 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
         <p className="watchtree-progress" role="status" data-testid="watchtree-progress">{state.status}</p>
       ) : null}
 
-      {!state.import && !state.preview && !state.urlPreview ? (
+      {/* Tutorial mode overrides the default entry UI */}
+      {tutorialActive ? (
+        <WatchTreeTutorial
+          language={language}
+          adapter={adapter}
+          onExit={() => setTutorialActive(false)}
+          onBuildOwn={() => { setTutorialActive(false); /* stays in product mode */ }}
+        />
+      ) : null}
+
+      {!tutorialActive && !state.import && !state.preview && !state.urlPreview ? (
         <div className="url-collection" data-testid="url-collection">
           <div className="url-input-row">
             <input
@@ -313,6 +325,10 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
             <button className="entry-choice entry-choice--demo" data-testid="seed-demo" type="button" onClick={seed}>
               <strong>{copy.experience.demo}</strong>
               <small>48 synthetic events · watchtree-demo-v1</small>
+            </button>
+            <button className="entry-choice entry-choice--story" data-testid="start-tutorial" type="button" onClick={() => setTutorialActive(true)}>
+              <strong>See Mina&rsquo;s WatchTree story</strong>
+              <small>Guided 6-step demo · 45–75 seconds</small>
             </button>
             <details className="entry-choice entry-choice--advanced">
               <summary><strong>{copy.experience.import}</strong><small>{copy.experience.importDetails}</small></summary>

@@ -1103,6 +1103,382 @@
   .tree-leaf { animation: none !important; transition: none !important; }
 }
 
+/* ============================================================
+   Tutorial — Next-only guided 6-step judge tutorial
+   Matches the existing cinematic dark theme.
+   ============================================================ */
+
+.tutorial {
+  border: 1px solid var(--wt-line);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.02), transparent 44%),
+              radial-gradient(circle at 50% 46%, rgba(40, 35, 79, 0.75), rgba(11, 11, 26, 0.96));
+  padding: clamp(1.5rem, 4vw, 3rem);
+  display: grid;
+  gap: 1.2rem;
+  animation: scene-enter 460ms cubic-bezier(0.2, 0.78, 0.22, 1) both;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Entry screen — two CTA */
+.tutorial-entry {
+  text-align: center;
+  min-height: 16rem;
+  align-content: center;
+}
+
+.tutorial-entry-title {
+  margin: 0 0 0.6rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.6rem, 3.2vw, 2.8rem);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+
+.tutorial-entry-body {
+  max-width: 36rem;
+  margin: 0 auto 1.8rem;
+  color: rgba(244, 236, 221, 0.6);
+  font-size: clamp(0.88rem, 1.1vw, 1rem);
+  line-height: 1.55;
+}
+
+.tutorial-entry-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  justify-content: center;
+}
+
+.tutorial-entry-btn {
+  min-width: 14rem;
+  min-height: 4rem;
+  padding: 1rem 2rem;
+  font-size: clamp(0.95rem, 1.2vw, 1.1rem);
+}
+
+/* Step screen */
+.tutorial-step {
+  position: relative;
+}
+
+.tutorial-step-content {
+  display: grid;
+  gap: 0.9rem;
+  max-width: 44rem;
+}
+
+.tutorial-step-title {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
+  font-weight: 400;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+
+.tutorial-step-subtitle {
+  margin: 0;
+  color: rgba(244, 236, 221, 0.68);
+  font-size: clamp(0.9rem, 1.1vw, 1rem);
+  line-height: 1.55;
+  max-width: 34rem;
+}
+
+.tutorial-step-detail {
+  margin: 0;
+  color: rgba(244, 236, 221, 0.5);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+/* Progress bar */
+.tutorial-progress {
+  position: relative;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: rgba(244, 236, 221, 0.1);
+  overflow: hidden;
+  margin-bottom: 0.4rem;
+}
+
+.tutorial-progress-bar {
+  position: absolute;
+  inset: 0;
+  width: 0%;
+  background: var(--wt-amber);
+  border-radius: 999px;
+  transition: width 420ms cubic-bezier(0.2, 0.78, 0.22, 1);
+}
+
+.tutorial-progress-text {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.3rem);
+  font-size: 0.65rem;
+  color: rgba(244, 236, 221, 0.4);
+  letter-spacing: 0.08em;
+}
+
+/* Visual content area */
+.tutorial-visual {
+  margin: 0.2rem 0;
+  padding: clamp(0.8rem, 2vw, 1.5rem);
+  border: 1px solid var(--wt-line);
+  background: rgba(11, 11, 26, 0.4);
+  display: grid;
+  gap: 0.65rem;
+  min-height: 6rem;
+  align-content: center;
+}
+
+.tutorial-label {
+  display: inline-block;
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--wt-amber);
+  border: 1px solid rgba(215, 169, 111, 0.25);
+  padding: 0.25rem 0.5rem;
+}
+
+.tutorial-label--synthetic {
+  color: var(--wt-green);
+  border-color: rgba(168, 200, 172, 0.35);
+}
+
+.tutorial-label--simulated {
+  color: var(--wt-rose);
+  border-color: rgba(185, 131, 131, 0.35);
+}
+
+.tutorial-label--small {
+  font-size: 0.6rem;
+  padding: 0.15rem 0.35rem;
+}
+
+.tutorial-stat {
+  margin: 0;
+  color: rgba(244, 236, 221, 0.6);
+  font-size: 0.85rem;
+}
+
+.tutorial-pending {
+  margin: 0;
+  color: rgba(244, 236, 221, 0.35);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+/* Candidates display */
+.tutorial-candidates {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.tutorial-candidate {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--wt-line);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.tutorial-candidate strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.1rem;
+  font-weight: 400;
+}
+
+.tutorial-candidate .score-band {
+  font-size: 0.6rem;
+}
+
+/* Evidence tokens */
+.tutorial-evidence {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.tutorial-evidence-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--wt-line);
+  font-size: 0.85rem;
+}
+
+.tutorial-evidence-item strong {
+  font-weight: 500;
+}
+
+.tutorial-evidence--exact {
+  border-color: rgba(168, 200, 172, 0.4);
+}
+
+.tutorial-evidence--rare {
+  border-color: rgba(215, 169, 111, 0.4);
+}
+
+.tutorial-evidence--path {
+  border-color: rgba(168, 200, 172, 0.5);
+}
+
+.tutorial-evidence--difference {
+  border-color: rgba(185, 131, 131, 0.4);
+}
+
+/* Mutual display */
+.tutorial-mutual {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.6rem 0;
+}
+
+.tutorial-mutual p {
+  margin: 0;
+  color: rgba(244, 236, 221, 0.7);
+  font-size: 0.9rem;
+}
+
+/* Truth boundaries */
+.tutorial-truth {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/* Controls */
+.tutorial-controls {
+  display: flex;
+  gap: 0.7rem;
+  margin-top: 0.3rem;
+}
+
+.tutorial-btn-next {
+  min-width: 10rem;
+  min-height: 3rem;
+  font-size: clamp(0.95rem, 1.1vw, 1.05rem);
+}
+
+.tutorial-secondary-controls {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+}
+
+.tutorial-btn-back,
+.tutorial-btn-exit {
+  font-size: 0.8rem;
+  color: rgba(244, 236, 221, 0.45);
+}
+
+.tutorial-finish-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+/* Base44 disclosure */
+.tutorial-base44-details {
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--wt-line);
+  padding-top: 0.8rem;
+  font-size: 0.72rem;
+  color: rgba(244, 236, 221, 0.45);
+}
+
+.tutorial-base44-details summary {
+  cursor: pointer;
+  color: rgba(244, 236, 221, 0.55);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tutorial-base44-details ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.tutorial-base44-details li {
+  color: rgba(244, 236, 221, 0.5);
+}
+
+/* Mobile responsive */
+@media (max-width: 767px) {
+  .tutorial {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 1.2rem 0.8rem;
+    overflow: hidden;
+  }
+  .tutorial-entry-choices {
+    flex-direction: column;
+    align-items: center;
+  }
+  .tutorial-entry-btn {
+    width: 100%;
+    max-width: 20rem;
+  }
+  .tutorial-step-title {
+    word-break: keep-all;
+  }
+  .tutorial-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tutorial-btn-next {
+    width: 100%;
+  }
+  .tutorial-secondary-controls {
+    justify-content: center;
+  }
+  .tutorial-finish-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tutorial-finish-actions .button {
+    width: 100%;
+  }
+  .tutorial-candidate {
+    flex-direction: column;
+    gap: 0.4rem;
+    text-align: center;
+  }
+  .tutorial-evidence-item {
+    flex-direction: column;
+    gap: 0.3rem;
+    text-align: center;
+  }
+  .tutorial-truth {
+    justify-content: center;
+  }
+  .tutorial-progress-text {
+    font-size: 0.58rem;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .tutorial {
+    animation: none;
+  }
+  .tutorial-progress-bar {
+    transition: none;
+  }
+}
+
+/* ============================================================ */
+
 @media (prefers-reduced-motion: reduce) and (max-width: 767px) {
   .watchtree-mobile-hero { display: none !important; }
   .watchtree-reduced {

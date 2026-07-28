@@ -12,7 +12,7 @@ import {
   unavailable,
   validNonce,
 } from "./_shared/watchtree.js";
-import { orderCandidates } from "./_shared/watchtree-archetypes.js";
+import { orderCandidates, MIN_EVENTS_FOR_MATCHING } from "./_shared/watchtree-archetypes.js";
 
 Deno.serve(async (req) => {
   const rejected = await requirePostJson(req);
@@ -37,8 +37,8 @@ Deno.serve(async (req) => {
   const eligible = events.filter((event: Record<string, unknown>) =>
     event.matching_enabled === true && event.sensitivity_excluded !== true
   );
-  if (new Set(eligible.map((event: Record<string, unknown>) => event.normalized_content_id)).size < 10) {
-    return fail("NO_ELIGIBLE_EVENTS", 409);
+  if (eligible.length < MIN_EVENTS_FOR_MATCHING) {
+    return json({ ok: true, candidates: [], insufficient_signal: true });
   }
 
   const sourceDigest = await digestHex(

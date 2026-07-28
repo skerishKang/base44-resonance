@@ -1037,10 +1037,10 @@ try {
       const sanitizeResponse = self.sanitizeResponse;
       const publicEvent = self.publicEvent;
 
-      const forbidden = ["match_hash", "source_record_fingerprint", "input_digest", "source_digest"];
+      const forbidden = ["match_hash", "source_record_fingerprint", "input_digest", "source_digest", "client_nonce_digest", "payload_digest"];
 
-      // Scanner functions (matching existing implementation)
-      const scanState = { match_hash: 0, source_record_fingerprint: 0, input_digest: 0, source_digest: 0, total: 0 };
+      // Scanner state with all forbidden keys initialized
+      const scanState = { match_hash: 0, source_record_fingerprint: 0, input_digest: 0, source_digest: 0, client_nonce_digest: 0, payload_digest: 0, total: 0 };
       function scanObj(obj) {
         if (!obj || typeof obj !== "object") return obj;
         if (Array.isArray(obj)) { obj.forEach((item) => scanObj(item)); return obj; }
@@ -1057,13 +1057,15 @@ try {
         }
       }
 
-      // Raw fixture with all four forbidden fields at different nesting levels
+      // Raw fixture with all forbidden fields at different nesting levels
       const rawFixture = {
         ok: true,
         event: {
           id: "synthetic-event-1",
           title: "Synthetic title",
           match_hash: "synthetic-match-value",
+          client_nonce_digest: "abc123",
+          payload_digest: "def456",
           nested: {
             source_record_fingerprint: "synthetic-record-value",
           },
@@ -1094,13 +1096,15 @@ try {
         source_record_fingerprint: scanState.source_record_fingerprint - rawScan.source_record_fingerprint,
         input_digest: scanState.input_digest - rawScan.input_digest,
         source_digest: scanState.source_digest - rawScan.source_digest,
+        client_nonce_digest: scanState.client_nonce_digest - rawScan.client_nonce_digest,
+        payload_digest: scanState.payload_digest - rawScan.payload_digest,
         total: scanState.total - rawScan.total,
       };
 
       // === Verify sanitizeResponse is the production one ===
       const hasSanitizeResponse = typeof sanitizeResponse === "function";
       const hasPublicEvent = typeof publicEvent === "function";
-      const fieldsSet = INTERNAL_FIELDS instanceof Set && INTERNAL_FIELDS.size === 4;
+      const fieldsSet = INTERNAL_FIELDS instanceof Set && INTERNAL_FIELDS.size === 6;
 
       // === Apply sanitizeResponse ===
       const rawBeforeSanitize = clone(fixtureForSanitize);
@@ -1130,6 +1134,8 @@ try {
         source_record_fingerprint: scanState.source_record_fingerprint - preSanitizedScan.source_record_fingerprint,
         input_digest: scanState.input_digest - preSanitizedScan.input_digest,
         source_digest: scanState.source_digest - preSanitizedScan.source_digest,
+        client_nonce_digest: scanState.client_nonce_digest - preSanitizedScan.client_nonce_digest,
+        payload_digest: scanState.payload_digest - preSanitizedScan.payload_digest,
         total: scanState.total - preSanitizedScan.total,
       };
 
@@ -1171,8 +1177,12 @@ try {
       `sanitizer positive control: input_digest detected (got ${controlResults.raw_fixture.input_digest})`);
     assert.ok(controlResults.raw_fixture.source_digest >= 1,
       `sanitizer positive control: source_digest detected (got ${controlResults.raw_fixture.source_digest})`);
-    assert.ok(controlResults.raw_fixture.total >= 4,
-      `sanitizer positive control: total >= 4 (got ${controlResults.raw_fixture.total})`);
+    assert.ok(controlResults.raw_fixture.client_nonce_digest >= 1,
+      `sanitizer positive control: client_nonce_digest detected (got ${controlResults.raw_fixture.client_nonce_digest})`);
+    assert.ok(controlResults.raw_fixture.payload_digest >= 1,
+      `sanitizer positive control: payload_digest detected (got ${controlResults.raw_fixture.payload_digest})`);
+    assert.ok(controlResults.raw_fixture.total >= 6,
+      `sanitizer positive control: total >= 6 (got ${controlResults.raw_fixture.total})`);
 
     // Assert negative control: sanitized fixture has zero forbidden fields
     assert.equal(controlResults.sanitized_fixture.match_hash, 0,

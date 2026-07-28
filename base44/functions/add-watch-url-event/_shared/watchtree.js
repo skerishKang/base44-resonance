@@ -12,15 +12,6 @@ export const BATCH_SIZE = 100;
 export const NONCE = /^[A-Za-z0-9_-]{8,96}$/;
 export const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 
-// YouTube API constants
-const YOUTUBE_API_HOST = "https://www.googleapis.com";
-const YOUTUBE_API_PATH = "/youtube/v3/videos";
-const YOUTUBE_API_PARTS = "snippet,contentDetails,status";
-const YOUTUBE_API_FIELDS = "items(id,snippet(title,channelId,channelTitle,publishedAt,categoryId,thumbnails/medium/url),contentDetails(duration),status(embeddable,privacyStatus))";
-const YOUTUBE_FETCH_TIMEOUT_MS = 8000;
-const YOUTUBE_MAX_RESPONSE_BYTES = 65536;
-const CONFIRMATION_TOKEN_TTL_MS = 300_000;
-const CONFIRMATION_TOKEN_PREFIX = "yt-confirm-v1";
 export const URL_COLLECTION_DIGEST = "url-collection-v1";
 
 export function json(body, status = 200, headers = {}) { return Response.json(body, { status, headers: { ...JSON_HEADERS, ...headers } }); }
@@ -348,12 +339,10 @@ export async function createMatchSignal(event, importId) {
   };
 }
 
-// --- YouTube URL parser (backend copy) ---
-
+// Backend URL parser — no external fetch, no API key
 const YT_HOSTS = new Set(["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"]);
 const YT_VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 const YT_MAX_URL_LENGTH = 2048;
-
 const _hasUserAuth = (u) => u.username || u["pass" + "word"];
 
 export function parseYouTubeUrl(input) {
@@ -375,125 +364,4 @@ export function parseYouTubeUrl(input) {
   }
   if (!YT_VIDEO_ID.test(id)) return { error: "VIDEO_ID_INVALID" };
   return { videoId: id, canonicalUrl: `https://www.youtube.com/watch?v=${id}` };
-}
-
-// --- YouTube Data API metadata fetch ---
-
-export async function fetchYouTubeMetadata(videoId) {
-  const apiKey = typeof Deno !== "undefined" ? (Deno.env?.get?.("YOUTUBE_API_KEY") ?? "") : "";
-  if (!apiKey || apiKey.length < 8) throw new Error("YOUTUBE_API_KEY_UNAVAILABLE");
-  const url = `${YOUTUBE_API_HOST}${YOUTUBE_API_PATH}?part=${YOUTUBE_API_PARTS}&id=${encodeURIComponent(videoId)}&fields=${encodeURIComponent(YOUTUBE_API_FIELDS)}`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), YOUTUBE_FETCH_TIMEOUT_MS);
-  let response;
-  try {
-    response = await fetch(url, { signal: controller.signal, headers: { "Accept": "application/json", "x-goog-api-key": apiKey } });
-  } catch (error) {
-    clearTimeout(timer);
-    if (error?.name === "AbortError") throw new Error("METADATA_LOOKUP_FAILED");
-    throw new Error("METADATA_LOOKUP_FAILED");
-  }
-  clearTimeout(timer);
-  if (!response.ok) throw new Error("METADATA_LOOKUP_FAILED");
-  const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) throw new Error("METADATA_LOOKUP_FAILED");
-  let text;
-  try {
-    const arrayBuffer = await response.arrayBuffer();
-    if (arrayBuffer.byteLength > YOUTUBE_MAX_RESPONSE_BYTES) throw new Error("METADATA_LOOKUP_FAILED");
-    text = new TextDecoder().decode(arrayBuffer);
-  } catch {
-    throw new Error("METADATA_LOOKUP_FAILED");
-  }
-  let payload;
-  try { payload = JSON.parse(text); } catch { throw new Error("METADATA_LOOKUP_FAILED"); }
-  if (!payload || !Array.isArray(payload.items)) throw new Error("METADATA_LOOKUP_FAILED");
-  if (payload.items.length === 0) throw new Error("VIDEO_UNAVAILABLE");
-  const item = payload.items[0];
-  if (!item?.snippet || !item?.id) throw new Error("METADATA_LOOKUP_FAILED");
-  if (item.id !== videoId) throw new Error("METADATA_LOOKUP_FAILED");
-  const privacy = item.status?.privacyStatus;
-  if (privacy === "private") throw new Error("VIDEO_UNAVAILABLE");
-  return item;
-}
-
-function parseDuration(iso) {
-  if (typeof iso !== "string") return null;
-  const match = iso.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
-  if (!match) return null;
-  const hours = parseInt(match[1] ?? "0", 10);
-  const minutes = parseInt(match[2] ?? "0", 10);
-  const seconds = parseInt(match[3] ?? "0", 10);
-  return hours * 3600 + minutes * 60 + seconds;
-}
-
-export function buildYouTubeMetadataResponse(item) {
-  const snippet = item.snippet ?? {};
-  const contentDetails = item.contentDetails ?? {};
-  const status = item.status ?? {};
-  const durationSeconds = parseDuration(contentDetails.duration);
-  return {
-    video_id: item.id,
-    canonical_url: `https://www.youtube.com/watch?v=${item.id}`,
-    bounded_title: bounded(snippet.title ?? "", 240),
-    channel_id: bounded(snippet.channelId ?? "", 64),
-    bounded_creator_label: bounded(snippet.channelTitle ?? "", 160),
-    published_at: bounded(snippet.publishedAt ?? "", 40),
-    duration_seconds: typeof durationSeconds === "number" ? durationSeconds : null,
-    bounded_duration_iso: bounded(contentDetails.duration ?? "", 20),
-    category_id: bounded(String(snippet.categoryId ?? ""), 8),
-    thumbnail_url: bounded(snippet.thumbnails?.medium?.url ?? "", 512),
-    embeddable: status.embeddable === true,
-    privacy_status: bounded(status.privacyStatus ?? "", 16),
-  };
-}
-
-// --- Confirmation token (HMAC-SHA256) ---
-
-export async function generateConfirmationToken(metadata) {
-  const payload = {
-    prefix: CONFIRMATION_TOKEN_PREFIX,
-    video_id: metadata.video_id,
-    bounded_title: metadata.bounded_title,
-    bounded_creator_label: metadata.bounded_creator_label,
-    channel_id: metadata.channel_id,
-    duration_seconds: metadata.duration_seconds,
-    category_id: metadata.category_id,
-    published_at: metadata.published_at,
-    expires_at: Date.now() + CONFIRMATION_TOKEN_TTL_MS,
-  };
-  const payloadJson = stableStringify(payload);
-  const signature = await digestHex(payloadJson);
-  const encoder = new TextEncoder();
-  const payloadBytes = encoder.encode(payloadJson);
-  const sigBytes = encoder.encode(signature);
-  return `${btoa(String.fromCharCode(...payloadBytes))}.${btoa(String.fromCharCode(...sigBytes))}`;
-}
-
-export async function validateConfirmationToken(token, videoId) {
-  if (typeof token !== "string" || !token.includes(".")) return null;
-  const parts = token.split(".");
-  if (parts.length !== 2) return null;
-  let payloadJson, providedSig;
-  try {
-    payloadJson = new TextDecoder().decode(Uint8Array.from(atob(parts[0]), (c) => c.charCodeAt(0)));
-    providedSig = new TextDecoder().decode(Uint8Array.from(atob(parts[1]), (c) => c.charCodeAt(0)));
-  } catch {
-    return null;
-  }
-  let payload;
-  try { payload = JSON.parse(payloadJson); } catch { return null; }
-  if (payload.prefix !== CONFIRMATION_TOKEN_PREFIX) return null;
-  if (payload.video_id !== videoId) return null;
-  if (Date.now() > payload.expires_at) return null;
-  const expectedSig = await digestHex(payloadJson);
-  if (expectedSig !== providedSig) return null;
-  return {
-    bounded_title: bounded(payload.bounded_title ?? "", 240),
-    bounded_creator_label: bounded(payload.bounded_creator_label ?? "", 160),
-    channel_id: bounded(payload.channel_id ?? "", 64),
-    duration_seconds: typeof payload.duration_seconds === "number" ? payload.duration_seconds : null,
-    category_id: bounded(payload.category_id ?? "", 8),
-    published_at: bounded(payload.published_at ?? "", 40),
-  };
 }

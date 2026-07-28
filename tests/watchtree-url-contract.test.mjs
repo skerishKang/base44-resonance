@@ -31,22 +31,6 @@ async function loadAndCaptureHandler(filePath) {
 }
 
 describe("WatchTree URL Event Contract", () => {
-  it("mocks Deno.serve to execute resolve-youtube-video handler", async () => {
-    const handler = await loadAndCaptureHandler(join(import.meta.dirname, "../base44/functions/resolve-youtube-video/entry.ts"));
-    assert.ok(handler, "Deno.serve was called with a handler");
-    
-    const req = new Request("http://localhost", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ video_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" })
-    });
-    const response = await handler(req);
-    assert.strictEqual(response instanceof Response, true);
-    const data = await response.json();
-    assert.strictEqual(data.ok, false);
-    assert.ok(data.error?.code, "Returns standard failure JSON format");
-  });
-
   it("mocks Deno.serve to execute add-watch-url-event handler", async () => {
     const handler = await loadAndCaptureHandler(join(import.meta.dirname, "../base44/functions/add-watch-url-event/entry.ts"));
     assert.ok(handler, "Deno.serve was called with a handler");

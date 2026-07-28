@@ -1,13 +1,13 @@
 import { createClientFromRequest } from "npm:@base44/sdk";
 import {
   json, fail, authenticate, requirePostJson, readInput, validNonce,
-  validateConfirmationToken, bounded, digestHex, decorateStoredEvent,
-  createMatchSignal, JSON_HEADERS, NORMALIZATION_VERSION, BATCH_SIZE,
-  FIXTURE_ID, URL_COLLECTION_DIGEST,
+  bounded, digestHex, decorateStoredEvent,
+  createMatchSignal, JSON_HEADERS, NORMALIZATION_VERSION,
+  URL_COLLECTION_DIGEST, parseYouTubeUrl,
 } from "./_shared/watchtree.js";
 import { publicEvent } from "./_shared/sanitizer.js";
 
-async function findOrCreateUrlCollection(base44, userId) {
+async function findOrCreateUrlCollection(base44) {
   const imports = await base44.entities.WatchImport.filter(
     { source_type: "url_collection", status: "completed" },
     "-created_date", 1, 0
@@ -36,9 +36,9 @@ async function findOrCreateUrlCollection(base44, userId) {
   return newImport;
 }
 
-async function checkDuplicate(base44, importId, videoId) {
+async function checkDuplicate(base44, importId, normalizedId) {
   const existing = await base44.entities.WatchEvent.filter(
-    { import_id: importId, normalized_content_id: videoId },
+    { import_id: importId, normalized_content_id: normalizedId },
     "watched_at", 1, 0
   );
   return existing?.[0] ?? null;
@@ -52,6 +52,14 @@ async function checkIdempotent(base44, importId, nonceDigest) {
   return existing?.[0] ?? null;
 }
 
+async function getEventCount(base44, importId) {
+  const events = await base44.entities.WatchEvent.filter(
+    { import_id: importId },
+    "-created_date", 1, 0
+  );
+  return (events?.[0]?.source_ordinal ?? 0) + 1;
+}
+
 Deno.serve(async (req) => {
   const guardError = await requirePostJson(req);
   if (guardError) return guardError;
@@ -61,20 +69,25 @@ Deno.serve(async (req) => {
   const input = await readInput(req);
   if (!input) return fail("REQUEST_TOO_LARGE", 413, false);
   if (!validNonce(input)) return fail("INVALID_CLIENT_NONCE", 400, false);
-  const videoId = input.video_id ?? "";
-  if (typeof videoId !== "string" || videoId.length < 1 || videoId.length > 128) return fail("VIDEO_ID_INVALID", 400, false);
+
+  const videoUrl = input.video_url ?? "";
+  const parsed = parseYouTubeUrl(videoUrl);
+  if (parsed.error) return fail(parsed.error, 400, false);
+
+  const normalizedId = `youtube:v1:video:${parsed.videoId}`;
+  const canonicalUrl = `https://www.youtube.com/watch?v=${parsed.videoId}`;
   const watchedAt = input.watched_at ?? new Date().toISOString();
   if (typeof watchedAt !== "string" || watchedAt.length < 20 || watchedAt.length > 40) return fail("URL_INVALID", 400, false);
   if (!Number.isFinite(Date.parse(watchedAt))) return fail("URL_INVALID", 400, false);
   const rewatch = input.rewatch === true;
   const privateNote = bounded(input.private_note ?? "", 500);
-  const confirmationToken = input.confirmation_token ?? "";
-  const nonceDigest = input.client_nonce ? await digestHex(input.client_nonce) : "";
-  const payloadDigest = await digestHex(JSON.stringify({ video_id: videoId, watched_at: watchedAt, rewatch, private_note: privateNote, confirmation_token: confirmationToken }));
+  const titleLabel = bounded(input.title_label ?? "", 240);
+  const creatorLabel = bounded(input.creator_label ?? "", 160);
 
-  const metadata = await validateConfirmationToken(confirmationToken, videoId);
-  if (!metadata) return fail("CONFIRMATION_INVALID", 400, false);
-  const urlCollection = await findOrCreateUrlCollection(base44, user.id);
+  const nonceDigest = input.client_nonce ? await digestHex(input.client_nonce) : "";
+  const payloadDigest = await digestHex(JSON.stringify({ video_url: videoUrl, watched_at: watchedAt, rewatch, private_note: privateNote, title_label: titleLabel, creator_label: creatorLabel }));
+
+  const urlCollection = await findOrCreateUrlCollection(base44);
   if (!urlCollection) return fail("IMPORT_UNAVAILABLE", 500, false);
 
   if (nonceDigest) {
@@ -86,34 +99,24 @@ Deno.serve(async (req) => {
       return json({ ok: true, import: urlCollection, event: publicEvent(idempotentEvent), idempotent: true }, 200, JSON_HEADERS);
     }
   }
+
   if (!rewatch) {
-    const duplicate = await checkDuplicate(base44, urlCollection.id, videoId);
+    const duplicate = await checkDuplicate(base44, urlCollection.id, normalizedId);
     if (duplicate) {
-      return json({
-        ok: true,
-        import: urlCollection,
-        event: publicEvent(duplicate),
-        duplicate: true,
-      }, 200, JSON_HEADERS);
+      return json({ ok: true, import: urlCollection, event: publicEvent(duplicate), duplicate: true }, 200, JSON_HEADERS);
     }
   }
-  const eventCount = await base44.entities.WatchEvent.filter(
-    { import_id: urlCollection.id },
-    "-created_date", 1, 0
-  );
-  const nextOrdinal = (eventCount?.[0]?.source_ordinal ?? 0) + 1;
+
+  const provenance = (titleLabel || creatorLabel) ? "user_provided" : "none";
+  const nextOrdinal = await getEventCount(base44, urlCollection.id);
+
   const eventData = {
-    import_id: urlCollection.id,
     source_platform: "youtube",
-    source_type: "url_single",
-    normalized_content_id: `youtube:v1:video:${videoId}`,
-    bounded_title: metadata.bounded_title || "Untitled video",
-    bounded_creator_label: metadata.bounded_creator_label,
-    channel_id: metadata.channel_id,
-    duration_seconds: metadata.duration_seconds,
-    category_id: metadata.category_id,
-    published_at: metadata.published_at,
-    canonical_public_url: `https://www.youtube.com/watch?v=${videoId}`,
+    source_type: "url_collection",
+    normalized_content_id: normalizedId,
+    bounded_title: titleLabel || `YouTube video ${parsed.videoId}`,
+    bounded_creator_label: creatorLabel,
+    canonical_public_url: canonicalUrl,
     watched_at: watchedAt,
     repeat_count: 1,
     first_watched_at: watchedAt,
@@ -128,24 +131,29 @@ Deno.serve(async (req) => {
     import_id: urlCollection.id,
     normalization_version: NORMALIZATION_VERSION,
     canonicalization_version: "youtube-id-v1",
-    creator_key: metadata.bounded_creator_label ? `youtube:channel:${metadata.bounded_creator_label}` : "",
+    creator_key: creatorLabel ? `youtube:user_label:${creatorLabel}` : "",
     is_synthetic: false,
+    fixture_id: "",
     schema_version: 1,
     source_ordinal: nextOrdinal,
+    metadata_provenance: provenance,
     client_nonce_digest: nonceDigest,
     payload_digest: payloadDigest,
   };
+
   let event;
   try {
     event = await base44.entities.WatchEvent.create(eventData);
   } catch {
     return fail("STORE_FAILED", 500, false);
   }
+
   try {
     await createMatchSignal(eventData, urlCollection.id);
   } catch {
-    // Non-fatal: match signal creation failure does not block event storage
+    // Non-fatal
   }
+
   try {
     await base44.entities.WatchImport.update(urlCollection.id, {
       committed_count: nextOrdinal,
@@ -153,12 +161,8 @@ Deno.serve(async (req) => {
       accepted_count: nextOrdinal,
     });
   } catch {
-    // Non-fatal: import count update failure does not block event storage
+    // Non-fatal
   }
 
-  return json({
-    ok: true,
-    import: urlCollection,
-    event: publicEvent(event),
-  }, 200, JSON_HEADERS);
+  return json({ ok: true, import: urlCollection, event: publicEvent(event) }, 200, JSON_HEADERS);
 });

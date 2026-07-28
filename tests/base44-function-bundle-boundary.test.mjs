@@ -28,7 +28,6 @@ const FUNCTION_DEPENDENCIES = {
   "seed-demo-history": ["watchtree.js", "sanitizer.js"],
   "set-reveal-consent": ["watchtree.js", "sanitizer.js"],
   "simulate-mutual": ["watchtree.js", "sanitizer.js"],
-  "resolve-youtube-video": ["watchtree.js", "sanitizer.js"],
   "add-watch-url-event": ["watchtree.js", "sanitizer.js"],
 };
 

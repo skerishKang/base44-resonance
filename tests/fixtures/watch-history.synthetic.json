@@ -1,0 +1,20 @@
+[
+  {
+    "header": "YouTube",
+    "title": "Watched Synthetic Scene 001",
+    "titleUrl": "https://youtu.be/AbCdEfGhI01?si=synthetic",
+    "subtitles": [{"name": "Synthetic Creator 01"}],
+    "time": "2026-06-01T12:34:56.000Z",
+    "products": ["YouTube"],
+    "activityControls": ["YouTube watch history"]
+  },
+  {
+    "header": "YouTube",
+    "title": "Watched Synthetic Scene 002",
+    "titleUrl": "https://www.youtube.com/shorts/AbCdEfGhI02",
+    "subtitles": [{"name": "Synthetic Creator 02"}],
+    "time": "2026-06-02T20:15:00.000Z",
+    "products": ["YouTube"],
+    "activityControls": ["YouTube watch history"]
+  }
+]

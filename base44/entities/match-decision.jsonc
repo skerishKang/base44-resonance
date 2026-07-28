@@ -1,0 +1,48 @@
+{
+  "name": "MatchDecision",
+  "description": "The owner's bounded interest decision for one synthetic competition-demo profile.",
+  "type": "object",
+  "properties": {
+    "fingerprint_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "candidate_id": {
+      "type": "string",
+      "enum": ["sol", "mira", "jun"]
+    },
+    "state": {
+      "type": "string",
+      "enum": ["interested_waiting", "simulated_mutual"]
+    },
+    "simulation_label": {
+      "type": "boolean",
+      "default": true
+    },
+    "locale": {
+      "type": "string",
+      "enum": ["en", "ko"],
+      "default": "en"
+    },
+    "client_nonce": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    }
+  },
+  "required": ["fingerprint_id", "candidate_id", "state", "simulation_label", "locale", "client_nonce"],
+  "rls": {
+    "create": {
+      "$or": [
+        { "user_condition": { "role": "user" } },
+        { "user_condition": { "role": "admin" } }
+      ]
+    },
+    "read": { "created_by_id": "{{user.id}}" },
+    "update": { "created_by_id": "{{user.id}}" },
+    "delete": { "created_by_id": "{{user.id}}" }
+  }
+}

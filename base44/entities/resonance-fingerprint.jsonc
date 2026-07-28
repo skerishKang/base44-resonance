@@ -1,0 +1,83 @@
+{
+  "name": "ResonanceFingerprint",
+  "description": "A bounded deterministic demo interpretation derived from three caller-owned memory cards.",
+  "type": "object",
+  "properties": {
+    "consent_record_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "memory_card_ids": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128,
+        "pattern": "^[A-Za-z0-9_-]+$"
+      }
+    },
+    "memory_orientation": {
+      "type": "string",
+      "enum": ["place_anchored", "moment_anchored", "detail_anchored"]
+    },
+    "conversational_rhythm": {
+      "type": "string",
+      "enum": ["measured", "balanced", "lively"]
+    },
+    "care_expression": {
+      "type": "string",
+      "enum": ["practical", "attentive", "expressive"]
+    },
+    "novelty_steadiness": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "reflective_intensity": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 220
+    },
+    "interpretation_version": {
+      "type": "string",
+      "enum": ["deterministic-v1"]
+    },
+    "locale": {
+      "type": "string",
+      "enum": ["en", "ko"],
+      "default": "en"
+    }
+  },
+  "required": [
+    "consent_record_id",
+    "memory_card_ids",
+    "memory_orientation",
+    "conversational_rhythm",
+    "care_expression",
+    "novelty_steadiness",
+    "reflective_intensity",
+    "summary",
+    "interpretation_version",
+    "locale"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        { "user_condition": { "role": "user" } },
+        { "user_condition": { "role": "admin" } }
+      ]
+    },
+    "read": { "created_by_id": "{{user.id}}" },
+    "update": { "created_by_id": "{{user.id}}" },
+    "delete": { "created_by_id": "{{user.id}}" }
+  }
+}

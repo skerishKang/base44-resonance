@@ -1,148 +1,80 @@
-import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Base44Logo } from "@/components/Base44Logo";
-import { Plus, Trash2, CheckCircle2 } from "lucide-react";
-
-const Task = base44.entities.Task;
+import { useEffect, useMemo, useState } from "react";
+import { cleanupBase44Client, getBase44Client, hasStoredBase44Session } from "@/api/base44Client";
+import { Atmosphere } from "@/components/Atmosphere";
+import { AuthPanel } from "@/components/AuthPanel";
+import { BackendFlow } from "@/components/BackendFlow";
+import { CapabilityPanel } from "@/components/CapabilityPanel";
+import { LanguageSwitch } from "@/components/LanguageSwitch";
+import { ResonanceJourney } from "@/components/ResonanceJourney";
+import { getCopy, getStoredLanguage, persistLanguage } from "@/lib/i18n";
+import { scrollToElementById } from "@/lib/scroll";
+import { CinematicWatchTree } from "@/watchtree/CinematicWatchTree";
+import { getWatchTreeCopy } from "@/watchtree/copy";
+import { createProductionWatchTreeAdapter } from "@/watchtree/productionAdapter";
+import { WatchTreeExperience } from "@/watchtree/WatchTreeExperience";
 
 export default function App() {
-  const [tasks, setTasks] = useState([]);
-  const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-
-  const fetchTasks = async () => {
-    const data = await Task.list();
-    setTasks(data);
-    setIsLoading(false);
-  };
+  const [language, setLanguage] = useState(() => getStoredLanguage());
+  const [user, setUser] = useState(null);
+  const [authState, setAuthState] = useState("checking");
+  const [authPanelOpen, setAuthPanelOpen] = useState(false);
+  const [authNotice, setAuthNotice] = useState("");
+  const text = useMemo(() => getCopy(language), [language]);
+  const watchText = useMemo(() => getWatchTreeCopy(language), [language]);
+  const watchTreeAdapter = useMemo(() => createProductionWatchTreeAdapter(), []);
 
   useEffect(() => {
-    fetchTasks();
+    let active = true;
+    const restoreSession = async () => {
+      try {
+        if (!hasStoredBase44Session()) {
+          if (!active) return;
+          setUser(null);
+          setAuthState("anonymous");
+          setAuthNotice("");
+          return;
+        }
+
+        const base44 = await getBase44Client();
+        const currentUser = await base44.auth.me();
+        if (!active) return;
+
+        setAuthNotice("");
+        if (currentUser) { setUser(currentUser); setAuthState("ready"); }
+        else { setUser(null); setAuthState("anonymous"); }
+      } catch (error) {
+        if (!active) return;
+        const status = error?.response?.status ?? error?.status;
+        setUser(null); setAuthState("anonymous");
+        if (status === 401 || status === 403) setAuthNotice("");
+      }
+    };
+    void restoreSession();
+    return () => { active = false; cleanupBase44Client(); };
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!newTaskTitle.trim()) return;
-    await Task.create({ title: newTaskTitle.trim(), completed: false });
-    setNewTaskTitle("");
-    fetchTasks();
+  useEffect(() => { document.documentElement.lang = language === "ko" ? "ko" : "en"; }, [language]);
+  const changeLanguage = (nextLanguage) => setLanguage(persistLanguage(nextLanguage));
+  const openAuth = () => { setAuthNotice(""); setAuthPanelOpen(true); requestAnimationFrame(() => scrollToElementById("auth-region", { block: "center" })); };
+  const handleAuthenticated = (authenticatedUser) => { setUser(authenticatedUser); setAuthState("ready"); setAuthPanelOpen(false); setAuthNotice(""); requestAnimationFrame(() => scrollToElementById("experience", { block: "start" })); };
+  const handleLogout = () => {
+    setUser(null); setAuthState("anonymous"); setAuthNotice(""); setAuthPanelOpen(false);
+    void getBase44Client().then((base44) => base44.auth.logout(window.location.origin)).catch(() => {});
   };
 
-  const toggleTask = async (id, completed) => {
-    await Task.update(id, { completed });
-    fetchTasks();
-  };
-
-  const deleteTask = async (id) => {
-    await Task.delete(id);
-    fetchTasks();
-  };
-
-  const clearCompleted = async () => {
-    await Promise.all(
-      tasks.filter((t) => t.completed).map((t) => Task.delete(t.id))
-    );
-    fetchTasks();
-  };
-
-  const completedCount = tasks.filter((t) => t.completed).length;
-  const totalCount = tasks.length;
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/30">
-      <div className="max-w-lg mx-auto px-6 py-16">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-semibold text-slate-900 tracking-tight">
-            <span className="inline-flex items-center gap-2 align-middle">
-              <Base44Logo className="w-9 h-9" />
-              <span className="font-bold">Base44</span>
-              <span>Tasks</span>
-            </span>
-          </h1>
-          {totalCount > 0 && (
-            <p className="text-slate-500 mt-2 text-sm">
-              {completedCount} of {totalCount} completed
-            </p>
-          )}
-        </div>
-
-        {/* Add Task Form */}
-        <form onSubmit={handleSubmit} className="mb-8">
-          <div className="flex gap-3">
-            <Input
-              type="text"
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              placeholder="What needs to be done?"
-              className="flex-1 h-12 bg-white border-slate-200 rounded-xl shadow-sm"
-            />
-            <Button
-              type="submit"
-              disabled={!newTaskTitle.trim()}
-              className="h-12 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 shadow-sm"
-            >
-              <Plus className="w-5 h-5" />
-            </Button>
-          </div>
-        </form>
-
-        {/* Task List */}
-        <div className="space-y-2">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="w-6 h-6 border-2 border-slate-200 border-t-orange-500 rounded-full animate-spin" />
-            </div>
-          ) : tasks.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-slate-400">No tasks yet. Add one above!</p>
-            </div>
-          ) : (
-            tasks.map((task) => (
-              <div
-                key={task.id}
-                className="group flex items-center gap-4 p-4 bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-200"
-              >
-                <Checkbox
-                  checked={task.completed}
-                  onCheckedChange={(checked) => toggleTask(task.id, checked)}
-                  className="w-5 h-5 rounded-md border-slate-300 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
-                />
-                <span
-                  className={`flex-1 text-slate-700 transition-all ${
-                    task.completed ? "line-through text-slate-400" : ""
-                  }`}
-                >
-                  {task.title}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => deleteTask(task.id)}
-                  className="opacity-0 group-hover:opacity-100 h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Footer */}
-        {completedCount > 0 && (
-          <div className="mt-8 text-center">
-            <button
-              onClick={clearCompleted}
-              className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
-            >
-              Clear completed
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  return <main className="site-shell">
+    <Atmosphere />
+    <header className="site-header"><a className="wordmark" href="#top" aria-label="Resonance home">Resonance</a><nav aria-label="Primary navigation"><a href="#watchtree-story">{watchText.nav.story}</a><a href="#watchtree-privacy">{watchText.nav.privacy}</a><LanguageSwitch language={language} onChange={changeLanguage} labels={text.language}/>{!user?<button className="nav-enter" type="button" onClick={openAuth}>{watchText.nav.enter}</button>:null}</nav></header>
+    <div id="top"><CinematicWatchTree data-primary-cta="resonance" copy={watchText} onPrimary={user?()=>scrollToElementById("experience"):openAuth}/></div>
+    <section className="auth-region" id="auth-region" aria-live="polite">
+      {authState === "checking" ? <div className="state-message state-message--auth">{text.status.checking}</div> : null}
+      {authNotice && authPanelOpen ? <p className="form-message form-message--error" role="alert">{authNotice}</p> : null}
+      {!user && authPanelOpen ? <AuthPanel copy={text} onAuthenticated={handleAuthenticated} onClose={() => { setAuthPanelOpen(false); setAuthNotice(""); }}/> : null}
+    </section>
+    {user ? <WatchTreeExperience language={language} adapter={watchTreeAdapter} onLogout={handleLogout}/> : null}
+    {user ? <details className="legacy-memory-layer"><summary>{language === "ko" ? "선택적 기억 공명 레이어" : "Optional Memory Resonance layer"}</summary><ResonanceJourney language={language} copy={text} onLogout={handleLogout}/></details> : null}
+    {user ? <details className="backend-proof" id="backend-proof"><summary><span>{text.backendProof.summary}</span><small>{text.backendProof.body}</small></summary><CapabilityPanel language={language} copy={text} onAuthStateChange={(nextState) => { setUser(null); setAuthState(nextState); setAuthNotice(""); }}/></details> : null}
+    <BackendFlow copy={text}/>
+    <footer className="site-footer"><span>{text.footer.line}</span><span>{text.footer.privacy}</span></footer>
+  </main>;
 }

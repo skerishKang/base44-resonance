@@ -1,0 +1,43 @@
+{
+  "name": "CapabilityProbe",
+  "description": "A bounded, private record used to verify Base44 Auth, Entity RLS, and Function invocation.",
+  "type": "object",
+  "properties": {
+    "label": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 48,
+      "description": "A non-sensitive display label for this capability probe."
+    },
+    "locale": {
+      "type": "string",
+      "enum": ["en", "ko"],
+      "default": "en",
+      "description": "The UI locale used when the probe was created."
+    },
+    "client_nonce": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "description": "A bounded client nonce for idempotent UI feedback; it is not a secret."
+    },
+    "verified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the authenticated capability function verified the probe."
+    }
+  },
+  "required": ["label", "locale", "client_nonce"],
+  "rls": {
+    "create": {
+      "$or": [
+        { "user_condition": { "role": "user" } },
+        { "user_condition": { "role": "admin" } }
+      ]
+    },
+    "read": { "created_by_id": "{{user.id}}" },
+    "update": { "created_by_id": "{{user.id}}" },
+    "delete": { "created_by_id": "{{user.id}}" }
+  }
+}

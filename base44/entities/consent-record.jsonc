@@ -1,0 +1,49 @@
+{
+  "name": "ConsentRecord",
+  "description": "Explicit owner consent for transforming exactly three private memory cards into a demo fingerprint.",
+  "type": "object",
+  "properties": {
+    "consent_version": {
+      "type": "string",
+      "enum": ["slice2-demo-v1"]
+    },
+    "active": {
+      "type": "boolean",
+      "default": false
+    },
+    "memory_card_ids": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128,
+        "pattern": "^[A-Za-z0-9_-]+$"
+      }
+    },
+    "locale": {
+      "type": "string",
+      "enum": ["en", "ko"],
+      "default": "en"
+    },
+    "client_nonce": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    }
+  },
+  "required": ["consent_version", "active", "memory_card_ids", "locale", "client_nonce"],
+  "rls": {
+    "create": {
+      "$or": [
+        { "user_condition": { "role": "user" } },
+        { "user_condition": { "role": "admin" } }
+      ]
+    },
+    "read": { "created_by_id": "{{user.id}}" },
+    "update": { "created_by_id": "{{user.id}}" },
+    "delete": { "created_by_id": "{{user.id}}" }
+  }
+}

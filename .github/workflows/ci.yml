@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches:
+      - main
       - feat/resonance-buildoff-mvp
       - feat/watchtree-private-import-mvp
 
@@ -24,6 +25,10 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
+      - name: Verify Base44 shared function parity
+        run: |
+          npm run sync:base44-shared
+          npm run check:base44-shared
       - name: Run deterministic tests
         run: |
           mkdir -p tests/evidence
@@ -43,3 +48,38 @@ jobs:
           name: watchtree-browser-evidence
           path: tests/evidence/
           if-no-files-found: error
+
+  release-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Prove release build fails closed without an App ID
+        run: |
+          if npm run build:release; then
+            echo "release build unexpectedly succeeded without VITE_BASE44_APP_ID" >&2
+            exit 1
+          fi
+          echo "release build failed closed as required"
+      - name: Build production release bundle
+        run: npm run build:release
+        env:
+          # Public Base44 application identifier — not a credential or secret.
+          VITE_BASE44_APP_ID: 6a6538c71a8e3e1640117c91
+      - name: Assert release bundle contents
+        run: npm run check:release-bundle
+      - name: Upload production release bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-release-bundle
+          path: dist/
+          if-no-files-found: warn

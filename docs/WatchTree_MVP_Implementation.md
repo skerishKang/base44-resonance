@@ -1,6 +1,13 @@
 # WatchTree private viewing-path MVP
 
-This source slice implements Issue #20 on exact base `214cf519ea140fb97af87561782c2e98ea759ebd` without deploying or changing the preserved Memory Resonance branch.
+This source slice implements Issue #20 (original base `214cf519ea140fb97af87561782c2e98ea759ebd`) and is deployed to production. The preserved Memory Resonance branch is unchanged and remains available as secondary product evidence.
+
+## Production status
+
+- URL: https://base44-resonance-40117c91.base44.app
+- App: `base44-resonance` (public App ID `6a6538c71a8e3e1640117c91`, a public identifier rather than a secret)
+- Current release commit: `249332bbfe62f9c065c116f098165d87c46f6a9b` (`main`)
+- Backend: 13 owner-scoped Entity schemas and 12 caller-scoped Functions under Base44 Auth and `created_by_id` RLS.
 
 ## Input and raw-file boundary
 
@@ -58,12 +65,16 @@ CI is credential-free and performs:
 
 ```text
 npm ci
+npm run sync:base44-shared
+npm run check:base44-shared
 npm run test:ci
 npm run build
 npm run test:browser
+npm run build:release        # with the public production App ID; fails closed without it
+npm run check:release-bundle # asserts production App ID present; forbidden IDs, localhost, jsxDEV absent
 ```
 
-No Base44 deploy, auth push, resource push, hosted call, OTP, password, cookie, or token is required.
+CI never deploys, pushes Base44 resources, mutates secrets, or makes hosted calls. Deployment is a separate owner-controlled step. No Base44 auth push, resource push, hosted call, OTP, password, cookie, or token is required for CI.
 
 ## Visual provenance
 

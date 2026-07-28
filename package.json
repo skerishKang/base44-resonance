@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:release": "vite build --mode release",
+    "check:release-bundle": "node scripts/verify-release-bundle.mjs",
     "preview": "vite preview",
     "test": "node --test tests/*.test.mjs",
     "test:ci": "node --test --test-reporter=spec tests/*.test.mjs",

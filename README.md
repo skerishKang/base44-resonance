@@ -1,68 +1,91 @@
-# Resonance
+# Resonance — WatchTree
 
-Resonance / 공명 is a bilingual Base44 Build-Off product demo that explores relationship discovery through the way people remember, converse, and express care rather than through demographic filters.
+Resonance / 공명 is a bilingual Base44 Build-Off product. The primary product is **WatchTree**: a private viewing-path experience that turns your own watch history into explainable, synthetic-only resonance candidates — without exposing raw history and without scanning other users.
 
 This repository belongs only to **Business 56 · Resonance / 공명**. It is not Business 25, Love Matchmaking, or an AI Revenue Lab registry application.
 
-## Slice 2 product journey
+## Production
+
+| Field | Value |
+| --- | --- |
+| Production URL | https://base44-resonance-40117c91.base44.app |
+| Production app | `base44-resonance` |
+| Public App ID | `6a6538c71a8e3e1640117c91` |
+| Current release commit | `249332bbfe62f9c065c116f098165d87c46f6a9b` (`main`) |
+| Status | Deployed and live |
+
+The App ID is a public application identifier, not a credential or secret.
+
+## 90-second judge path
+
+1. Open the production URL.
+2. Sign in through Base44 Auth with the provided competition account.
+3. Enter WatchTree and choose to start with synthetic data — no real watch history is required.
+4. Opt in to matching and review three clearly labeled synthetic candidates with bounded causal evidence.
+5. Select the evidence you are willing to reveal, record explicit reveal consent, and inspect the revealed shared path.
+6. Run the explicitly labeled **simulated** mutual-resonance state.
+
+All candidates are server-defined synthetic profiles. The mutual state is a simulation. No real person is contacted, notified, or matched.
+
+## WatchTree product journey
 
 ```text
-private Memory Cards
-→ explicit ConsentRecord
-→ deterministic ResonanceFingerprint
-→ three explainable synthetic candidates
-→ one MatchDecision with an explicitly simulated mutual state
+local Worker parse (raw bytes never leave the browser)
+→ parse-watch-history bounded validation
+→ explicit confirmation with chunk receipts
+→ build-watch-tree
+→ matching opt-in
+→ three server-defined synthetic candidates
+→ selected-evidence reveal consent
+→ explicitly simulated mutual state
 ```
 
-The browser experience provides exactly three bounded private memory prompts. It never asks for legal names, addresses, employers, contact details, diagnoses, trauma disclosure, sexual history, or protected characteristics. Raw memory text remains in the owner’s editing surface and is not copied into candidate output.
+Raw viewing history is parsed only inside a browser Worker, is never sent to Base44 or stored in Entities, and candidate evidence stays causal and bounded: exact overlap, rare signal, shared path, and meaningful difference. No compatibility percentage or soulmate claim is rendered.
 
 ## Durable Base44 resources
 
-All private Entities allow create only for authenticated `user` and `admin` roles. Read, update, and delete are owner-scoped through Base44’s built-in `created_by_id` metadata.
+Base44 Auth establishes caller identity. All **13 Entity schemas** are owner-scoped through Base44’s built-in `created_by_id` metadata (RLS): create is allowed for authenticated `user` and `admin` roles, while read, update, and delete are owner-only. No private Entity uses `read: true`, public mutation, client-controlled owner fields, or a browser service-role path.
 
-- `MemoryCard` — one of three fixed prompts, 24–420 characters.
-- `ConsentRecord` — explicit, initially unselected consent for exactly three card IDs.
-- `ResonanceFingerprint` — five bounded structured dimensions with no raw memory text.
-- `MatchDecision` — one synthetic candidate and either `interested_waiting` or `simulated_mutual`.
-- `CapabilityProbe` — retained as secondary backend proof from Slice 1.
+Entity schemas (13):
 
-No private Entity uses `read: true`, public mutation, client-controlled owner fields, or a browser service-role path.
+`CapabilityProbe` · `ConsentRecord` · `ImportChunkReceipt` · `MatchDecision` · `MemoryCard` · `MutualResonance` · `ResonanceFingerprint` · `RevealConsent` · `SharedPathCandidate` · `WatchEvent` · `WatchImport` · `WatchMatchSignal` · `WatchTreeFingerprint`
 
-## Caller-scoped Functions
+Caller-scoped Functions (12):
 
-### `generate-fingerprint`
+`build-watch-tree` · `commit-watch-import` · `compute-matches` · `delete-watch-data` · `find-shared-paths` · `generate-fingerprint` · `parse-watch-history` · `reconcile-watch-data` · `seed-demo-history` · `set-reveal-consent` · `simulate-mutual` · `verify-capability`
 
-Authenticated JSON `POST` only. It accepts exactly three unique caller-owned `MemoryCard` IDs, one active caller-owned `ConsentRecord`, and a locale. It reads under caller permissions, deterministically creates or updates one bounded fingerprint for the consent record, and returns only structured output.
+No Function uses service role, live AI, Agents, Integrations, secrets, or raw authentication material. Inaccessible and nonexistent resource IDs share the same unavailable error class.
 
-### `compute-matches`
+## Synthetic-only boundary
 
-Authenticated JSON `POST` only. It accepts one caller-owned fingerprint ID and deterministically scores three server-defined synthetic profiles. Ordering is stable by score and candidate ID. Each result includes a synthetic label, bounded score/tier, two or three shared signals, one difference, and a bounded explanation.
+Matching compares the caller’s own eligible events only against the versioned `demo-corpus-v1` corpus. It never scans another user’s Entities and never invokes service role. Reveal consent applies only to the caller’s own selected evidence tokens, and mutual resonance is an explicit simulation.
 
-Neither Function uses service role, live AI, Agents, Integrations, secrets, or raw authentication material. Inaccessible and nonexistent resource IDs share the same unavailable error class.
+## Retained Memory Resonance foundation
 
-## Visual and resilience contract
-
-- English default with persistent Korean switch.
-- Cinematic CSS/SVG visual language; no raster or stock romance images.
-- Primary CTA visible in the initial `390×844` mobile viewport.
-- Fingerprint and candidates visible as product results before technical evidence.
-- Normal authenticated UI uses `Resonance member` / `공명 사용자`, not account email.
-- Auth errors are shown only after real user-facing failures and stale notices clear on recovery.
-- Reload restores owner-scoped durable steps.
-- Mutation buttons disable while pending and in-flight guards prevent duplicate submission under React StrictMode.
-- Visible focus, reduced motion, and horizontal-overflow protection remain enabled.
+The earlier Memory Resonance Slice 2 journey — private Memory Cards → explicit ConsentRecord → deterministic ResonanceFingerprint → three synthetic candidates → one simulated MatchDecision — remains available as secondary product evidence, together with the original `CapabilityProbe` backend proof. WatchTree is the primary product narrative.
 
 ## Local commands
 
 ```bash
 npm ci
 npm run test:ci
-npm run build
+npm run build                 # deterministic dev/CI build; no App ID required
+npm run build:release         # production release build; fails closed without VITE_BASE44_APP_ID
+npm run check:release-bundle  # asserts production App ID present; forbidden IDs, localhost, jsxDEV absent
+npm run test:browser
 npm run dev
 ```
 
 Tests are deterministic and credential-free. They do not deploy, push Base44 resources, call live AI, or require a Base44 token.
 
+## CI and release contract
+
+- CI runs on pull requests and on pushes to `main`, plus the two historical feature branches.
+- Pull-request CI stays deterministic and credential-free: shared-function parity, tests, a plain build, and browser validation. It never deploys.
+- The release job first proves fail-closed behavior: `npm run build:release` without `VITE_BASE44_APP_ID` must fail.
+- The release bundle is then built with the public production App ID supplied through non-secret CI configuration and is asserted to contain that ID and to exclude the validation and buildoff App IDs, `localhost:4400`, and `jsxDEV`.
+- CI never deploys, pushes Base44 resources, mutates secrets, calls live AI, or requires a Base44 token.
+
 ## Runtime validation boundary
 
-The Web Implementation Developer does not deploy or claim browser runtime success. After Web CTO review, the Local Validator checks the exact Draft PR head against the existing Base44 app, including Auth, owner RLS, Function contracts, cross-user isolation, mobile/desktop evidence, retries, reload restoration, and duplicate-mutation behavior.
+Deployment and browser runtime claims are separate validation steps performed against the existing production app after Web CTO review: Auth, owner RLS, Function contracts, cross-user isolation, mobile/desktop evidence, retries, reload restoration, duplicate-mutation behavior, and the reveal-consent hotfix path.

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { getWatchTreeCopy } from "./copy.js";
+import { selectedEvidenceTokensForCandidate } from "./matching.js";
 import { initialState, watchTreeReducer } from "./state-machine.js";
 import { WatchTreeGraphic } from "./WatchTreeGraphic.jsx";
 
@@ -136,7 +137,8 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
   });
 
   const consent = (candidate) => run(`consent:${candidate.id}`, async () => {
-    const candidateTokens = selectedTokens.filter((token) => token.startsWith(`${candidate.id}:`));
+    const candidateTokens = selectedEvidenceTokensForCandidate(candidate, selectedTokens);
+    if (candidateTokens.length === 0) return;
     const result = await adapter.setConsent(candidate.id, candidateTokens, "grant");
     dispatch({ type: "CONSENT", consent: result.consent });
   });
@@ -265,7 +267,7 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
                       </label>
                     ))}
                   </div>
-                  <button className="button button--primary" data-testid="reveal-consent" type="button" disabled={!selectedTokens.some((id) => id.startsWith(`${candidate.id}:`))} onClick={() => consent(candidate)}>{copy.experience.reveal}</button>
+                  <button className="button button--primary" data-testid="reveal-consent" type="button" disabled={selectedEvidenceTokensForCandidate(candidate, selectedTokens).length === 0} onClick={() => consent(candidate)}>{copy.experience.reveal}</button>
                 </article>
               ))}
             </section>

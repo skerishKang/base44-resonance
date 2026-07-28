@@ -6,15 +6,15 @@ How external agentic coding and Base44 worked together to build WatchTree.
 
 ## The working model
 
-WatchTree was not built by a single AI generating a complete application. It was built by a **multi-agent system with a human-defined contract layer**, where Base44 served as the authoritative backend platform and GitHub was the evidence and integration boundary.
+WatchTree was not built by a single AI generating a complete application. It was built by a **multi-agent system with role-defined contracts**, where Base44 served as the authoritative backend platform and GitHub was the evidence and integration boundary.
 
-### Layer 1: Product and security contract (human)
+### Layer 1: Product intent and contract (human project owner + AI CTO)
 
-A human Web CTO defined:
+A human project owner defined product intent and held final approval authority. An AI CTO defined execution contracts, performed source review, verified exact-head SHAs, and made merge-readiness decisions. Together they specified:
 
 - **Product requirements:** What the feature should do, in what order, and what it must not do. Written as GitHub Issues with acceptance criteria, forbidden behaviors, and priority labels.
 - **Security boundaries:** Exact SHA baselines, allowed and forbidden file changes, contract regexes that entrypoint code must match (and must not match), and explicit prohibitions (no service role, no other-user scan, no runtime AI).
-- **Review checklists:** Each PR was reviewed against a written checklist. CTO review findings were tracked as PR comments and resolved before merge.
+- **Review checklists:** Each PR was reviewed against a written checklist. AI CTO review findings were tracked as PR comments and resolved before merge.
 
 ### Layer 2: Local model + agentic IDE (implementation)
 
@@ -30,14 +30,6 @@ The agent never accessed:
 - Production secrets or environment variables
 - The deployment pipeline
 - Other users' data or account information
-
-### Layer 3: GitHub (integration evidence)
-
-Every change entered the codebase through a GitHub Pull Request:
-
-- **PR body** recorded the exact base SHA, exact head SHA, CTO review findings, and next actions.
-- **Commit history** on each branch was auditable — no force pushes (except for post-review branch rewrites with `--force-with-lease`).
-- **Branch protection** prevented direct pushes to `main`.
 - **Draft PR state** was maintained until CI and CTO review both passed.
 
 ### Layer 4: CI and CTO review (validation)
@@ -54,7 +46,8 @@ A human CTO then reviewed the source, checked the contract regexes, verified the
 ## Sequence diagram
 
 ```
-Human (Web CTO)                  Agent (LLM + IDE)              GitHub / CI              Base44
+Human (project owner)           Agent (LLM + IDE)              GitHub / CI              Base44
+AI CTO
       │                                │                           │                       │
       ├── Issue/contract ─────────────►│                           │                       │
       │                                ├── create branch ────────►│                       │
@@ -68,11 +61,19 @@ Human (Web CTO)                  Agent (LLM + IDE)              GitHub / CI     
       ├── CTO review ─────────────────►│                           │                       │
       │   (approved or corrections)    ├── fix commits            │                       │
       │                                │── push ─────────────────►│                       │
-      │                                │                           ├── re-run CI ────────►│
-      └── merge ──────────────────────►│──────────────────────────►│                      │
-                                       │                           │                      │
-                                       │                           └── deploy ───────────►│
-                                       │                                                    │
+       │                                │                           ├── re-run CI ────────►│
+       ├── merge (if approved) ────────►│──────────────────────────►│                       │
+       │                                │                           │                       │
+       │   (CI does not deploy)         │                           │                       │
+       │                                │                           │                       │
+       ├── exact release review ───────►│                           │                       │
+       ├── explicit human approval ─────┤                           │                       │
+       │                                ├── Base44 CLI/dashboard ──►│                       │
+       │                                │   deployment              │                      │
+       │                                │                           └── deploy ───────────►│
+       │                                │                                                    │
+       │◄── authenticated Production ───│                                                     │
+       │    UAT                                                                               │
 ```
 
 ---

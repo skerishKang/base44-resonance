@@ -9,13 +9,13 @@ Base44 capabilities audited for the Build-Off submission build. Status values: `
 | Field | Value |
 |-------|-------|
 | **Status** | `VERIFIED_PRODUCTION` |
-| **Implementation** | Base44 Auth via `createClientFromRequest(req)` and `base44.auth.me()`. The SDK extracts caller identity from request context — no credentials, tokens, or passwords exposed in application code. Sign-in uses Base44's built-in email/password and OAuth provider flows. |
+| **Implementation** | Base44 Auth via `createClientFromRequest(req)` and `base44.auth.me()`. The SDK extracts caller identity from request context — no credentials, tokens, or passwords exposed in application code. |
 | **Judge-visible proof** | Every Function entrypoint calls `authenticate(base44)` and returns `AUTH_REQUIRED (401)` when unauthenticated. AuthPanel component renders sign-in/sign-up forms. Production site requires authentication to enter WatchTree. |
-| **Source path** | `base44/functions/*/entry.ts` — authenticated guard in all 13 Functions. `src/lib/AuthPanel.jsx` — Auth UI. |
-| **Merged SHA** | Repository scaffold commit `f5a5e2d` through latest `959afdc`. |
+| **Source path** | `base44/functions/*/entry.ts` — authenticated guard in all 13 Functions (12 deployed, 1 merged not deployed). `src/lib/AuthPanel.jsx` — Auth UI. |
+| **Merged SHA** | `959afdc` — latest main. |
 | **Production verification** | Production App at `base44-resonance-40117c91.base44.app` requires authentication. Final release deployment will reconfirm before submission deadline. |
 | **Submission checkbox eligible** | Yes, after deployed release confirmation. |
-| **Notes** | No service role used. No custom Auth provider. No email exposure in response payloads. Password and OTP never appear in source code, logs, or CI output. |
+| **Notes** | No service role used. No custom Auth provider. No email exposure in response payloads. |
 
 ---
 
@@ -23,13 +23,13 @@ Base44 capabilities audited for the Build-Off submission build. Status values: `
 
 | Field | Value |
 |-------|-------|
-| **Status** | `VERIFIED_PRODUCTION` |
+| **Status** | `VERIFIED_PRODUCTION` (capability); PR #37 schema delta (`url_collection`, `metadata_provenance`, `client_nonce_digest`, `payload_digest`) is `MERGED_NOT_DEPLOYED` |
 | **Implementation** | 13 Entity schemas defined in `base44/entities/*.jsonc`. All use Base44's `created_by_id` Row-Level Security: create allowed for authenticated `user` and `admin` roles; read, update, delete restricted to owner scope. No Entity uses `read: true`, public mutation, client-controlled owner fields, or browser service-role paths. |
 | **Judge-visible proof** | Entity schema files checked into repository. `base44/entities/` directory contains 13 JSONC files, each with identical RLS pattern. |
 | **Source path** | `base44/entities/*.jsonc` (13 files). |
 | **Merged SHA** | `959afdc` — all 13 schemas present. |
-| **Production verification** | Schema deployed to production Base44 app. Final release will reconfirm. |
-| **Submission checkbox eligible** | Yes, after deployed release confirmation. |
+| **Production verification** | Previous Entity baseline deployed and active. PR #37 additive schema fields not yet deployed. Final release will reconfirm before submission. |
+| **Submission checkbox eligible** | Yes, after deployed release confirmation of the full schema set. |
 | **Notes** | Entities: `CapabilityProbe`, `ConsentRecord`, `ImportChunkReceipt`, `MatchDecision`, `MemoryCard`, `MutualResonance`, `RevealConsent`, `SharedPathCandidate`, `WatchEvent`, `WatchImport`, `WatchMatchSignal`, `WatchTreeFingerprint`, `ResonanceFingerprint`. Two Entities (`ConsentRecord`, `MemoryCard`) are deployed but unused by current product — retained for deployment compatibility. |
 
 ---
@@ -38,14 +38,14 @@ Base44 capabilities audited for the Build-Off submission build. Status values: `
 
 | Field | Value |
 |-------|-------|
-| **Status** | `VERIFIED_PRODUCTION` |
-| **Implementation** | 13 caller-scoped Deno Functions, each wrapping `Deno.serve(async (req) => { const base44 = createClientFromRequest(req); ... })`. Uniform entrypoint pattern: POST + JSON guard, request body size limit (192KB), caller authentication, nonce validation, deterministic logic, standardized `json()`/`fail()` response format. Shared modules (`watchtree.js`, `sanitizer.js`, `watchtree-archetypes.js`, `reconcile.js`) vendored from canonical `_shared/` directory with SHA-256 enforced parity. |
+| **Status** | `VERIFIED_PRODUCTION` (capability, 12-function production baseline); `add-watch-url-event` is `MERGED_NOT_DEPLOYED` |
+| **Implementation** | 13 caller-scoped Deno Functions in source (12 deployed baseline + 1 merged not deployed), each wrapping `Deno.serve(async (req) => { const base44 = createClientFromRequest(req); ... })`. Uniform entrypoint pattern: POST + JSON guard, request body size limit (192KB), caller authentication, nonce validation, deterministic logic, standardized `json()`/`fail()` response format. Shared modules (`watchtree.js`, `sanitizer.js`, `watchtree-archetypes.js`, `reconcile.js`) vendored from canonical `_shared/` directory with SHA-256 enforced parity. |
 | **Judge-visible proof** | All 13 `entry.ts` files in `base44/functions/*/`. CI runs `check:base44-shared` and bundle boundary test to verify vendored module consistency. |
 | **Source path** | `base44/functions/*/entry.ts` (13 files). Shared: `base44/functions/_shared/`. |
-| **Merged SHA** | `959afdc` — all 13 functions present. |
-| **Production verification** | Functions deployed to Base44 app. Bundles verified by `check:release-bundle`. Final release deployment will reconfirm. |
-| **Submission checkbox eligible** | Yes, after deployed release confirmation. |
-| **Notes** | Functions: `add-watch-url-event`, `build-watch-tree`, `commit-watch-import`, `compute-matches`, `delete-watch-data`, `find-shared-paths`, `generate-fingerprint`, `parse-watch-history`, `reconcile-watch-data`, `seed-demo-history`, `set-reveal-consent`, `simulate-mutual`, `verify-capability`. No function uses service role, live AI, Agents, or raw authentication material. The `resolve-youtube-video` function was removed from the submission build (API key dependency). |
+| **Merged SHA** | `959afdc` — all 13 function sources present. 12-function production baseline at previous deployment; `add-watch-url-event` merged but not yet deployed. |
+| **Production verification** | 12-function baseline deployed and active. `add-watch-url-event` not yet deployed. Final release deployment will reconfirm. |
+| **Submission checkbox eligible** | Yes, after deployed release confirmation of all 13 functions. |
+| **Notes** | Functions: `add-watch-url-event` (MERGED_NOT_DEPLOYED), `build-watch-tree`, `commit-watch-import`, `compute-matches` (vestigial), `delete-watch-data`, `find-shared-paths`, `generate-fingerprint` (vestigial), `parse-watch-history`, `reconcile-watch-data`, `seed-demo-history`, `set-reveal-consent`, `simulate-mutual`, `verify-capability` (vestigial). No function uses service role, live AI, Agents, or raw authentication material. The `resolve-youtube-video` function was removed from the submission build (API key dependency). |
 
 ---
 
@@ -69,7 +69,7 @@ Base44 capabilities audited for the Build-Off submission build. Status values: `
 | Field | Value |
 |-------|-------|
 | **Status** | `ROADMAP_ONLY` |
-| **Implementation** | Not implemented. Privacy mutations currently use poll-based refresh via the `restore()` adapter method. Base44's realtime capability is documented in the SDK but was not production-tested in this codebase. |
+| **Implementation** | Not implemented. Privacy mutations currently use poll-based refresh via the `restore()` adapter method. Base44's realtime capability is documented in the SDK but was not production-tested in this codebase. Pending Issue #41 review — update before merge based on exact GitHub and Production status. |
 | **Judge-visible proof** | No `base44.realtime.*` calls in any source file. No subscription setup. |
 | **Source path** | Not applicable. |
 | **Merged SHA** | Not applicable — not implemented. |

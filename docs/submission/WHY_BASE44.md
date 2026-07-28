@@ -4,26 +4,24 @@
 
 ### 120–160 words
 
-We entered the Base44 Dev Build-Off expecting an AI website builder — a tool that generates a complete app from a single prompt. What we discovered was a code-defined production backend platform. Base44 provided Auth, owner-scoped entity storage with declarative RLS, Deno backend functions, secrets management, and deployment. It did not write our code.
+We entered the Base44 Dev Build-Off expecting a tool that generates a complete app from a single prompt. What we discovered was a code-defined production backend platform. Base44 provided Auth, owner-scoped entity storage with declarative RLS, Deno backend functions, secrets management, and deployment.
 
-An external local language model and agentic IDE authored every source file. Base44 was the authority for the runtime: it authenticated callers, enforced row-level security, executed Deno functions, stored data, and hosted the production site. We never wired a separate database, Auth provider, API server, or permission layer. Three PRs, eight CTO review rounds, and 265 tests later, WatchTree runs entirely on Base44 — no service role, no runtime AI, no external API calls.
+For this submission, most production source was developed through external agentic tools and local models under human direction and AI CTO review, while Base44 remained the authenticated backend and runtime authority. It authenticated callers, enforced row-level security, executed Deno functions, stored data, and hosted the production site. We never wired a separate database, Auth provider, API server, or permission layer. The current final-source suite includes 265 tests and runs entirely on Base44 — no service role, no runtime AI, no external API calls.
 
 ### 300–450 words
 
-We entered the Base44 Dev Build-Off expecting an AI website builder. The marketing suggested a tool that generates a complete application from a single conversation. We quickly discovered that Base44 was not that kind of tool — and that was exactly what made it valuable for our use case.
+We entered the Base44 Dev Build-Off expecting a tool that generates a complete application from a single conversation. For this submission, most production source was developed through external agentic tools and local models under human direction and AI CTO review, while Base44 remained the authenticated backend and runtime authority.
 
-Base44 is a code-defined production backend platform. It provides Auth with caller-scoped identity, entity storage with declarative Row-Level Security, Deno-based backend functions, environment secrets, and deployment. But it does not write your application logic. Every source file — every Entity schema JSONC, every Deno Function, every React component, every test file — was authored by an external local language model and integrated into the repository by an agentic IDE.
-
-The development model that emerged was neither prompt-to-app nor traditional full-stack. A Web CTO (human) defined the product requirements and security contracts. An agent (local LLM + IDE tools) implemented isolated source slices against those contracts. GitHub served as the evidence and integration boundary: PRs were reviewed, CTO review findings were tracked as repository comments, and CI enforced exact-head SHA verification. No model output was trusted without CI and code review confirming it.
+The development model that emerged was neither prompt-to-app nor traditional full-stack. A human project owner defined the product requirements. An AI CTO defined execution contracts, performed source review, verified exact-head SHAs, and made merge-readiness decisions. An agent (local LLM + IDE tools) implemented isolated source slices against those contracts. GitHub served as the evidence and integration boundary: PRs were reviewed, CTO review findings were tracked as repository comments, and CI enforced exact-head SHA verification. No model output was trusted without CI and code review confirming it.
 
 Base44 handled what would otherwise have required five separate services:
-- **Auth** — caller identity via SDK without exposing passwords or tokens
+- **Auth** — caller identity via SDK
 - **Database** — 13 entity types with automatic `created_by_id` RLS
 - **API server** — 13 Deno Functions with standard request guarding
 - **Permission layer** — declarative per-entity RLS, no custom middleware
 - **Hosting** — Vite-built single-page application with release CI
 
-We did not use Base44's AI call capability, Agent integrations, realtime subscriptions, or file storage. These remain audited as unused capabilities in our submission ledger. What we did use — Auth, Entities, RLS, Deno Functions, secrets, hosting — was sufficient to build a privacy-sensitive, synthetic-only matching product that verifiably lacks access to other users' data.
+We did not use Base44's AI call capability, Agent integrations, realtime subscriptions, or file storage. These remain audited as unused capabilities in our submission ledger.
 
 ### 700–1,000 words
 
@@ -35,21 +33,19 @@ That assumption was partly wrong and partly incomplete.
 
 **What Base44 actually is**
 
-Base44 is a code-defined backend platform optimized for AI-assisted development. It provides production infrastructure — Auth, database entities with automatic Row-Level Security, Deno runtime for backend functions, secrets management, and hosting — but it does not write your application logic. You write the code. Base44 runs it.
-
-The distinction matters because it changed how we built. Instead of trying to extract a complete app from a conversation, we used Base44 as the authoritative backend while an external local language model and agentic IDE authored every source file against Base44's SDK and entity contracts.
+Base44 is a code-defined backend platform optimized for AI-assisted development. It provides production infrastructure — Auth, database entities with automatic Row-Level Security, Deno runtime for backend functions, secrets management, and hosting. For this submission, most production source was developed through external agentic tools and local models under human direction and AI CTO review, while Base44 remained the authenticated backend and runtime authority.
 
 **What we discovered through building**
 
 The development model that emerged was neither prompt-to-app nor traditional full-stack. It had four layers:
 
-1. **Product and contract layer (human Web CTO):** A human defined the product requirements, security boundaries, exact SHA baselines, and CTO review checklists. Every PR was reviewed against a written contract before merging. No capability was claimed without CI verification.
+1. **Product and contract layer (human project owner + AI CTO):** A human project owner defined product intent and held final approval authority. An AI CTO defined execution contracts, performed source review, verified exact-head SHAs, and made merge-readiness decisions.
 
 2. **Implementation layer (local LLM + agentic IDE):** A local language model running outside Base44's infrastructure implemented isolated source slices. Each slice had a defined file scope, a known base commit, and an explicit list of allowed and forbidden changes. The agent never accessed production secrets, the Base44 dashboard, or the deployment pipeline.
 
-3. **Integration layer (GitHub):** Every change entered the codebase through a GitHub PR. The PR body recorded the exact base SHA, exact head SHA, CTO review findings, and next-actions. Branch history was auditable. No direct push to main was permitted.
+3. **Integration layer (GitHub):** Every change entered the codebase through a GitHub PR. The PR body recorded the exact base SHA, exact head SHA, CTO review findings, and next-actions. Branch history was auditable. Direct-main changes were prohibited by the operating contract; one accidental no-op file write reached main, was immediately reverted, publicly disclosed, and led to stricter PR-only integration discipline.
 
-4. **Validation layer (CI + CTO review):** CI ran 265 deterministic tests, browser validation, and release build verification on every PR. A human CTO then reviewed the source, checked the contract regexes, and either approved or sent the PR back for correction. No model-produced output was trusted without both CI pass and human review.
+4. **Validation layer (CI + CTO review):** The final-source test suite contains 265 deterministic tests. CI runs browser validation and release build verification on every PR. An AI CTO reviewed source, contract regexes, and exact SHA baselines, then either approved or sent PRs back for correction. No model-produced output was trusted without both CI pass and human review.
 
 **What Base44 handled**
 
@@ -83,7 +79,7 @@ Base44 offers capabilities we audited and intentionally declined:
 
 **The stronger story**
 
-The truthful narrative is not that Base44 generated an entire app from a single prompt. The stronger narrative is that Base44 provided the production backend authority — Auth, Entities, RLS, Functions, secrets, hosting — while external agentic coding implemented the product logic against Base44's SDK contracts. We did not wire a separate database, Auth provider, API server, permission layer, or secrets vault. Three PRs, eight CTO review rounds, and 265 tests later, WatchTree runs entirely on Base44 without service role, without runtime AI, and without external API calls.
+For this submission, we did not rely on a one-click generated app. Most production source was developed through external agentic tools and local models under human direction and AI CTO review, while Base44 remained the authenticated backend and runtime authority. Base44 provided Auth, Entities, RLS, Functions, secrets, and hosting. We did not wire a separate database, Auth provider, API server, permission layer, or secrets vault. Multiple reviewed correction rounds and 265 tests later, WatchTree runs entirely on Base44 without service role, without runtime AI, and without external API calls.
 
 ---
 
@@ -101,7 +97,7 @@ Base44는 AI 지원 개발에 최적화된 **코드 정의 백엔드 플랫폼**
 
 개발 모델은 프롬프트-투-앱도 전통적인 풀스택도 아닌 네 개의 계층으로 구성되었다:
 
-1. **제품 및 계약 계층 (인간 Web CTO):** 요구사항, 보안 경계, 정확한 SHA 기준, 리뷰 체크리스트 정의. 모든 PR은 병합 전에 작성된 계약에 대해 검토되었다.
+1. **제품 및 계약 계층 (인간 프로젝트 소유자 + AI CTO):** 인간 프로젝트 소유자가 제품 의도와 최종 승인 권한을 정의했다. AI CTO가 실행 계약을 정의하고, 소스를 검토하고, 정확한 SHA를 확인하고, 병합 준비를 결정했다.
 
 2. **구현 계층 (로컬 LLM + agentic IDE):** Base44 인프라 외부에서 실행되는 로컬 언어 모델이 격리된 소스 슬라이스를 구현했다. 각 슬라이스는 정의된 파일 범위, 알려진 베이스 커밋, 명시적인 허용/금지 변경 목록을 가졌다.
 

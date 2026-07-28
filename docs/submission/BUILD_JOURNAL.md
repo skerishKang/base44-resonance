@@ -10,11 +10,11 @@ A chronological account of building **WatchTree** on Base44 with external agenti
 
 **Problem:** Enter the Base44 Dev Build-Off with a product that demonstrates the platform's relationship-oriented capabilities. Initial concept: **Memory Resonance** — a bilingual experience matching people through shared emotional interpretation of media fragments, using Base44 AI fingerprint generation.
 
-**Decision:** Scaffold the repository with Vite + React, define initial 9 Entity schemas (Profile, MemoryCard, ResonanceFingerprint, MatchCandidate, MatchDecision, ConsentRecord, Conversation, Message, SafetyReport), and implement the earliest Base44 function proofs (`generate-fingerprint`, `compute-matches`). The initial CI commit (`f5a5e2d`) was an empty scaffold baseline.
+**Decision:** Define initial base44 Entity prototypes and function proofs for the Memory Resonance concept. An accidental no-op file write (`f5a5e2d`) reached main, was immediately reverted (`61defea`) with zero tree change, and led to stricter PR-only integration discipline.
 
 **Base44 capability used:** Entities with `created_by_id` RLS, Deno Functions with caller-scoped SDK client.
 
-**Issue / PR / SHA:** Issue #1 — Build-Off MVP; no PR yet; base `89a9c4f`.
+**Issue / PR / SHA:** Issue #1 — Build-Off MVP; no PR yet; early prototype baseline.
 
 **Failure or risk:** The initial product had 11 screens, 9 entities, and AI fingerprinting — too broad to complete within the Build-Off deadline.
 
@@ -34,11 +34,11 @@ A chronological account of building **WatchTree** on Base44 with external agenti
 
 **Problem:** Memory Resonance required runtime AI fingerprint generation, realtime conversation state, and a complex multi-entity matching pipeline — too much surface area for a single Build-Off cycle.
 
-**Decision:** Replace Memory Resonance with **WatchTree**, a privacy-first viewing-path experience. WatchTree turns the user's own YouTube viewing history into explainable synthetic resonance candidates using deterministic matching. No runtime AI, no real-person matching, no compatibility scores. The initial specification (Issue #20) defined 14 Entity schemas, 8 backend functions, and a 14-step user journey.
+**Decision:** Replace Memory Resonance with **WatchTree**, a privacy-first viewing-path experience. WatchTree turns the user's own YouTube viewing history into explainable synthetic resonance candidates using deterministic matching. No runtime AI, no real-person matching, no compatibility scores. The specification (Issue #20) defined the synthetic-only boundary and Takeout import path.
 
 **Base44 capability used:** Entity schemas (WatchImport, WatchEvent, WatchTreeFingerprint, SharedPathCandidate, RevealConsent, MutualResonance, ImportChunkReceipt); caller-scoped Deno Functions (seed-demo-history, parse-watch-history, build-watch-tree, find-shared-paths, simulate-mutual).
 
-**Issue / PR / SHA:** Issue #20 — Phase 3 WatchTree MVP; PR #36 later implements it; base `61defea`.
+**Issue / PR / SHA:** Issue #20 — Phase 3 WatchTree MVP.
 
 **Failure or risk:** Large specification risked implementation delays. Not all 14 entities were immediately needed.
 
@@ -109,9 +109,9 @@ Shared modules (`watchtree.js`, `sanitizer.js`, `watchtree-archetypes.js`, `reco
 
 **Issue / PR / SHA:** All Functions across PR #32, #36, #37; final inventory at `959afdc`.
 
-**Failure or risk:** Initial Functions used `context.base44` (invalid entrypoint pattern for Base44 functions). The Web CTO review caught this — converted all to `Deno.serve` + `createClientFromRequest`.
+**Failure or risk:** Initial Functions used `context.base44` (invalid entrypoint pattern for Base44 functions). The AI AI CTO review caught this — converted all to `Deno.serve` + `createClientFromRequest`.
 
-**Correction:** After first CTO review, all Functions were rewritten to the canonical pattern. Two new Functions (`resolve-youtube-video`, `add-watch-url-event`) were also converted and `resolve-youtube-video` was later removed.
+**Correction:** After first AI CTO review, all Functions were rewritten to the canonical pattern. Two new Functions (`resolve-youtube-video`, `add-watch-url-event`) were also converted and `resolve-youtube-video` was later removed.
 
 **Verification evidence:** All 13 `entry.ts` files use `Deno.serve(async (req) => { const base44 = createClientFromRequest(req); ... })`.
 
@@ -135,7 +135,7 @@ For API-key-free URL collections, a grounded 4-archetype subset is used: Quiet R
 
 **Issue / PR / SHA:** PR #37, base `959afdc`.
 
-**Failure or risk:** Early backend had a hardcoded 10-unique-ID threshold that returned `NO_ELIGIBLE_EVENTS` for real URL collections. CTO review identified the incorrect threshold. Also, empty creator labels were counted as real creator buckets, producing false Creator Loyalist evidence.
+**Failure or risk:** Early backend had a hardcoded 10-unique-ID threshold that returned `NO_ELIGIBLE_EVENTS` for real URL collections. AI CTO review identified the incorrect threshold. Also, empty creator labels were counted as real creator buckets, producing false Creator Loyalist evidence.
 
 **Correction:** Threshold lowered to `MIN_EVENTS_FOR_MATCHING = 4` for URL events. Empty creators excluded from channel metrics. Duration/category-dependent archetypes gated behind `hasDuration`. Grounded archetype set for real no-key collections.
 
@@ -181,11 +181,11 @@ For API-key-free URL collections, a grounded 4-archetype subset is used: Quiet R
 
 **Base44 capability used:** `WatchImport.delete()`, `WatchEvent.delete()`, `WatchTreeFingerprint.delete()`, `SharedPathCandidate.delete()`, `RevealConsent.delete()`, `MutualResonance.delete()`, `WatchMatchSignal.delete()`, `ImportChunkReceipt.delete()` — all caller-scoped via RLS.
 
-**Issue / PR / SHA:** Issue #29; PR #36; base `61defea`.
+**Issue / PR / SHA:** Issue #29; PR #36; base `61defea`, reviewed head `f68379e`, squash merge `a497590`.
 
 **Failure or risk:** Sequential per-level deletion with budget exhaustion could leave a parent alive with children partially deleted. Next invocation re-lists from offset 0 so it rediscovers children via the surviving parent — no orphans.
 
-**Correction:** CTO review identified that child deletion must complete before parent deletion. `drainWithChildren` was rewritten to return `complete: false` when budget runs out mid-child-deletion, retaining the parent.
+**Correction:** AI CTO review identified that child deletion must complete before parent deletion. `drainWithChildren` was rewritten to return `complete: false` when budget runs out mid-child-deletion, retaining the parent.
 
 **Verification evidence:** `tests/watchtree-privacy-lifecycle.test.mjs` (21-import multi-round deletion, 5000/5000 drain, single-call budget exhaustion, interrupted resume, query-spy scoped restore, 7-step regression).
 
@@ -209,7 +209,7 @@ Both jobs trigger on PR and push to `main` plus two retained feature branches. C
 
 **Base44 capability used:** Production App ID binding via `VITE_BASE44_APP_ID` environment variable.
 
-**Issue / PR / SHA:** Issue #30; PR #32; base `61defea`, merged `959afdc`.
+**Issue / PR / SHA:** Issue #30; PR #32; base `61defea`, reviewed head `39568f9`, squash merge `34fc099`.
 
 **Failure or risk:** CI did not run on `main` pushes — merged PRs bypassed CI. `check:release-bundle` used `if-no-files-found: warn` (permissive).
 
@@ -233,9 +233,9 @@ Both jobs trigger on PR and push to `main` plus two retained feature branches. C
 
 **Base44 capability used:** `add-watch-url-event` caller-scoped Function, WatchImport/WatchEvent Entities with `metadata_provenance` field, nonce-based per-event idempotency.
 
-**Issue / PR / SHA:** Issue #33; PR #37; base `959afdc`.
+**Issue / PR / SHA:** Issue #33; PR #37; base `a497590`, reviewed head `cb385a5`, squash merge `959afdc`. **Note:** merged to main but not yet deployed to production.
 
-**Failure or risk:** First implementation used `context.base44` (invalid entrypoint) and `YOUTUBE_API_KEY` in query string (credential exposure risk). CTO review caught both.
+**Failure or risk:** First implementation used `context.base44` (invalid entrypoint) and `YOUTUBE_API_KEY` in query string (credential exposure risk). AI CTO review caught both.
 
 **Correction:** Rewritten to `Deno.serve` + `createClientFromRequest`. All YouTube API code removed. API key query-string usage eliminated. Confirmation token logic removed (not needed without API metadata).
 
@@ -305,20 +305,19 @@ Both jobs trigger on PR and push to `main` plus two retained feature branches. C
 
 ---
 
-## Appendix: Repository evolution
+## Appendix: Main branch evolution
 
 ```
-89a9c4f — initial scaffold (Issue #1)
-61defea — WatchTree MVP baseline (Issue #20)
+61defea — accidental-file revert, post-noop discipline (Issue #20 baseline)
+34fc099 — release CI enforcement merged (Issue #30, PR #32)
 a497590 — privacy lifecycle complete (Issue #29, PR #36)
 959afdc — API-key-free URL collection + archetype matching (Issue #33, PR #37)
 ```
 
 | Metric | Value |
 |--------|-------|
-| Entity schemas | 13 |
-| Backend Functions | 13 |
-| Tests (final) | 265 |
+| Entity schemas (source) | 13 |
+| Backend Functions (source) | 13 (12 deployed baseline + 1 merged not deployed) |
+| Tests (final source) | 265 |
 | CI jobs | 2 (test+browser, release) |
-| CTO review rounds | 8 total across 3 PRs |
 | External service deps | 0 |

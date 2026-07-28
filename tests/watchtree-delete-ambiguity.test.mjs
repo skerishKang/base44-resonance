@@ -111,7 +111,7 @@ test("delete_import succeeds normally when the retry reaches a live import", asy
   assert.equal(residue(store), 0);
 });
 
-test("RESOURCE_UNAVAILABLE on the first attempt remains an error", async () => {
+test("RESOURCE_UNAVAILABLE on the first attempt remains an error and never invokes the Function", async () => {
   const store = createMockBase44Store();
   const client = createScriptedClient(store, [async () => unavailableEnvelope()]);
   setMockBase44Client(client);
@@ -120,7 +120,7 @@ test("RESOURCE_UNAVAILABLE on the first attempt remains an error", async () => {
     () => createProductionWatchTreeAdapter().mutatePrivacy("delete_import", { import_id: "imp_never_existed" }),
     (error) => error.code === "RESOURCE_UNAVAILABLE",
   );
-  assert.equal(client.calls.length, 1, "a first-attempt 404 is never retried into success");
+  assert.equal(client.calls.length, 0, "the ownership preflight blocks the destructive invocation entirely");
 });
 
 test("cross-user import id remains an error and leaves the owner's data untouched", async () => {
@@ -133,8 +133,29 @@ test("cross-user import id remains an error and leaves the owner's data untouche
     () => createProductionWatchTreeAdapter().mutatePrivacy("delete_import", { import_id: "imp_someone_else" }),
     (error) => error.code === "RESOURCE_UNAVAILABLE",
   );
+  assert.equal(client.calls.length, 0, "a foreign id never reaches the destructive Function");
   assert.equal(store.count("WatchImport"), 1, "the owner's import survives a foreign-id attempt");
   assert.equal(residue(store), 15);
+});
+
+test("a pre-backend 503 script followed by a cross-user 404 never becomes success", async () => {
+  const store = createMockBase44Store();
+  await seedOwnedImport(store, "imp_owner");
+  // Even a script explicitly composed as retryable 503 -> RESOURCE_UNAVAILABLE
+  // cannot manufacture a completion for an id the caller does not own, because
+  // the owner-qualified preflight fails before any invocation starts.
+  const client = createScriptedClient(store, [
+    async () => { throw transportError(503); },
+    async () => unavailableEnvelope(),
+  ]);
+  setMockBase44Client(client);
+
+  await assert.rejects(
+    () => createProductionWatchTreeAdapter().mutatePrivacy("delete_import", { import_id: "imp_foreign" }),
+    (error) => error.code === "RESOURCE_UNAVAILABLE",
+  );
+  assert.equal(client.calls.length, 0, "no owner-qualified preflight, no invocation");
+  assert.equal(residue(store), 15, "owner data untouched");
 });
 
 test("exhausted retryable attempts still surface the transport error", async () => {
@@ -157,6 +178,7 @@ test("exhausted retryable attempts still surface the transport error", async () 
 
 test("non-retryable function errors are not retried", async () => {
   const store = createMockBase44Store();
+  await seedOwnedImport(store, "imp_x");
   const client = createScriptedClient(store, [async () => ({ data: { ok: false, error: { code: "ACTION_UNSUPPORTED", retryable: false } } })]);
   setMockBase44Client(client);
 
@@ -167,16 +189,22 @@ test("non-retryable function errors are not retried", async () => {
   assert.equal(client.calls.length, 1);
 });
 
-test("production adapter wires the delete_import ambiguity policy with one shared request", () => {
+test("production adapter wires the owner-qualified delete_import ambiguity policy", () => {
   const source = read("src/watchtree/productionAdapter.js");
   const mutateStart = source.indexOf("async mutatePrivacy(action, payload)");
   const mutateBlock = source.slice(mutateStart, source.indexOf("},", mutateStart));
   assert.match(mutateBlock, /const request = \{/, "one request object is built per mutation");
   assert.match(mutateBlock, /client_nonce: nonce\(\)/, "the nonce is minted once per mutation, not per attempt");
-  assert.match(mutateBlock, /if \(action === "delete_import"\) return invokeDestructiveWithAmbiguity\("delete-watch-data", request\);/);
+  assert.match(mutateBlock, /if \(action === "delete_import"\) return invokeOwnedDeleteImportWithAmbiguity\(request\);/);
+
+  const preflightStart = source.indexOf("async function invokeOwnedDeleteImportWithAmbiguity");
+  const preflightBlock = source.slice(preflightStart, source.indexOf("export function splitTransportChunks"));
+  assert.match(preflightBlock, /const base44 = await getBase44Client\(\);\s*try \{\s*await base44\.entities\.WatchImport\.get\(payload\.import_id\);/, "caller-scoped ownership preflight before any destructive call");
+  assert.match(preflightBlock, /error\.code = "RESOURCE_UNAVAILABLE";/);
+  assert.match(preflightBlock, /return invokeDestructiveWithAmbiguity\(base44, "delete-watch-data", payload\);/, "the same client is reused for the destructive invocation");
 
   const policyStart = source.indexOf("async function invokeDestructiveWithAmbiguity");
-  const policyBlock = source.slice(policyStart, source.indexOf("export function splitTransportChunks"));
+  const policyBlock = source.slice(policyStart, preflightStart);
   assert.match(policyBlock, /sawRetryableAmbiguity && result\.error\?\.code === "RESOURCE_UNAVAILABLE"/, "only post-ambiguity 404s read as completion");
   assert.match(policyBlock, /sawRetryableAmbiguity = true;/, "the flag is set only when a retryable error is actually retried");
   assert.match(policyBlock, /complete: true/);

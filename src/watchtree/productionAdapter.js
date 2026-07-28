@@ -36,8 +36,7 @@ async function invokeWithRetry(name, payload, attempts = 3) {
 // server-side and only its response was lost, so it is read as completion.
 // A RESOURCE_UNAVAILABLE on the first attempt (nonexistent or cross-user id)
 // remains an error; every other failure keeps the normal retry contract.
-async function invokeDestructiveWithAmbiguity(name, payload, attempts = 3) {
-  const base44 = await getBase44Client();
+async function invokeDestructiveWithAmbiguity(base44, name, payload, attempts = 3) {
   let sawRetryableAmbiguity = false;
   let lastError;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
@@ -63,6 +62,23 @@ async function invokeDestructiveWithAmbiguity(name, payload, attempts = 3) {
     }
   }
   throw lastError;
+}
+
+// Caller-scoped ownership preflight for delete_import. The ambiguity-success
+// policy is armed only for an import the caller provably owns under RLS. A
+// nonexistent or cross-user id fails here before any destructive Function
+// invocation, so a pre-backend 503 followed by a 404 can never be misread as
+// a completed deletion, and other users' rows are never probed or exposed.
+async function invokeOwnedDeleteImportWithAmbiguity(payload) {
+  const base44 = await getBase44Client();
+  try {
+    await base44.entities.WatchImport.get(payload.import_id);
+  } catch {
+    const error = new Error("RESOURCE_UNAVAILABLE");
+    error.code = "RESOURCE_UNAVAILABLE";
+    throw error;
+  }
+  return invokeDestructiveWithAmbiguity(base44, "delete-watch-data", payload);
 }
 
 export function splitTransportChunks(records) {
@@ -223,7 +239,7 @@ export function createProductionWatchTreeAdapter() {
         action,
         ...payload,
       };
-      if (action === "delete_import") return invokeDestructiveWithAmbiguity("delete-watch-data", request);
+      if (action === "delete_import") return invokeOwnedDeleteImportWithAmbiguity(request);
       return invokeWithRetry("delete-watch-data", request);
     },
   };

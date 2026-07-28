@@ -77,9 +77,8 @@ jobs:
       - name: Assert release bundle contents
         run: npm run check:release-bundle
       - name: Upload production release bundle
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: production-release-bundle
           path: dist/
-          if-no-files-found: warn
+          if-no-files-found: error

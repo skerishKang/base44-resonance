@@ -3,7 +3,7 @@ import assert from "node:assert";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import viteConfigFunc, { FORBIDDEN_RELEASE_APP_IDS } from "../vite.config.js";
+import viteConfigFunc, { PRODUCTION_RELEASE_APP_ID } from "../vite.config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -137,10 +137,10 @@ test("release build fails closed without an explicit App ID even when a linked a
   }
 
   try {
-    fs.writeFileSync(appJsoncPath, JSON.stringify({ id: "linked-test-id" }), "utf-8");
+    fs.writeFileSync(appJsoncPath, JSON.stringify({ id: PRODUCTION_RELEASE_APP_ID }), "utf-8");
     await assert.rejects(
       async () => viteConfigFunc({ command: "build", mode: "release" }),
-      /VITE_BASE44_APP_ID/,
+      /RELEASE_APP_ID_REQUIRED/,
       "release build must fail closed instead of using the linked workspace app"
     );
   } finally {
@@ -155,33 +155,77 @@ test("release build fails closed without an explicit App ID even when a linked a
   }
 });
 
-test("release build accepts an explicit App ID from the environment", async () => {
+test("release build cannot be satisfied by BASE44_APP_ID alone", async () => {
   const originalEnv = process.env.VITE_BASE44_APP_ID;
-  process.env.VITE_BASE44_APP_ID = "release-app-id";
+  const originalBase44Env = process.env.BASE44_APP_ID;
+  delete process.env.VITE_BASE44_APP_ID;
+  process.env.BASE44_APP_ID = PRODUCTION_RELEASE_APP_ID;
+
+  try {
+    await assert.rejects(
+      async () => viteConfigFunc({ command: "build", mode: "release" }),
+      /RELEASE_APP_ID_REQUIRED/,
+      "release build must ignore BASE44_APP_ID and require explicit VITE_BASE44_APP_ID"
+    );
+  } finally {
+    if (originalEnv !== undefined) process.env.VITE_BASE44_APP_ID = originalEnv;
+    if (originalBase44Env !== undefined) process.env.BASE44_APP_ID = originalBase44Env;
+    else delete process.env.BASE44_APP_ID;
+  }
+});
+
+test("release build accepts only the exact production App ID from VITE_BASE44_APP_ID", async () => {
+  const originalEnv = process.env.VITE_BASE44_APP_ID;
+  const originalSource = process.env.VITE_BASE44_APP_SOURCE;
+  delete process.env.VITE_BASE44_APP_SOURCE;
+  process.env.VITE_BASE44_APP_ID = PRODUCTION_RELEASE_APP_ID;
 
   try {
     const config = await viteConfigFunc({ command: "build", mode: "release" });
     assert.deepEqual(config.define, {
-      "import.meta.env.VITE_BASE44_APP_ID": '"release-app-id"',
+      "import.meta.env.VITE_BASE44_APP_ID": JSON.stringify(PRODUCTION_RELEASE_APP_ID),
       "import.meta.env.VITE_BASE44_APP_SOURCE": '"environment"',
       "process.env.NODE_ENV": '"production"'
     });
   } finally {
     if (originalEnv !== undefined) process.env.VITE_BASE44_APP_ID = originalEnv;
     else delete process.env.VITE_BASE44_APP_ID;
+    if (originalSource !== undefined) process.env.VITE_BASE44_APP_SOURCE = originalSource;
   }
 });
 
-test("release build rejects non-production App IDs", async () => {
+test("release build preserves an explicit VITE_BASE44_APP_SOURCE", async () => {
   const originalEnv = process.env.VITE_BASE44_APP_ID;
+  const originalSource = process.env.VITE_BASE44_APP_SOURCE;
+  process.env.VITE_BASE44_APP_ID = PRODUCTION_RELEASE_APP_ID;
+  process.env.VITE_BASE44_APP_SOURCE = "production-release";
 
   try {
-    for (const forbiddenId of FORBIDDEN_RELEASE_APP_IDS) {
-      process.env.VITE_BASE44_APP_ID = forbiddenId;
+    const config = await viteConfigFunc({ command: "build", mode: "release" });
+    assert.equal(config.define["import.meta.env.VITE_BASE44_APP_SOURCE"], '"production-release"');
+  } finally {
+    if (originalEnv !== undefined) process.env.VITE_BASE44_APP_ID = originalEnv;
+    else delete process.env.VITE_BASE44_APP_ID;
+    if (originalSource !== undefined) process.env.VITE_BASE44_APP_SOURCE = originalSource;
+    else delete process.env.VITE_BASE44_APP_SOURCE;
+  }
+});
+
+test("release build rejects any App ID that is not the exact production ID", async () => {
+  const originalEnv = process.env.VITE_BASE44_APP_ID;
+  const nonProductionIds = [
+    "arbitrary-app-id",
+    "6a66efa32405ef17115532ed",
+    "6a65182449c7c0f8ec33e31d",
+  ];
+
+  try {
+    for (const wrongId of nonProductionIds) {
+      process.env.VITE_BASE44_APP_ID = wrongId;
       await assert.rejects(
         async () => viteConfigFunc({ command: "build", mode: "release" }),
-        /non-production app/,
-        `release build must reject forbidden App ID ${forbiddenId}`
+        /RELEASE_APP_ID_MISMATCH/,
+        `release build must reject non-production App ID ${wrongId}`
       );
     }
   } finally {

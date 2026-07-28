@@ -226,7 +226,7 @@ export const copy = {
       foundation: "WatchTree product path",
       steps: [
         { title: "Base44 Auth", text: "Built-in identity establishes caller context without rendering account email in the product surface." },
-        { title: "Owner-scoped Entity schemas", text: "Thirteen owner-scoped schemas — including WatchImport, WatchEvent, and RevealConsent — remain private through creator-ID RLS." },
+        { title: "Owner-scoped Entity schemas", text: "Thirteen owner-scoped schemas — including WatchImport, WatchEvent, and RevealConsent — remain private through created_by_id RLS." },
         { title: "Deterministic Functions", text: "Twelve caller-scoped Functions, including build-watch-tree and set-reveal-consent, inherit caller permissions and use no live AI, Agent, Integration, or service role." },
         { title: "Explainable demo result", text: "Three synthetic profiles and one explicitly simulated mutual state complete the bounded journey." },
       ],

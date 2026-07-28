@@ -8,44 +8,59 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const RELEASE_MODE = "release";
 
-// Public Base44 app identifiers (not secrets) that must never ship in a release bundle.
-export const FORBIDDEN_RELEASE_APP_IDS = [
-  "6a66efa32405ef17115532ed",
-  "6a65182449c7c0f8ec33e31d",
-];
+// Public production app identifier (not a secret); the only App ID a release bundle may carry.
+export const PRODUCTION_RELEASE_APP_ID = "6a6538c71a8e3e1640117c91";
+
+function readLinkedAppId() {
+  try {
+    const appJsonc = fs.readFileSync(path.resolve(__dirname, "./base44/.app.jsonc"), "utf-8");
+    const cleanJson = appJsonc.replace(/\/\/.*/g, "");
+    const parsed = JSON.parse(cleanJson);
+    if (parsed && parsed.id) return parsed.id;
+  } catch (err) {
+    // Ignored
+  }
+  return "";
+}
 
 export default defineConfig(({ command, mode }) => {
   const releaseBuild = command === "build" && mode === RELEASE_MODE;
   const env = loadEnv(mode, process.cwd(), "");
-  let appId = env.VITE_BASE44_APP_ID || env.BASE44_APP_ID;
-  let source = appId ? "environment" : "unknown";
+  const explicitViteAppId = (env.VITE_BASE44_APP_ID || "").trim();
+  const explicitSource = (env.VITE_BASE44_APP_SOURCE || "").trim();
 
-  if (!appId && !releaseBuild) {
-    try {
-      const appJsonc = fs.readFileSync(path.resolve(__dirname, "./base44/.app.jsonc"), "utf-8");
-      const cleanJson = appJsonc.replace(/\/\/.*/g, "");
-      const parsed = JSON.parse(cleanJson);
-      if (parsed && parsed.id) {
-        appId = parsed.id;
-        source = "linked-app";
-      }
-    } catch (err) {
-      // Ignored
+  let appId = "";
+  let resolvedSource = "unknown";
+  if (releaseBuild) {
+    appId = explicitViteAppId;
+    if (appId) resolvedSource = "environment";
+  } else if (explicitViteAppId) {
+    appId = explicitViteAppId;
+    resolvedSource = "environment";
+  } else if (env.BASE44_APP_ID) {
+    appId = env.BASE44_APP_ID;
+    resolvedSource = "environment";
+  } else {
+    const linkedAppId = readLinkedAppId();
+    if (linkedAppId) {
+      appId = linkedAppId;
+      resolvedSource = "linked-app";
     }
   }
 
+  const source = explicitSource || resolvedSource;
+
   if (releaseBuild) {
     process.env.NODE_ENV = "production";
-    if (!appId) {
+    if (!explicitViteAppId) {
       throw new Error(
-        "Release build failed closed: set VITE_BASE44_APP_ID to the public production App ID. " +
-        "A production bundle without an App ID ships a disabled Base44 client (APP_ID_UNAVAILABLE)."
+        "RELEASE_APP_ID_REQUIRED: release builds require an explicit VITE_BASE44_APP_ID. " +
+        "BASE44_APP_ID and linked workspace .app.jsonc are ignored in release mode."
       );
     }
-    if (FORBIDDEN_RELEASE_APP_IDS.includes(appId)) {
+    if (explicitViteAppId !== PRODUCTION_RELEASE_APP_ID) {
       throw new Error(
-        `Release build failed closed: App ID ${appId} belongs to a non-production app. ` +
-        "Release bundles must use the production App ID."
+        `RELEASE_APP_ID_MISMATCH: release builds accept only the production App ID ${PRODUCTION_RELEASE_APP_ID}.`
       );
     }
   }

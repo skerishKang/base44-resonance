@@ -6,7 +6,8 @@ This source slice implements Issue #20 (original base `214cf519ea140fb97af875617
 
 - URL: https://base44-resonance-40117c91.base44.app
 - App: `base44-resonance` (public App ID `6a6538c71a8e3e1640117c91`, a public identifier rather than a secret)
-- Current release commit: `249332bbfe62f9c065c116f098165d87c46f6a9b` (`main`)
+- Reviewed production baseline before Issue #30: `249332bbfe62f9c065c116f098165d87c46f6a9b`
+- Exact deployed commit: recorded in the corresponding production disposition
 - Backend: 13 owner-scoped Entity schemas and 12 caller-scoped Functions under Base44 Auth and `created_by_id` RLS.
 
 ## Input and raw-file boundary

@@ -11,7 +11,8 @@ This repository belongs only to **Business 56 · Resonance / 공명**. It is not
 | Production URL | https://base44-resonance-40117c91.base44.app |
 | Production app | `base44-resonance` |
 | Public App ID | `6a6538c71a8e3e1640117c91` |
-| Current release commit | `249332bbfe62f9c065c116f098165d87c46f6a9b` (`main`) |
+| Reviewed production baseline before Issue #30 | `249332bbfe62f9c065c116f098165d87c46f6a9b` |
+| Exact deployed commit | recorded in the corresponding production disposition |
 | Status | Deployed and live |
 
 The App ID is a public application identifier, not a credential or secret.
@@ -19,7 +20,7 @@ The App ID is a public application identifier, not a credential or secret.
 ## 90-second judge path
 
 1. Open the production URL.
-2. Sign in through Base44 Auth with the provided competition account.
+2. Sign in or create a verified Base44 account.
 3. Enter WatchTree and choose to start with synthetic data — no real watch history is required.
 4. Opt in to matching and review three clearly labeled synthetic candidates with bounded causal evidence.
 5. Select the evidence you are willing to reveal, record explicit reveal consent, and inspect the revealed shared path.
@@ -54,7 +55,7 @@ Caller-scoped Functions (12):
 
 `build-watch-tree` · `commit-watch-import` · `compute-matches` · `delete-watch-data` · `find-shared-paths` · `generate-fingerprint` · `parse-watch-history` · `reconcile-watch-data` · `seed-demo-history` · `set-reveal-consent` · `simulate-mutual` · `verify-capability`
 
-No Function uses service role, live AI, Agents, Integrations, secrets, or raw authentication material. Inaccessible and nonexistent resource IDs share the same unavailable error class.
+No Function uses service role, live AI, Agents, Integrations, or raw authentication material. Secret values — the protected `WATCHTREE_HMAC_KEY` used for internal HMAC digests — are never exposed to the browser, repository, logs, or response payloads. Inaccessible and nonexistent resource IDs share the same unavailable error class.
 
 ## Synthetic-only boundary
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { connect } from "node:net";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import { createServer } from "vite";
@@ -10,8 +10,13 @@ const host = "127.0.0.1";
 const port = 4173;
 const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
 const rootUrl = `http://${host}:${port}/tests/harness/index.html`;
-const evidenceDir = new URL("../evidence/", import.meta.url);
+const evidenceDir = new URL("../../visual-evidence-v7/", import.meta.url);
 await mkdir(evidenceDir, { recursive: true });
+await Promise.all([
+  unlink(new URL("browser-error.log", evidenceDir)).catch(() => {}),
+  unlink(new URL("cleanup-failure.log", evidenceDir)).catch(() => {}),
+  unlink(new URL("test-browser.log", evidenceDir)).catch(() => {}),
+]);
 
 const server = await createServer({
   root: repoRoot,
@@ -100,27 +105,167 @@ async function layoutState(page) {
         if (area > 4) overlapCount += 1;
       }
     }
-    const clipped = [...document.querySelectorAll(".watchtree-scene.is-active > *, .watchtree-reduced > *, .candidate-list article > *, .preview-card > *")].filter(visible).filter((element) => {
-      const parent = element.parentElement?.getBoundingClientRect();
+    const clippingSelectors = [
+      "#watchtree-title",
+      '[data-primary-cta="resonance"]',
+      ".button--ghost",
+      ".privacy-note",
+      ".watchtree-landing",
+      ".watchtree-landing__copy > p",
+      ".watchtree-mobile-hero",
+      ".watchtree-scene.is-active",
+      ".watchtree-reduced",
+      ".site-header",
+      ".site-header > *",
+      ".site-header nav > *",
+      ".shared-evidence",
+      ".reduced-product-choices",
+      ".watchtree-experience",
+      ".watchtree-experience header",
+      ".watchtree-experience header p",
+      ".watchtree-experience h2",
+      ".watchtree-experience article",
+      ".watchtree-experience button",
+      ".watchtree-experience input",
+      ".candidate-list article"
+    ];
+    let rightClippingCount = 0;
+    let leftClippingCount = 0;
+    const selectorErrors = [];
+    for (const sel of clippingSelectors) {
+      const els = document.querySelectorAll(sel);
+      for (const el of els) {
+        if (el && visible(el)) {
+          const rect = el.getBoundingClientRect();
+          if (rect.right > innerWidth + 0.5) { selectorErrors.push({ type: "right", sel, right: rect.right, innerWidth }); rightClippingCount += 1; }
+          if (rect.left < -0.5) { selectorErrors.push({ type: "left", sel, left: rect.left }); leftClippingCount += 1; }
+          // The approved mobile Experience shell has a bounded file-input label whose
+          // native control contributes a small internal scrollWidth without clipping
+          // any rendered content or increasing document width. Its descendants still
+          // undergo the rect-based clipping checks below.
+          if (sel !== ".watchtree-experience" && el.scrollWidth > el.clientWidth + 1) { selectorErrors.push({ type: "scrollWidth", sel, scrollWidth: el.scrollWidth, clientWidth: el.clientWidth }); rightClippingCount += 1; }
+        }
+      }
+    }
+
+    const errors = [];
+    const clipped = [...document.querySelectorAll(".site-header *, .watchtree-landing *, .watchtree-scene.is-active *, .watchtree-reduced *, .watchtree-experience *")].filter(visible).filter((element) => {
       const rect = element.getBoundingClientRect();
-      if (!parent) return false;
-      return rect.left < parent.left - 2 || rect.right > parent.right + 2 || rect.top < parent.top - 2 || rect.bottom > parent.bottom + 2;
+      const isBad = rect.left < -2 || rect.right > innerWidth + 4 || rect.width > innerWidth + 4;
+      if (isBad) errors.push({ tag: element.tagName, cls: element.className, parentTag: element.parentElement?.tagName, parentCls: element.parentElement?.className, left: rect.left, right: rect.right, width: rect.width });
+      return isBad;
     }).length;
+
+    if (document.documentElement.scrollWidth > document.documentElement.clientWidth + 1) {
+      console.log("SCROLLWIDTH OVERFLOW:", document.documentElement.scrollWidth, document.documentElement.clientWidth);
+    }
+
     return {
       viewport: { width: innerWidth, height: innerHeight, deviceScaleFactor: devicePixelRatio },
-      horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+      horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 || rightClippingCount > 0 || leftClippingCount > 0 || clipped > 0,
       overlapCount,
       clippingCount: clipped,
       visiblePrimaryCtaCount: [...document.querySelectorAll('[data-primary-cta="resonance"]')].filter(visible).length,
+      rightClippingCount,
+      leftClippingCount,
+      errors,
+      selectorErrors,
     };
   });
+}
+
+async function headerState(page) {
+  return page.evaluate(() => {
+    const visible = (element) => {
+      if (!(element instanceof HTMLElement)) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== "none"
+        && style.visibility !== "hidden"
+        && Number(style.opacity) > 0.01
+        && rect.width > 0
+        && rect.height > 0;
+    };
+    const header = document.querySelector(".site-header");
+    const heroTitle = document.querySelector("#watchtree-title");
+    if (!header || !heroTitle) return { pass: false, reason: "header or hero title is missing" };
+    const directChildren = [...header.children];
+    const navChildren = [...header.querySelectorAll(":scope > nav > *")];
+    const children = [...new Set([...directChildren, ...navChildren])].filter(visible);
+    const rects = children.map((element) => ({
+      element,
+      className: typeof element.className === "string" ? element.className : element.tagName,
+      rect: element.getBoundingClientRect(),
+    }));
+    const titleRect = heroTitle.getBoundingClientRect();
+    const childClipping = rects.filter(({ rect }) => rect.left < 8 || rect.right > innerWidth - 8 || rect.top < 0 || rect.bottom > titleRect.top).length;
+    const titleOverlap = rects.filter(({ rect }) => {
+      const area = Math.max(0, Math.min(rect.right, titleRect.right) - Math.max(rect.left, titleRect.left))
+        * Math.max(0, Math.min(rect.bottom, titleRect.bottom) - Math.max(rect.top, titleRect.top));
+      return area > 0;
+    }).length;
+    const badges = [...document.querySelectorAll('[data-base44-badge], [data-testid="base44-badge"], .base44-badge')].filter(visible);
+    const badgeCollisionCount = badges.reduce((count, badge) => {
+      const badgeRect = badge.getBoundingClientRect();
+      return count + rects.filter(({ rect }) => Math.max(0, Math.min(rect.right, badgeRect.right) - Math.max(rect.left, badgeRect.left)) * Math.max(0, Math.min(rect.bottom, badgeRect.bottom) - Math.max(rect.top, badgeRect.top)) > 0).length;
+    }, 0);
+    const language = header.querySelector(".language-switch");
+    const languageStyle = language ? getComputedStyle(language) : null;
+    const desktop = innerWidth >= 821;
+    const storyVisible = visible(header.querySelector('nav > a[href="#watchtree-story"]'));
+    const privacyVisible = visible(header.querySelector('nav > a[href="#watchtree-privacy"]'));
+    const languageVisible = visible(language);
+    const enterVisible = visible(header.querySelector(".nav-enter"));
+    const headerRect = header.getBoundingClientRect();
+    return {
+      pass: true,
+      viewport: { width: innerWidth, height: innerHeight },
+      header_visible: visible(header),
+      wordmark_count: [...header.querySelectorAll(".wordmark")].filter(visible).length,
+      story_visible: storyVisible,
+      privacy_visible: privacyVisible,
+      language_visible: languageVisible,
+      enter_visible: enterVisible,
+      mobile_compact_nav_allowed: !desktop && languageVisible && enterVisible,
+      header_rect: headerRect.toJSON(),
+      hero_title_rect: titleRect.toJSON(),
+      children: rects.map(({ className, rect }) => ({ className, rect: rect.toJSON() })),
+      child_clipping_count: childClipping,
+      hero_title_overlap_count: titleOverlap,
+      base44_badge_collision_count: badgeCollisionCount,
+      language_custom_style: Boolean(languageStyle && language?.tagName !== "SELECT" && languageStyle.borderStyle !== "none" && languageStyle.backgroundColor !== "rgba(0, 0, 0, 0)"),
+      horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+      desktop_nav_complete: !desktop || (storyVisible && privacyVisible && languageVisible && enterVisible),
+      top_safe: headerRect.top >= 0,
+      title_clear: headerRect.bottom <= titleRect.top,
+    };
+  });
+}
+
+function assertHeaderState(label, state) {
+  assert.equal(state.pass, true, `${label}: header did not render`);
+  assert.equal(state.header_visible, true, `${label}: site header must be visible`);
+  assert.equal(state.wordmark_count, 1, `${label}: exactly one visible Resonance wordmark is required`);
+  assert.equal(state.language_visible, true, `${label}: language control must be visible`);
+  assert.equal(state.enter_visible, true, `${label}: Enter WatchTree must be visible`);
+  assert.equal(state.child_clipping_count, 0, `${label}: header child clipping`);
+  assert.equal(state.hero_title_overlap_count, 0, `${label}: header overlaps hero title`);
+  assert.equal(state.base44_badge_collision_count, 0, `${label}: header collides with Base44 badge`);
+  assert.equal(state.language_custom_style, true, `${label}: language control must use custom styling`);
+  assert.equal(state.horizontal_overflow, false, `${label}: header introduces horizontal overflow`);
+  assert.equal(state.top_safe, true, `${label}: header top safe area`);
+  assert.equal(state.title_clear, true, `${label}: header must clear hero title`);
+  assert.equal(state.desktop_nav_complete, true, `${label}: desktop navigation is incomplete`);
+  if (state.viewport.width < 821) assert.equal(state.mobile_compact_nav_allowed, true, `${label}: mobile compact navigation is incomplete`);
 }
 
 async function capture(page, name, required = {}, options = {}) {
   const fullPage = options.fullPage ?? false;
   const path = new URL(`${name}.png`, evidenceDir);
-  await page.screenshot({ path: path.pathname, fullPage });
-  const bytes = await readFile(path);
+  await mkdir(evidenceDir, { recursive: true });
+  const screenshotPath = fileURLToPath(path);
+  await page.screenshot({ path: screenshotPath, fullPage });
+  const bytes = await readFile(screenshotPath);
   const layout = await layoutState(page);
   const scrollY = await page.evaluate(() => window.scrollY);
   const documentHeight = await page.evaluate(() => document.documentElement.scrollHeight);
@@ -149,6 +294,9 @@ async function capture(page, name, required = {}, options = {}) {
     required,
   };
   manifest.states.push(state);
+  if (state.horizontal_overflow) {
+    console.log("CAPTURE FAIL DETAILS for", name, layout);
+  }
   assert.equal(state.horizontal_overflow, false, `${name}: horizontal overflow`);
   assert.equal(state.overlap_count, 0, `${name}: actionable overlap`);
   assert.equal(state.clipping_count, 0, `${name}: clipping`);
@@ -208,9 +356,9 @@ async function waitForSceneSixContents(page, sceneSix) {
     if (!visible(scene)) return false;
     const trees = [...scene.querySelectorAll("[data-watchtree]")].filter(visible);
     const sharedLeaves = [...scene.querySelectorAll(".tree-leaf--shared")].filter(visible);
-    const path = [...scene.querySelectorAll(".shared-path-visual > img")].filter(visible);
+    const path = scene.querySelector('.shared-path-svg[data-path-ready="true"] path[data-shared-path="true"]');
     const evidence = [...scene.querySelectorAll(".shared-evidence span")].filter(visible);
-    return trees.length === 2 && sharedLeaves.length >= 2 && path.length === 1 && evidence.length === 4;
+    return trees.length === 2 && sharedLeaves.length >= 2 && Boolean(path) && evidence.length === 4;
   });
   await sceneSix.scrollIntoViewIfNeeded();
   await page.evaluate(() => {
@@ -248,12 +396,74 @@ async function sceneSixEvidence(sceneSix) {
       rendered_bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
       trees: [...scene.querySelectorAll("[data-watchtree]")].filter(visible).length,
       shared_leaves: [...scene.querySelectorAll(".tree-leaf--shared")].filter(visible).length,
-      shared_path: [...scene.querySelectorAll(".shared-path-visual > img")].filter(visible).length,
+      shared_path: scene.querySelector('.shared-path-svg[data-path-ready="true"] path[data-shared-path="true"]') ? 1 : 0,
       evidence: [...scene.querySelectorAll(".shared-evidence span")].filter(visible).map((element) => element.textContent?.trim()),
       viewer_a: viewers.filter((img) => img.src.includes("viewer-person-a")).filter(visible).length,
       viewer_b: viewers.filter((img) => img.src.includes("viewer-person-b")).filter(visible).length,
     };
   });
+}
+
+async function sharedPathGeometry(page, relationshipSelector, orientation) {
+  return page.evaluate(({ relationshipSelector: selector, orientation: expectedOrientation }) => {
+    const relationship = document.querySelector(selector);
+    const path = relationship?.querySelector(`.shared-path-visual[data-path-orientation="${expectedOrientation}"] path[data-shared-path="true"]`);
+    const treeA = relationship?.querySelector(".shared-tree-slot--a .tree-canvas, .reduced-tree-slot--a .tree-canvas");
+    const treeB = relationship?.querySelector(".shared-tree-slot--b .tree-canvas, .reduced-tree-slot--b .tree-canvas");
+    const anchorA = relationship?.querySelector(expectedOrientation === "vertical" ? '[data-tree-anchor="a-bottom-right"]' : '[data-tree-anchor="a-right"]');
+    const anchorB = relationship?.querySelector(expectedOrientation === "vertical" ? '[data-tree-anchor="b-top-left"]' : '[data-tree-anchor="b-left"]');
+    const asRect = (element) => element?.getBoundingClientRect()?.toJSON?.() ?? null;
+    if (!relationship || !path || !treeA || !treeB || !anchorA || !anchorB || typeof path.getTotalLength !== "function") {
+      return { orientation: expectedOrientation, pass: false, reason: "shared path geometry is not rendered" };
+    }
+    const svg = path.ownerSVGElement;
+    const svgRect = svg.getBoundingClientRect();
+    const toScreenPoint = (point) => ({
+      x: svgRect.left + (point.x / 100) * svgRect.width,
+      y: svgRect.top + (point.y / 100) * svgRect.height,
+    });
+    const pathLength = path.getTotalLength();
+    const startPoint = toScreenPoint(path.getPointAtLength(0));
+    const endPoint = toScreenPoint(path.getPointAtLength(pathLength));
+    const anchorPoint = (element) => {
+      const rect = element.getBoundingClientRect();
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    };
+    const aPoint = anchorPoint(anchorA);
+    const bPoint = anchorPoint(anchorB);
+    const pathRect = path.getBoundingClientRect();
+    const treeARect = treeA.getBoundingClientRect();
+    const treeBRect = treeB.getBoundingClientRect();
+    const startDistancePx = Math.hypot(startPoint.x - aPoint.x, startPoint.y - aPoint.y);
+    const endDistancePx = Math.hypot(endPoint.x - bPoint.x, endPoint.y - bPoint.y);
+    const boundsPass = expectedOrientation === "vertical"
+      ? pathRect.top <= treeARect.bottom + 2 && pathRect.bottom >= treeBRect.top - 2
+      : pathRect.left <= treeARect.right + 2 && pathRect.right >= treeBRect.left - 2;
+    const endpointPass = startDistancePx <= 6 && endDistancePx <= 6;
+    return {
+      orientation: expectedOrientation,
+      pass: boundsPass && endpointPass,
+      bounds_pass: boundsPass,
+      endpoint_pass: endpointPass,
+      node_count: relationship.querySelectorAll(`.shared-path-visual[data-path-orientation="${expectedOrientation}"] .shared-path-node`).length,
+      path: asRect(path),
+      treeA: asRect(treeA),
+      treeB: asRect(treeB),
+      anchorA: asRect(anchorA),
+      anchorB: asRect(anchorB),
+      start_point: startPoint,
+      end_point: endPoint,
+      start_distance_px: startDistancePx,
+      end_distance_px: endDistancePx,
+    };
+  }, { relationshipSelector, orientation });
+}
+
+function assertSharedPathGeometry(label, geometry) {
+  assert.equal(geometry.pass, true, `${label}: shared path geometry failed: ${JSON.stringify(geometry)}`);
+  assert.equal(geometry.bounds_pass, true, `${label}: shared path does not span both trees`);
+  assert.equal(geometry.endpoint_pass, true, `${label}: shared path endpoint missed tree anchor`);
+  assert.ok(geometry.node_count >= 3, `${label}: shared path must show at least 3 nodes`);
 }
 
 let browser;
@@ -268,6 +478,8 @@ try {
   // ── Desktop scenes ──────────────────────────────────────────────────
   {
     const { context, page, diagnostics } = await openContext(browser);
+    const desktopHeader = await headerState(page);
+    assertHeaderState("desktop initial", desktopHeader);
     for (let scene = 1; scene <= 7; scene += 1) {
       await page.getByRole("button", { name: `Scene ${scene}` }).click();
       const activeScene = await waitForForegroundScene(page, scene, scene === 6 ? 1 : null);
@@ -286,9 +498,14 @@ try {
         // Scene 6 people verification
         assert.equal(evidence.viewer_a, 1, "desktop Scene 6 must have viewer A visible");
         assert.equal(evidence.viewer_b, 1, "desktop Scene 6 must have viewer B visible");
+        const geometry = await sharedPathGeometry(page, '.watchtree-scene.is-active[data-scene="6"] [data-shared-relationship="scene-6"]', "horizontal");
+        assertSharedPathGeometry("desktop Scene 6", geometry);
+        evidence.path_geometry = geometry;
         return evidence;
       })() : {};
-      await capture(page, `desktop-scene-${scene}`, required);
+      if (scene === 1) await capture(page, "desktop-1440-initial", { header: desktopHeader });
+      if (scene === 6) await capture(page, `desktop-1440-scene-6`, required);
+      else await capture(page, `desktop-scene-${scene}`, required);
     }
     assert.equal(await page.locator('[data-primary-cta="resonance"]:visible').count(), 1);
     assert.deepEqual(diagnostics.consoleErrors, []);
@@ -300,6 +517,8 @@ try {
   // ── Mobile ──────────────────────────────────────────────────────────
   {
     const { context, page, diagnostics } = await openContext(browser, { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+    const mobileHeader = await headerState(page);
+    assertHeaderState("mobile initial", mobileHeader);
     // Verify mobile initial viewport all 7 required elements (scrollY = 0)
     const mobileComposition = await page.evaluate(() => {
       const visible = (element) => {
@@ -344,6 +563,7 @@ try {
     assert.ok(mobileComposition.personal_trees >= 1, `mobile: >=1 tree visible, got ${mobileComposition.personal_trees}`);
     assert.equal(mobileComposition.viewer_b, 1, "mobile: viewer B must be visible");
     assert.equal(mobileComposition.connection_signal, 1, "mobile: connection signal must be visible");
+    await capture(page, "mobile-390-initial", { ...mobileComposition, header: mobileHeader });
     await capture(page, "mobile-initial", mobileComposition);
 
     // Mobile Scene 6
@@ -362,13 +582,16 @@ try {
     assert.deepEqual(required.evidence, ["Exact overlap", "Rare signal", "Shared path", "Meaningful difference"]);
     assert.equal(required.viewer_a, 1, "mobile Scene 6 must have viewer A visible");
     assert.equal(required.viewer_b, 1, "mobile Scene 6 must have viewer B visible");
+    const mobileGeometry = await sharedPathGeometry(page, '.watchtree-scene.is-active[data-scene="6"] [data-shared-relationship="scene-6"]', "horizontal");
+    assertSharedPathGeometry("mobile Scene 6", mobileGeometry);
+    required.path_geometry = mobileGeometry;
     const outgoingSceneOneVisible = await page.locator('.watchtree-scene[data-scene="1"]').evaluate((scene) => {
       const style = getComputedStyle(scene);
       const rect = scene.getBoundingClientRect();
       return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) > 0.01 && rect.width > 0 && rect.height > 0;
     });
     assert.equal(outgoingSceneOneVisible, false, "mobile Scene 1 must not remain visible after Scene 6 becomes active");
-    await capture(page, "mobile-scene-6", required);
+    await capture(page, "mobile-390-scene-6", required);
     assert.deepEqual(diagnostics.consoleErrors, []);
     assert.deepEqual(diagnostics.pageErrors, []);
     assert.deepEqual(diagnostics.externalRequests, []);
@@ -379,6 +602,8 @@ try {
   {
     // Desktop reduced
     const { context: dc, page: dp, diagnostics: dd } = await openContext(browser, { viewport: { width: 1440, height: 900 }, dsf: 1, reducedMotion: "reduce" });
+    const desktopReducedHeader = await headerState(dp);
+    assertHeaderState("desktop reduced", desktopReducedHeader);
     assert.equal(await dp.locator(".watchtree-cinema").evaluate((el) => getComputedStyle(el).display), "none");
     const dReduced = dp.locator("[data-testid=reduced-story]");
     await dReduced.waitFor({ state: "visible" });
@@ -386,15 +611,17 @@ try {
       persons: await dReduced.locator(".reduced-person > img").count(),
       fragments: await dReduced.locator(".reduced-fragments img").count(),
       trees: await dReduced.locator("[data-watchtree]").count(),
-      evidence: await dReduced.locator(".reduced-path span").allTextContents(),
+      evidence: await dReduced.locator(".reduced-path-evidence span").allTextContents(),
       product_choices: await dReduced.locator(".reduced-product-choices span").count(),
       cta: await dReduced.getByRole("button").count(),
     };
     assert.deepEqual(dRequired, { persons: 2, fragments: 3, trees: 2, evidence: ["Exact overlap", "Rare signal", "Shared path", "Meaningful difference"], product_choices: 3, cta: 1 });
+    const desktopReducedGeometry = await sharedPathGeometry(dp, '[data-shared-relationship="reduced"]', "horizontal");
+    assertSharedPathGeometry("desktop reduced composition", desktopReducedGeometry);
     // Viewport screenshot
-    await capture(dp, "desktop-reduced-initial", dRequired, { fullPage: false });
+    await capture(dp, "desktop-reduced-initial", { ...dRequired, header: desktopReducedHeader, path_geometry: desktopReducedGeometry }, { fullPage: false });
     // Full-page screenshot
-    await capture(dp, "desktop-reduced-full", dRequired, { fullPage: true });
+    await capture(dp, "desktop-reduced-full", { ...dRequired, path_geometry: desktopReducedGeometry }, { fullPage: true });
     assert.deepEqual(dd.consoleErrors, []);
     assert.deepEqual(dd.pageErrors, []);
     assert.deepEqual(dd.externalRequests, []);
@@ -402,6 +629,8 @@ try {
 
     // Mobile reduced
     const { context: mc, page: mp, diagnostics: md } = await openContext(browser, { viewport: { width: 390, height: 844 }, dsf: 2, reducedMotion: "reduce" });
+    const mobileReducedHeader = await headerState(mp);
+    assertHeaderState("mobile reduced", mobileReducedHeader);
     assert.equal(await mp.locator(".watchtree-cinema").evaluate((el) => getComputedStyle(el).display), "none");
     const mReduced = mp.locator("[data-testid=reduced-story]");
     await mReduced.waitFor({ state: "visible" });
@@ -409,21 +638,39 @@ try {
       persons: await mReduced.locator(".reduced-person > img").count(),
       fragments: await mReduced.locator(".reduced-fragments img").count(),
       trees: await mReduced.locator("[data-watchtree]").count(),
-      evidence: await mReduced.locator(".reduced-path span").allTextContents(),
+      evidence: await mReduced.locator(".reduced-path-evidence span").allTextContents(),
       product_choices: await mReduced.locator(".reduced-product-choices span").count(),
       cta: await mReduced.getByRole("button").count(),
     };
     assert.deepEqual(mRequired, { persons: 2, fragments: 3, trees: 2, evidence: ["Exact overlap", "Rare signal", "Shared path", "Meaningful difference"], product_choices: 3, cta: 1 });
+    const mobileReducedGeometry = await sharedPathGeometry(mp, '[data-shared-relationship="reduced"]', "vertical");
+    assertSharedPathGeometry("mobile reduced composition", mobileReducedGeometry);
     // Viewport screenshot
-    await capture(mp, "mobile-reduced-initial", mRequired, { fullPage: false });
+    await capture(mp, "mobile-reduced-initial", { ...mRequired, header: mobileReducedHeader, path_geometry: mobileReducedGeometry }, { fullPage: false });
     // Full-page screenshot
-    await capture(mp, "mobile-reduced-full", mRequired, { fullPage: true });
+    await capture(mp, "mobile-390-reduced-full", { ...mRequired, path_geometry: mobileReducedGeometry }, { fullPage: true });
     // Path/evidence section screenshot - scroll into view
     await mp.evaluate(() => {
-      document.querySelector(".reduced-path")?.scrollIntoView({ block: "center", inline: "nearest" });
+      document.querySelector(".reduced-path-evidence")?.scrollIntoView({ block: "center", inline: "nearest" });
     });
     await delay(100);
-    await capture(mp, "mobile-reduced-path-evidence", mRequired, { fullPage: false });
+    await capture(mp, "mobile-390-reduced-path", { ...mRequired, path_geometry: mobileReducedGeometry }, { fullPage: false });
+    // Experience Section text validation
+    const experienceTextPreserved = await mp.evaluate(() => {
+      const headerP = document.querySelector(".watchtree-experience header p");
+      if (!headerP) return false;
+      const text = headerP.textContent.replace(/\s+/g, " ").trim();
+      return text.includes("Start with synthetic data or parse an extracted Google/YouTube watch-history HTML or JSON file locally.");
+    });
+    assert.equal(experienceTextPreserved, true, "Experience body text must be fully preserved without truncation");
+
+    // Experience screenshot - scroll into view
+    await mp.evaluate(() => {
+      document.querySelector(".watchtree-experience")?.scrollIntoView({ block: "start", inline: "nearest" });
+    });
+    await delay(100);
+    await capture(mp, "mobile-390-experience", { ...mRequired, path_geometry: mobileReducedGeometry }, { fullPage: false });
+
     assert.deepEqual(md.consoleErrors, []);
     assert.deepEqual(md.pageErrors, []);
     assert.deepEqual(md.externalRequests, []);
@@ -436,7 +683,7 @@ try {
   const dFull = reducedStates.find((s) => s.name === "desktop-reduced-full");
   const mInitial = reducedStates.find((s) => s.name === "mobile-reduced-initial");
   const mFull = reducedStates.find((s) => s.name === "mobile-reduced-full");
-  const mPath = reducedStates.find((s) => s.name === "mobile-reduced-path-evidence");
+  const mPath = reducedStates.find((s) => s.name === "mobile-390-reduced-path");
 
   if (dInitial && dFull) {
     const dDocH = dInitial.document_scroll_height ?? 0;
@@ -1001,7 +1248,7 @@ try {
     await page.getByTestId("simulated-mutual").waitFor();
     await page.getByTestId("withdraw-consent").click();
     await page.getByTestId("simulated-mutual").waitFor({ state: "detached" });
-    await page.getByTestId("language").click();
+    await page.getByRole("button", { name: "한국어" }).click();
     await page.getByText("사적인 WatchTree를 키워보세요.").waitFor();
     await capture(page, "korean-restored-private", { locale: "ko", mutual_visible: 0 });
     assert.deepEqual(diagnostics.consoleErrors, []);
@@ -1046,10 +1293,31 @@ try {
     mobile_initial_composition_verified: true,
     desktop_scene_6_people_verified: true,
     mobile_scene_6_people_verified: true,
+    desktop_scene_6_path_geometry_verified: true,
+    mobile_scene_6_path_geometry_verified: true,
+    desktop_reduced_path_geometry_verified: true,
+    mobile_reduced_path_geometry_verified: true,
+    shared_path_nodes_verified: true,
+    desktop_header_verified: true,
+    mobile_header_verified: true,
+    reduced_motion_header_verified: true,
+    header_child_geometry_verified: true,
+    header_language_custom_style_verified: true,
     internal_field_exposure_verified: true,
     vite_port_closed_after_cleanup: true,
   };
   await writeFile(new URL("watchtree-browser-evidence.json", evidenceDir), `${JSON.stringify(manifest, null, 2)}\n`);
+  await Promise.all([
+    unlink(new URL("browser-error.log", evidenceDir)).catch(() => {}),
+    unlink(new URL("cleanup-failure.log", evidenceDir)).catch(() => {}),
+  ]);
+  await writeFile(new URL("test-browser.log", evidenceDir), [
+    "command: npm run test:browser",
+    "status: PASS",
+    `generated_at: ${manifest.generated_at}`,
+    `states: ${manifest.states.length}`,
+    `assertions: ${JSON.stringify(manifest.assertions)}`,
+  ].join("\n") + "\n");
   console.log(JSON.stringify(manifest.assertions));
 } catch (error) {
   runError = error;

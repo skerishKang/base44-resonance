@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { WatchTreeGraphic } from "./WatchTreeGraphic.jsx";
 
 const sampleEvents = (length) => Array.from({ length }, (_, index) => ({ normalized_content_id: `visual:${index}` }));
@@ -51,6 +51,11 @@ export function CinematicWatchTree({ copy, onPrimary }) {
           <article key={title} className={`watchtree-scene${scene === index ? " is-active" : ""}`} data-scene={index + 1} aria-hidden={scene !== index}>
             <div className="scene-copy"><span>{String(index + 1).padStart(2, "0")}</span><h2>{title}</h2><p>{body}</p></div>
             <SceneVisual index={index} />
+            {index === 5 && (
+              <div className="shared-evidence">
+                <span>Exact overlap</span><span>Rare signal</span><span>Shared path</span><span>Meaningful difference</span>
+              </div>
+            )}
           </article>
         ))}
         <div className="scene-controls" aria-label="WatchTree story controls">
@@ -65,12 +70,20 @@ export function CinematicWatchTree({ copy, onPrimary }) {
           <img src="/watchtree/viewer-person-a.svg" alt="Synthetic viewer one" />
           <div className="reduced-fragments" aria-label="Retained viewing fragments"><img src="/watchtree/viewing-fragment.svg" alt="" /><img src="/watchtree/viewing-fragment.svg" alt="" /><img src="/watchtree/viewing-fragment.svg" alt="" /></div>
         </div>
-        <WatchTreeGraphic compact label="Personal WatchTree" events={sampleEvents(18)} />
-        <div className="reduced-path">
-          <img src="/watchtree/shared-path-line.svg" alt="" />
-          <div><span>Exact overlap</span><span>Rare signal</span><span>Shared path</span><span>Meaningful difference</span></div>
+        <div className="reduced-relationship" data-shared-relationship="reduced" aria-label="Connected reduced WatchTree composition">
+          <SharedPathOverlay className="reduced-path-overlay--horizontal" orientation="horizontal" />
+          <SharedPathOverlay className="reduced-path-overlay--vertical" orientation="vertical" />
+          <div className="reduced-tree-slot reduced-tree-slot--a">
+            <WatchTreeGraphic compact pathSide="a" label="Personal WatchTree" events={sampleEvents(18)} />
+          </div>
+          <div className="reduced-path-space" aria-hidden="true" />
+          <div className="reduced-tree-slot reduced-tree-slot--b">
+            <WatchTreeGraphic compact shared pathSide="b" label="Synthetic viewer WatchTree" events={sampleEvents(17)} />
+          </div>
+          <div className="reduced-path-evidence" aria-label="Shared path evidence">
+            <span>Exact overlap</span><span>Rare signal</span><span>Shared path</span><span>Meaningful difference</span>
+          </div>
         </div>
-        <WatchTreeGraphic compact label="Synthetic viewer WatchTree" shared events={sampleEvents(17)} />
         <div className="reduced-person reduced-person--second"><img src="/watchtree/viewer-person-b.svg" alt="Synthetic viewer two" /></div>
         <div className="reduced-product-choices" aria-label="Product choices"><span>Private demo</span><span>Local HTML / JSON</span><span>Consent-controlled reveal</span></div>
         <button className="button button--primary" type="button" onClick={onPrimary}>{copy.landing.primary}</button>
@@ -85,6 +98,93 @@ function SceneVisual({ index }) {
   if (index === 2) return <div className="choice-visual"><span>Private demo</span><span>HTML / JSON</span><span>Owner-only</span></div>;
   if (index === 3) return <WatchTreeGraphic label="Growing WatchTree" events={sampleEvents(22)} />;
   if (index === 4) return <div className="two-viewers"><img src="/watchtree/viewer-person-a.svg" alt="" /><WatchTreeGraphic compact label="Tree A" events={sampleEvents(13)} /><WatchTreeGraphic compact label="Tree B" shared events={sampleEvents(14)} /><img src="/watchtree/viewer-person-b.svg" alt="" /></div>;
-  if (index === 5) return <div className="shared-scene"><img className="scene-viewer-a" src="/watchtree/viewer-person-a.svg" alt="" /><WatchTreeGraphic compact shared label="Your tree" events={sampleEvents(16)} /><div className="shared-path-visual"><img src="/watchtree/shared-path-line.svg" alt="" /><div className="shared-evidence"><span>Exact overlap</span><span>Rare signal</span><span>Shared path</span><span>Meaningful difference</span></div></div><WatchTreeGraphic compact shared label="Synthetic tree" events={sampleEvents(16)} /><img className="scene-viewer-b" src="/watchtree/viewer-person-b.svg" alt="" /></div>;
+  if (index === 5) return (
+    <div className="shared-scene">
+      <div className="shared-relationship" data-shared-relationship="scene-6" aria-label="Tree A connected to Tree B">
+        <SharedPathOverlay orientation="horizontal" />
+        <img className="scene-viewer-a" src="/watchtree/viewer-person-a.svg" alt="" />
+        <div className="shared-tree-slot shared-tree-slot--a">
+          <WatchTreeGraphic compact shared pathSide="a" label="Your tree" events={sampleEvents(16)} />
+        </div>
+        <div className="shared-path-space" aria-hidden="true" />
+        <div className="shared-tree-slot shared-tree-slot--b">
+          <WatchTreeGraphic compact shared pathSide="b" label="Synthetic tree" events={sampleEvents(16)} />
+        </div>
+        <img className="scene-viewer-b" src="/watchtree/viewer-person-b.svg" alt="" />
+      </div>
+    </div>
+  );
   return <div className="entry-visual"><span>Private demo</span><span>Local HTML / JSON parser</span><span>Consent-controlled reveal</span></div>;
+}
+
+function SharedPathOverlay({ orientation, className = "" }) {
+  const layerRef = useRef(null);
+  const [points, setPoints] = useState(null);
+
+  useLayoutEffect(() => {
+    const layer = layerRef.current;
+    const relationship = layer?.closest("[data-shared-relationship]");
+    if (!layer || !relationship) return undefined;
+
+    let frame = 0;
+    const measure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const svg = layer.querySelector("svg");
+        const svgRect = svg?.getBoundingClientRect();
+        if (!svg || !svgRect?.width || !svgRect.height) {
+          setPoints(null);
+          return;
+        }
+        const selectors = orientation === "vertical"
+          ? ["[data-tree-anchor=\"a-bottom-right\"]", "[data-tree-anchor=\"b-top-left\"]"]
+          : ["[data-tree-anchor=\"a-right\"]", "[data-tree-anchor=\"b-left\"]"];
+        const anchors = selectors.map((selector) => relationship.querySelector(selector));
+        if (anchors.some((anchor) => !anchor)) {
+          setPoints(null);
+          return;
+        }
+        const toPoint = (anchor) => {
+          const rect = anchor.getBoundingClientRect();
+          return {
+            x: ((rect.left + rect.width / 2 - svgRect.left) / svgRect.width) * 100,
+            y: ((rect.top + rect.height / 2 - svgRect.top) / svgRect.height) * 100,
+          };
+        };
+        const next = { start: toPoint(anchors[0]), end: toPoint(anchors[1]) };
+        if ([next.start.x, next.start.y, next.end.x, next.end.y].every(Number.isFinite)) setPoints(next);
+      });
+    };
+
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(measure) : null;
+    observer?.observe(relationship);
+    relationship.querySelectorAll("[data-tree-anchor]").forEach((anchor) => observer?.observe(anchor));
+    window.addEventListener("resize", measure);
+    measure();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [orientation]);
+
+  const d = points ? `M ${points.start.x} ${points.start.y} L ${points.end.x} ${points.end.y}` : "";
+  const nodes = points ? [0, 0.33, 0.66, 1].map((ratio) => ({
+    x: points.start.x + (points.end.x - points.start.x) * ratio,
+    y: points.start.y + (points.end.y - points.start.y) * ratio,
+  })) : [];
+
+  return (
+    <div ref={layerRef} className={`shared-path-visual ${className}`.trim()} data-path-orientation={orientation}>
+      <svg className="shared-path-svg" viewBox="0 0 100 100" preserveAspectRatio="none" overflow="visible" aria-hidden="true" data-shared-path-svg={orientation} data-path-ready={points ? "true" : "false"}>
+        {points ? (
+          <>
+            <path className="shared-path-underlay" d={d} />
+            <path className="shared-path-line" data-shared-path="true" d={d} />
+            {nodes.map((node, index) => <circle key={index} className="shared-path-node" cx={node.x} cy={node.y} r={index === 0 || index === nodes.length - 1 ? 2.15 : 1.8} />)}
+          </>
+        ) : null}
+      </svg>
+    </div>
+  );
 }

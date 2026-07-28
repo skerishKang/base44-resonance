@@ -202,7 +202,7 @@ For API-key-free URL collections, a grounded 4-archetype subset is used: Quiet R
 **Problem:** CI was running only on two feature branches and did not validate release builds. There was no enforcement of production App ID, no bundle verification, and no guarantee that the release build worked at all.
 
 **Decision:** Overhaul CI into two jobs:
-- **test-build-browser** (25 min): sync + shared module parity check + 265 deterministic tests + Vite build + Playwright browser validation.
+- **test-build-browser** (25 min): sync + shared module parity check + 265 deterministic tests (test count later evolved to 277) + Vite build + Playwright browser validation.
 - **release-build** (15 min): prove fail-closed behavior (build without App ID must fail), then build with production App ID (`6a6538c71a8e3e1640117c91`), run `check:release-bundle` verifying production ID presence and absence of validation/buildoff IDs, `localhost:4400`, `jsxDEV`. Upload bundle as artifact.
 
 Both jobs trigger on PR and push to `main` plus two retained feature branches. CI never deploys, mutates secrets, calls live AI, or requires a Base44 token.
@@ -215,7 +215,7 @@ Both jobs trigger on PR and push to `main` plus two retained feature branches. C
 
 **Correction:** CI trigger added for `main` pushes. Bundle upload changed to `if-no-files-found: error`. Release mode configured to fail closed when App ID is absent.
 
-**Verification evidence:** CI runs 265 tests, browser validation, release build, and bundle verification. All PASS.
+**Verification evidence:** CI runs 265 tests (test count later evolved to 277), browser validation, release build, and bundle verification. All PASS.
 
 **Product result:** Production-quality CI pipeline. Release builds are gated, verified, and auditable.
 
@@ -241,7 +241,7 @@ Both jobs trigger on PR and push to `main` plus two retained feature branches. C
 
 **Verification evidence:** `tests/watchtree-url-parser.test.mjs` (21 URL format tests), `tests/watchtree-no-key-matching.test.mjs` (8 grounded archetype tests), 0 external fetch calls during URL add.
 
-**Product result:** Fully self-contained URL collection. No external service dependency. 265 tests pass.
+**Product result:** Fully self-contained URL collection. No external service dependency. 265 tests pass (test count later evolved to 277).
 
 **Next decision:** Submission packaging and documentation.
 
@@ -273,41 +273,43 @@ Additional documents (DEV_BUILD_OFF_SUBMISSION.md, BASE44_ARCHITECTURE.md, JUDGE
 
 **Product result:** Submission narrative and capability-audit foundation prepared.
 
-**Issue / PR / SHA:** Issue #39; branch `docs/submission-base44-discovery-journal-42`.
-
-**Failure or risk:** Documentation could claim deployed status for un-merged or undeployed features.
-
-**Correction:** Every capability claim cross-references its exact merge SHA and deployment status. `MERGED_NOT_DEPLOYED` used for merged-but-undeployed features.
-
-**Verification evidence:** All documents reference actual source paths and SHAs. No fabricated capabilities.
-
-**Product result:** Submission-ready documentation package.
-
-**Next decision:** Realtime and Agent evaluation (roadmap).
+**Next decision:** Realtime source implementation and Agent evaluation.
 
 ---
 
-## Milestone 11: Realtime / Agent evaluation
+## Milestone 11: Realtime source implementation and Agent evaluation
 
-**Date:** 2026-07-29 (planned roadmap)
+**Date:** 2026-07-29
 
-**Problem:** WatchTree currently polls entity state on privacy mutations. A realtime subscription would provide instant UI updates. However, Base44 realtime is listed as available but not yet production-tested in this codebase.
+**Problem:** Realtime was not yet available in the source build, and cross-session callback races had to be handled safely.
 
-**Decision:** Document as `ROADMAP_ONLY` in the capability ledger. Not implemented in the submission build. The optional realtime enhancement is tracked in Issue #41 (realtime WatchTree refresh) and Issue #43 (Base44 Agent evaluation).
+**Decision:** Implement caller-scoped WatchEvent subscription with debounced restore and session-object lifecycle isolation.
 
-**Base44 capability used:** Base44 Realtime (not used), Base44 Agents (not used).
+**Base44 capability used:** Base44 Entity realtime subscriptions.
 
-**Issue / PR / SHA:** Issue #41, #43.
+**Issue / PR / SHA:** Issue #41; PR #45; base `959afdcc85e352665e58efc6394a0db91809ab5d`, reviewed head `823017c452c6bd44f85bf54908d45c635ed08d64`, squash merge `7a16adbd977ff5f2df2ceb2acc4130d242606dec`.
 
-**Failure or risk:** None — explicitly scoped out.
+**Failure or risk:**
+- Stale callback after account/session replacement
+- Pending subscribe cleanup leak
+- Old debounce or restore result delivery
 
-**Correction:** N/A.
+**Correction:**
+- Unique session object per subscription lifecycle
+- Current-session identity checks before every restore dispatch
+- Immediate cleanup for late subscribe resolution
+- Lifecycle and race tests covering all identified failure modes
 
-**Verification evidence:** `BACKEND_CAPABILITY_LEDGER.md` lists both as `ROADMAP_ONLY`.
+**Verification evidence:**
+- 12 focused realtime lifecycle scenarios in `tests/watchtree-realtime.test.mjs`
+- Current full suite: 277/277
+- Exact-head CI run 30407073266: release-build SUCCESS, test-build-browser SUCCESS
 
-**Product result:** Clear separation between current capability and future enhancement.
+**Product result:** Realtime source is merged but not yet deployed. Submission checkbox remains ineligible until Production UAT.
 
-**Next decision:** Final release disposition and submission.
+**Agent:** Issue #43 remains `ROADMAP_ONLY`.
+
+**Next decision:** Deploy exact release and perform authenticated two-tab UAT.
 
 ---
 
@@ -318,12 +320,14 @@ Additional documents (DEV_BUILD_OFF_SUBMISSION.md, BASE44_ARCHITECTURE.md, JUDGE
 34fc099 — release CI enforcement merged (Issue #30, PR #32)
 a497590 — privacy lifecycle complete (Issue #29, PR #36)
 959afdc — API-key-free URL collection + archetype matching (Issue #33, PR #37)
+7a16adb — owner-scoped realtime refresh merged (Issue #41, PR #45)
 ```
 
 | Metric | Value |
 |--------|-------|
 | Entity schemas (source) | 13 |
 | Backend Functions (source) | 13 (12 deployed baseline + 1 merged not deployed) |
-| Tests (final source) | 265 |
+| Tests (final source) | 277 |
 | CI jobs | 2 (test+browser, release) |
 | External service deps | 0 |
+| Realtime source | merged not deployed |

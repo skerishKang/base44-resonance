@@ -6,7 +6,7 @@
 
 We entered the Base44 Dev Build-Off expecting a tool that generates a complete app from a single prompt. What we discovered was a code-defined production backend platform. Base44 provided Auth, owner-scoped entity storage with declarative RLS, Deno backend functions, secrets management, and deployment.
 
-For this submission, most production source was developed through external agentic tools and local models under human direction and AI CTO review, while Base44 remained the authenticated backend and runtime authority. It authenticated callers, enforced row-level security, executed Deno functions, stored data, and hosted the production site. We never wired a separate database, Auth provider, API server, or permission layer. The current final-source suite includes 265 tests and runs entirely on Base44 — no service role, no runtime AI, no external API calls.
+For this submission, most production source was developed through external agentic tools and local models under human direction and AI CTO review, while Base44 remained the authenticated backend and runtime authority. It authenticated callers, enforced row-level security, executed Deno functions, stored data, and hosted the production site. We never wired a separate database, Auth provider, API server, or permission layer. The current final-source suite includes 277 tests and runs entirely on Base44 — no service role, no runtime AI, no external API calls.
 
 ### 300–450 words
 
@@ -21,7 +21,7 @@ Base44 handled what would otherwise have required five separate services:
 - **Permission layer** — declarative per-entity RLS, no custom middleware
 - **Hosting** — Vite-built single-page application with release CI
 
-We did not use Base44's AI call capability, Agent integrations, realtime subscriptions, or file storage. These remain audited as unused capabilities in our submission ledger.
+We did not use Base44's AI call capability, Agent integrations, or file storage. Realtime subscriptions are merged but not yet deployed. These remain audited in our submission ledger.
 
 ### 700–1,000 words
 
@@ -45,7 +45,7 @@ The development model that emerged was neither prompt-to-app nor traditional ful
 
 3. **Integration layer (GitHub):** Every change entered the codebase through a GitHub PR. The PR body recorded the exact base SHA, exact head SHA, CTO review findings, and next-actions. Branch history was auditable. Direct-main changes were prohibited by the operating contract; one accidental no-op file write reached main, was immediately reverted, publicly disclosed, and led to stricter PR-only integration discipline.
 
-4. **Validation layer (CI + CTO review):** The final-source test suite contains 265 deterministic tests. CI runs browser validation and release build verification on every PR. An AI CTO reviewed source, contract regexes, and exact SHA baselines, then either approved or sent PRs back for correction. No model-produced output was trusted without both CI pass and human review.
+4. **Validation layer (CI + CTO review):** The final-source test suite contains 277 deterministic tests. CI runs browser validation and release build verification on every PR. An AI CTO reviewed source, contract regexes, and exact SHA baselines, then either approved or sent PRs back for correction. No model-produced output was trusted without both CI pass and human review.
 
 **What Base44 handled**
 
@@ -63,7 +63,7 @@ Base44 replaced five infrastructure concerns that would otherwise have required 
 
 **What we built in custom code**
 
-Everything else — approximately 2,600 added lines across 48 files in the final PR alone — was custom application code: React components, the URL parser, the matching engine, the deletion budget model, the scoped restoration logic, the HMAC-backed confirmation system, the 13 function entrypoints, the browser worker for file parsing, the CI pipeline, the release bundle verifier, and the 265 test cases.
+Everything else — approximately 2,600 added lines across 48 files in the final PR alone — was custom application code: React components, the URL parser, the matching engine, the deletion budget model, the scoped restoration logic, the HMAC-backed confirmation system, the 13 function entrypoints, the browser worker for file parsing, the CI pipeline, the release bundle verifier, and the 277 test cases.
 
 **What remains unused and why**
 
@@ -73,13 +73,13 @@ Base44 offers capabilities we audited and intentionally declined:
 
 - **Base44 Agents:** Not evaluated. The Build-Off timeline did not permit Agent integration review.
 
-- **Realtime subscriptions:** Documented as optional enhancement (Issue #41). Current privacy mutations use poll-based refresh — sufficient for the submission build.
+- **Realtime subscriptions:** Merged via PR #45 (Issue #41) but not yet deployed. Caller-scoped WatchEvent subscription with debounced restore and session-object lifecycle isolation. Production verification pending.
 
 - **File and media storage:** Raw watch-history files are parsed in a browser Worker and never uploaded. No file storage needed.
 
 **The stronger story**
 
-For this submission, we did not rely on a one-click generated app. Most production source was developed through external agentic tools and local models under human direction and AI CTO review, while Base44 remained the authenticated backend and runtime authority. Base44 provided Auth, Entities, RLS, Functions, secrets, and hosting. We did not wire a separate database, Auth provider, API server, permission layer, or secrets vault. Multiple reviewed correction rounds and 265 tests later, WatchTree runs entirely on Base44 without service role, without runtime AI, and without external API calls.
+For this submission, we did not rely on a one-click generated app. Most production source was developed through external agentic tools and local models under human direction and AI CTO review, while Base44 remained the authenticated backend and runtime authority. Base44 provided Auth, Entities, RLS, Functions, secrets, and hosting. We did not wire a separate database, Auth provider, API server, permission layer, or secrets vault. Multiple reviewed correction rounds and 277 tests later, WatchTree runs entirely on Base44 without service role, without runtime AI, and without external API calls.
 
 ---
 
@@ -103,8 +103,8 @@ Base44는 AI 지원 개발에 최적화된 **코드 정의 백엔드 플랫폼**
 
 3. **통합 계층 (GitHub):** 모든 변경사항은 GitHub PR을 통해 코드베이스에 진입했다. PR 본문은 정확한 베이스 SHA, 정확한 헤드 SHA, CTO 리뷰 결과, 다음 조치를 기록했다.
 
-4. **검증 계층 (CI + CTO 리뷰):** CI는 265개의 결정론적 테스트, 브라우저 검증, 릴리스 빌드 검증을 모든 PR에서 실행했다. 인간 CTO가 소스를 검토하고 계약 정규식을 확인한 후 승인하거나 수정을 요청했다.
+4. **검증 계층 (CI + CTO 리뷰):** CI는 277개의 결정론적 테스트, 브라우저 검증, 릴리스 빌드 검증을 모든 PR에서 실행했다. 인간 CTO가 소스를 검토하고 계약 정규식을 확인한 후 승인하거나 수정을 요청했다.
 
-Base44는 다섯 가지 인프라 영역을 대체했다: 인증, 데이터베이스 + RLS, API 서버, 권한 계층, 호스팅. 우리는 별도의 데이터베이스, Auth 제공자, API 서버, 권한 미들웨어, 시크릿 볼트를 연결하지 않았다. 세 개의 PR, 여덟 번의 CTO 리뷰, 265개의 테스트 이후, WatchTree는 service role, runtime AI, 외부 API 호출 없이 전적으로 Base44 위에서 실행된다.
+Base44는 다섯 가지 인프라 영역을 대체했다: 인증, 데이터베이스 + RLS, API 서버, 권한 계층, 호스팅. 우리는 별도의 데이터베이스, Auth 제공자, API 서버, 권한 미들웨어, 시크릿 볼트를 연결하지 않았다. 세 개의 PR, 여덟 번의 CTO 리뷰, 277개의 테스트 이후, WatchTree는 service role, runtime AI, 외부 API 호출 없이 전적으로 Base44 위에서 실행된다.
 
 더 강력한 서사는 이것이다: Base44가 하나의 프롬프트로 전체 앱을 생성했다는 것이 아니라, Base44가 프로덕션 백엔드 권위자로서 인증, Entities, RLS, Functions, 시크릿, 호스팅을 제공했고, 외부 agentic 코딩이 Base44의 SDK 계약에 맞춰 제품 로직을 구현했다는 것이다.

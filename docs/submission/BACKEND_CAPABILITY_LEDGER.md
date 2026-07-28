@@ -12,7 +12,7 @@ Base44 capabilities audited for the Build-Off submission build. Status values: `
 | **Implementation** | Base44 Auth via `createClientFromRequest(req)` and `base44.auth.me()`. The SDK extracts caller identity from request context — no credentials, tokens, or passwords exposed in application code. |
 | **Judge-visible proof** | Every Function entrypoint calls `authenticate(base44)` and returns `AUTH_REQUIRED (401)` when unauthenticated. AuthPanel component renders sign-in/sign-up forms. Production site requires authentication to enter WatchTree. |
 | **Source path** | `base44/functions/*/entry.ts` — authenticated guard in all 13 Functions (12 deployed, 1 merged not deployed). `src/lib/AuthPanel.jsx` — Auth UI. |
-| **Merged SHA** | `959afdc` — latest main. |
+| **Merged SHA** | `7a16adb` — current main. |
 | **Production verification** | Production App at `base44-resonance-40117c91.base44.app` requires authentication. Final release deployment will reconfirm before submission deadline. |
 | **Submission checkbox eligible** | Yes, after deployed release confirmation. |
 | **Notes** | No service role used. No custom Auth provider. No email exposure in response payloads. |
@@ -68,14 +68,14 @@ Base44 capabilities audited for the Build-Off submission build. Status values: `
 
 | Field | Value |
 |-------|-------|
-| **Status** | `ROADMAP_ONLY` |
-| **Implementation** | Not implemented. Privacy mutations currently use poll-based refresh via the `restore()` adapter method. Base44's realtime capability is documented in the SDK but was not production-tested in this codebase. Pending Issue #41 review — update before merge based on exact GitHub and Production status. |
-| **Judge-visible proof** | No `base44.realtime.*` calls in any source file. No subscription setup. |
-| **Source path** | Not applicable. |
-| **Merged SHA** | Not applicable — not implemented. |
-| **Production verification** | N/A. |
-| **Submission checkbox eligible** | No — not implemented. |
-| **Notes** | Optional enhancement tracked in Issue #41. Would reduce Privacy mutation latency from poll-based to push-based. Not required for submission. Pending Issue #41 remote review. |
+| **Status** | `MERGED_NOT_DEPLOYED` |
+| **Implementation** | Caller-scoped `base44.entities.WatchEvent.subscribe(callback)` with 200ms debounced caller-scoped restore. Session-object identity isolation prevents stale callbacks after account or session replacement. Pending subscribe cleanup, unsubscribe on unmount/logout/session replacement, and subscription failure fallback are all implemented. No Function or Entity mutation occurs from the callback. |
+| **Judge-visible proof** | `src/watchtree/realtime/createWatchTreeRealtime.js`, `src/watchtree/productionAdapter.js`, `src/watchtree/WatchTreeExperience.jsx`, `tests/watchtree-realtime.test.mjs` (12 focused lifecycle scenarios). |
+| **Source path** | `src/watchtree/realtime/createWatchTreeRealtime.js`, `src/watchtree/productionAdapter.js`. |
+| **Merged SHA** | `7a16adbd977ff5f2df2ceb2acc4130d242606dec` (PR #45 squash merge). |
+| **Production verification** | Not deployed or authenticated-UAT verified yet. |
+| **Submission checkbox eligible** | No — check only after exact Production deployment and authenticated two-tab UAT. |
+| **Notes** | Issue #41 completed through PR #45. Source merged; Production verification pending. |
 
 ---
 
@@ -102,7 +102,7 @@ Base44 capabilities audited for the Build-Off submission build. Status values: `
 | Database / Entities | `VERIFIED_PRODUCTION` | 13 schema files, RLS declarations |
 | Backend Functions (Deno) | `VERIFIED_PRODUCTION` (12-function baseline); `add-watch-url-event` `MERGED_NOT_DEPLOYED` | 13 entry.ts files (source), CI verifies shared module parity |
 | AI / LLM / Agents | `ROADMAP_ONLY` | No AI imports in matching code |
-| Realtime subscriptions | `ROADMAP_ONLY` | No realtime calls in source |
+| Realtime subscriptions | `MERGED_NOT_DEPLOYED` | `createWatchTreeRealtime.js`, `productionAdapter.js`, 12 lifecycle tests |
 | File & media storage | `NOT_USED` | Worker-local parsing, no upload endpoints |
 
 ---

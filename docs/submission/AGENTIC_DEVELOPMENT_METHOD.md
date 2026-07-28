@@ -48,7 +48,7 @@ The current release workflow runs two CI jobs:
 1. **test-build-browser**: deterministic tests + browser validation + Vite build
 2. **release-build**: fail-closed verification + production build + bundle content assertion
 
-The current final-source suite contains 265 deterministic tests. Test coverage and counts evolved during development.
+The current final-source suite contains 277 deterministic tests. Test coverage and counts evolved during development.
 
 An AI CTO reviewed the exact source and CI evidence, while the human project owner retained final approval for consequential merge, deployment, and submission decisions. **No model-produced output was trusted without both CI pass and AI CTO review.**
 
@@ -90,7 +90,7 @@ The agent never deployed, never mutated secrets, never accessed the Base44 dashb
 ### 2. No model output is trusted without CI and code review
 
 Current reviewed submission slices are verified by:
-- **Deterministic tests** (265 in the current final-source suite) that must pass
+- **Deterministic tests** (277 in the current final-source suite) that must pass
 - **Browser validation** that screenshots every UI state and asserts no console errors, page errors, or unexpected external requests
 - **Release build verification** that checks production App ID presence and forbidden string absence
 - **AI CTO review** with human project-owner approval, checking contract regexes, exact SHA baselines, and PR body accuracy
@@ -125,7 +125,7 @@ Every CTO review finding was documented in the PR body and linked to a fix commi
 | PR history with CTO reviews | PR #32, #36, #37 on GitHub |
 | Contract specifications | Issues #1, #20, #29, #30, #33 |
 | CI results | GitHub Actions (release-build + test-build-browser) |
-| Deterministic tests | `tests/*.test.mjs` (265 tests) |
+| Deterministic tests | `tests/*.test.mjs` (277 tests) |
 | Browser validation | `tests/browser/run-watchtree.mjs` |
 | Release bundle verification | `scripts/verify-release-bundle.mjs` |
 | Shared module parity | `scripts/sync-base44-function-shared.mjs`, `scripts/check-base44-function-shared.mjs` |

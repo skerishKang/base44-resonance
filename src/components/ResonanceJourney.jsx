@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { getBase44Client } from "@/api/base44Client";
 import {
   MEMORY_CARD_SLOTS,
   MEMORY_MAX_LENGTH,
@@ -14,10 +14,10 @@ import {
   normalizeMemoryText,
 } from "@/lib/resonance";
 
-const MemoryCard = base44.entities.MemoryCard;
-const ConsentRecord = base44.entities.ConsentRecord;
-const ResonanceFingerprint = base44.entities.ResonanceFingerprint;
-const MatchDecision = base44.entities.MatchDecision;
+async function getBase44Entities() {
+  const base44 = await getBase44Client();
+  return base44.entities;
+}
 
 function initialCards() {
   return Object.fromEntries(MEMORY_CARD_SLOTS.map((slot) => [slot, { id: "", slot, content: "" }]));
@@ -89,6 +89,7 @@ export function ResonanceJourney({ language, copy, onLogout }) {
   const loadMatches = async (fingerprintId, version = loadVersionRef.current) => {
     setMatchStatus("loading");
     try {
+      const base44 = await getBase44Client();
       const response = await base44.functions.invoke("compute-matches", {
         fingerprint_id: fingerprintId,
         locale: language,
@@ -115,6 +116,7 @@ export function ResonanceJourney({ language, copy, onLogout }) {
     setRestoreStatus("loading");
     clearMessage();
     try {
+      const { MemoryCard, ConsentRecord, ResonanceFingerprint, MatchDecision } = await getBase44Entities();
       const [memoryRecords, consentRecords, fingerprintRecords, decisionRecords] = await Promise.all([
         MemoryCard.list("-updated_date", 20, 0),
         ConsentRecord.list("-updated_date", 10, 0),
@@ -210,6 +212,7 @@ export function ResonanceJourney({ language, copy, onLogout }) {
     setCardStates((current) => ({ ...current, [slot]: "loading" }));
     clearMessage();
     try {
+      const { MemoryCard } = await getBase44Entities();
       const payload = {
         slot,
         content: normalized,
@@ -264,6 +267,7 @@ export function ResonanceJourney({ language, copy, onLogout }) {
     };
 
     try {
+      const { ConsentRecord } = await getBase44Entities();
       let targetId = consent?.id ?? "";
       if (!targetId) {
         const existing = await ConsentRecord.filter(
@@ -296,6 +300,7 @@ export function ResonanceJourney({ language, copy, onLogout }) {
     setConsentStatus("loading");
     clearMessage();
     try {
+      const { ConsentRecord } = await getBase44Entities();
       const record = await ConsentRecord.update(consent.id, { active: false });
       if (!activeRef.current) return;
       setConsent(record);
@@ -316,6 +321,7 @@ export function ResonanceJourney({ language, copy, onLogout }) {
     setFingerprintStatus("loading");
     clearMessage();
     try {
+      const base44 = await getBase44Client();
       const response = await base44.functions.invoke("generate-fingerprint", {
         memory_card_ids: memoryCardIds(cards),
         consent_record_id: consent.id,
@@ -352,6 +358,7 @@ export function ResonanceJourney({ language, copy, onLogout }) {
       client_nonce: createMutationNonce(),
     };
     try {
+      const { MatchDecision } = await getBase44Entities();
       let targetId = decision?.id ?? "";
       if (!targetId) {
         const existing = await MatchDecision.filter(
@@ -383,6 +390,7 @@ export function ResonanceJourney({ language, copy, onLogout }) {
     setDecisionStatus("loading");
     clearMessage();
     try {
+      const { MatchDecision } = await getBase44Entities();
       const record = await MatchDecision.update(decision.id, {
         state: "simulated_mutual",
         simulation_label: true,

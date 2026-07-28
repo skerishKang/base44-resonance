@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-labelledby="title desc">
+<title id="title">Synthetic viewer A</title>
+<desc id="desc">Original low-detail editorial person watching a neutral media frame</desc>
+<defs>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F4CB84"/><stop offset="1" stop-color="#D7A96F"/></linearGradient>
+  <linearGradient id="violetGlow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4D3C81"/><stop offset="1" stop-color="#28234F"/></linearGradient>
+  <radialGradient id="halo"><stop offset="0" stop-color="#F4CB84" stop-opacity=".58"/><stop offset=".55" stop-color="#D7A96F" stop-opacity=".18"/><stop offset="1" stop-color="#D7A96F" stop-opacity="0"/></radialGradient>
+  <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="10"/></filter>
+  <filter id="smallGlow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="4"/></filter>
+</defs>
+<ellipse cx="410" cy="675" rx="220" ry="34" fill="#05050D" opacity=".36"/>
+<path d="M318 650 C316 510 336 420 390 367 C433 325 498 326 531 375 C565 426 561 524 548 650 Z" fill="url(#violetGlow)" stroke="#3D3B51" stroke-width="4"/>
+<circle cx="432" cy="284" r="88" fill="#B98383"/>
+<path d="M358 282 C364 191 423 160 486 185 C516 197 536 226 540 264 C505 237 470 229 431 233 C403 235 379 250 358 282 Z" fill="#121329"/>
+<path d="M371 302 C395 330 467 341 514 302 C506 354 471 382 430 382 C390 382 366 351 371 302 Z" fill="#8D6268" opacity=".55"/>
+<path d="M365 444 C313 463 268 511 242 571" fill="none" stroke="#B98383" stroke-width="30" stroke-linecap="round"/>
+<path d="M507 439 C557 452 610 490 647 544" fill="none" stroke="#B98383" stroke-width="30" stroke-linecap="round"/>
+<rect x="602" y="508" width="112" height="76" rx="10" transform="rotate(-8 602 508)" fill="#121329" stroke="#D7A96F" stroke-width="3"/>
+<circle cx="432" cy="286" r="122" fill="none" stroke="#D7A96F" opacity=".18" stroke-width="2"/>
+</svg>

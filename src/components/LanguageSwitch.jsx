@@ -1,6 +1,6 @@
 export function LanguageSwitch({ language, onChange, labels }) {
   return (
-    <div className="language-switch" role="group" aria-label={labels.label}>
+    <div className="language-switch" data-testid="language" role="group" aria-label={labels.label}>
       <button
         type="button"
         className={language === "en" ? "is-active" : ""}

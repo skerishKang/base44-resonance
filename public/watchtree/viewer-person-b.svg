@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-labelledby="title desc">
+<title id="title">Synthetic viewer B</title>
+<desc id="desc">Original low-detail editorial person in a separate space</desc>
+<defs>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F4CB84"/><stop offset="1" stop-color="#D7A96F"/></linearGradient>
+  <linearGradient id="violetGlow" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4D3C81"/><stop offset="1" stop-color="#28234F"/></linearGradient>
+  <radialGradient id="halo"><stop offset="0" stop-color="#F4CB84" stop-opacity=".58"/><stop offset=".55" stop-color="#D7A96F" stop-opacity=".18"/><stop offset="1" stop-color="#D7A96F" stop-opacity="0"/></radialGradient>
+  <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="10"/></filter>
+  <filter id="smallGlow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="4"/></filter>
+</defs>
+<ellipse cx="390" cy="678" rx="220" ry="34" fill="#05050D" opacity=".36"/>
+<path d="M260 650 C268 515 302 423 373 381 C423 351 493 367 527 417 C559 465 553 548 540 650 Z" fill="#203343" stroke="#3D3B51" stroke-width="4"/>
+<circle cx="407" cy="292" r="86" fill="#7E9DB7"/>
+<path d="M329 298 C333 225 361 184 419 180 C482 177 512 221 516 278 C482 249 446 235 407 238 C376 240 349 259 329 298 Z" fill="#121329"/>
+<path d="M350 310 C377 343 451 351 492 311 C483 358 449 382 409 382 C369 382 345 355 350 310 Z" fill="#596F85" opacity=".52"/>
+<path d="M334 455 C279 483 246 526 229 582" fill="none" stroke="#7E9DB7" stroke-width="30" stroke-linecap="round"/>
+<path d="M500 454 C549 478 591 518 614 573" fill="none" stroke="#7E9DB7" stroke-width="30" stroke-linecap="round"/>
+<rect x="149" y="548" width="118" height="78" rx="12" transform="rotate(7 149 548)" fill="#121329" stroke="#A8C8AC" stroke-width="3"/>
+<circle cx="407" cy="292" r="122" fill="none" stroke="#A8C8AC" opacity=".16" stroke-width="2"/>
+</svg>

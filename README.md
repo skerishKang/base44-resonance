@@ -51,6 +51,8 @@ YouTube URL collection works without an API key and without external metadata en
 
 Base44 Auth establishes caller identity. All **13 Entity schemas** are owner-scoped through Base44's built-in `created_by_id` metadata (RLS): create is allowed for authenticated `user` and `admin` roles, while read, update, and delete are owner-only. No private Entity uses `read: true`, public mutation, client-controlled owner fields, or a browser service-role path.
 
+See [docs/submission/](docs/submission/) for the build journal, platform discovery narrative, and capability ledger.
+
 Entity schemas (13):
 
 `CapabilityProbe` · `ConsentRecord` · `ImportChunkReceipt` · `MatchDecision` · `MemoryCard` · `MutualResonance` · `ResonanceFingerprint` · `RevealConsent` · `SharedPathCandidate` · `WatchEvent` · `WatchImport` · `WatchMatchSignal` · `WatchTreeFingerprint`

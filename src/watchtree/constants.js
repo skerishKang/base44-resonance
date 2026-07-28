@@ -22,7 +22,7 @@ export const LIMITS = Object.freeze({
   batch: 100,
   minChunk: 25,
   maxChunk: 200,
-  deleteResumePasses: 6,
+  deleteMaxRounds: 40,
 });
 
 export const EVIDENCE_TYPES = Object.freeze([

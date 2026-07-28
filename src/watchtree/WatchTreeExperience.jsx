@@ -167,9 +167,12 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
 
   const clear = (action, payload = {}) => run(action, async () => {
     let result = await adapter.mutatePrivacy(action, payload);
-    for (let pass = 0; result?.complete === false && pass < LIMITS.deleteResumePasses; pass += 1) {
+    let round = 0;
+    while (result?.complete === false && round < LIMITS.deleteMaxRounds) {
+      round += 1;
       result = await adapter.mutatePrivacy(action, payload);
     }
+    if (result?.complete === false) throw new Error("DELETE_INCOMPLETE");
     setSelectedTokens([]);
     dispatch({ type: "CLEARED" });
   });

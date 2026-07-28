@@ -1,6 +1,6 @@
 import { getBase44Client } from "@/api/base44Client";
 import { LIMITS, WATCHTREE_VERSIONS } from "./constants.js";
-import { scopeRestoredMatching } from "./matching.js";
+import { restoreScopedMatching } from "./restore.js";
 
 const unwrap = (response) => response?.data ?? response ?? {};
 const nonce = () => crypto.randomUUID();
@@ -66,14 +66,8 @@ export function createProductionWatchTreeAdapter() {
         base44.entities.WatchTreeFingerprint.filter({ import_id: completed.id, stale: false }, "-created_date", 1, 0),
       ]);
       const tree = trees?.[0] ?? null;
-      const [candidates, consents, mutuals] = tree
-        ? await Promise.all([
-            base44.entities.SharedPathCandidate.filter({ fingerprint_id: tree.id }, "candidate_rank", 20, 0),
-            base44.entities.RevealConsent.list("-created_date", 20, 0),
-            base44.entities.MutualResonance.list("-created_date", 20, 0),
-          ])
-        : [[], [], []];
-      const { consent, mutual } = scopeRestoredMatching(candidates, consents, mutuals);
+      const candidates = tree ? (await base44.entities.SharedPathCandidate.filter({ fingerprint_id: tree.id }, "candidate_rank", 20, 0)) ?? [] : [];
+      const { consent, mutual } = await restoreScopedMatching(base44, candidates);
       return {
         import: completed,
         events,

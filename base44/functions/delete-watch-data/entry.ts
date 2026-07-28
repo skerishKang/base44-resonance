@@ -2,6 +2,7 @@ import { createClientFromRequest } from "npm:@base44/sdk";
 import {
   authenticate,
   clearDerivedRecords,
+  createDeleteBudget,
   deleteAllRecords,
   deleteImportRecords,
   fail,
@@ -18,13 +19,15 @@ import {
 const ACTIONS = new Set(["enable_import_matching", "disable_import_matching", "exclude_event", "exclude_creator", "exclude_date_range", "delete_import", "delete_all"]);
 
 async function clearDerived(base44, importId) {
-  const result = await clearDerivedRecords(base44, importId);
+  const budget = createDeleteBudget();
+  const result = await clearDerivedRecords(base44, importId, budget);
   if (!result.complete) throw new Error("DERIVED_DELETE_INCOMPLETE");
   return result;
 }
 
-function deletionResponse(result) {
-  return json({ ok: true, deleted: result.complete, complete: result.complete, progress: result.progress, events: [], tree: null, candidates: [] });
+function deletionResponse(result, budget) {
+  const progress = { ...result.progress, budget_remaining: budget.remaining };
+  return json({ ok: true, deleted: result.complete, complete: result.complete, progress, events: [], tree: null, candidates: [] });
 }
 
 Deno.serve(async (req) => {
@@ -35,10 +38,16 @@ Deno.serve(async (req) => {
   if (!validNonce(input)) return fail("INVALID_CLIENT_NONCE", 400);
   if (!ACTIONS.has(input.action)) return fail("ACTION_UNSUPPORTED", 400);
   try {
-    if (input.action === "delete_all") return deletionResponse(await deleteAllRecords(base44));
+    if (input.action === "delete_all") {
+      const budget = createDeleteBudget();
+      return deletionResponse(await deleteAllRecords(base44, budget), budget);
+    }
     const watchImport = await unavailable(() => base44.entities.WatchImport.get(input.import_id));
     if (!watchImport) return fail("RESOURCE_UNAVAILABLE", 404);
-    if (input.action === "delete_import") return deletionResponse(await deleteImportRecords(base44, watchImport));
+    if (input.action === "delete_import") {
+      const budget = createDeleteBudget();
+      return deletionResponse(await deleteImportRecords(base44, watchImport, budget), budget);
+    }
     const events = await listAllRecords(base44.entities.WatchEvent, { import_id: watchImport.id }, "watched_at");
     if (input.action === "enable_import_matching") {
       await updateRecords(base44.entities.WatchEvent, events, (event) => event.sensitivity_excluded?{matching_enabled:false}:{ matching_enabled: true, visibility_state: "matchable_private", exclusion_reason: "" });

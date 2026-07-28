@@ -5,6 +5,7 @@ import {
   createMatchSignal, JSON_HEADERS, NORMALIZATION_VERSION, BATCH_SIZE,
   FIXTURE_ID, URL_COLLECTION_DIGEST,
 } from "./_shared/watchtree.js";
+import { publicEvent } from "./_shared/sanitizer.js";
 
 async function findOrCreateUrlCollection(base44, userId) {
   const imports = await base44.entities.WatchImport.filter(
@@ -82,7 +83,7 @@ Deno.serve(async (req) => {
       if (idempotentEvent.payload_digest !== payloadDigest) {
         return fail("NONCE_CONFLICT", 409, false);
       }
-      return json({ ok: true, import: urlCollection, event: idempotentEvent, idempotent: true }, 200, JSON_HEADERS);
+      return json({ ok: true, import: urlCollection, event: publicEvent(idempotentEvent), idempotent: true }, 200, JSON_HEADERS);
     }
   }
   if (!rewatch) {
@@ -91,7 +92,7 @@ Deno.serve(async (req) => {
       return json({
         ok: true,
         import: urlCollection,
-        event: duplicate,
+        event: publicEvent(duplicate),
         duplicate: true,
       }, 200, JSON_HEADERS);
     }
@@ -158,6 +159,6 @@ Deno.serve(async (req) => {
   return json({
     ok: true,
     import: urlCollection,
-    event,
+    event: publicEvent(event),
   }, 200, JSON_HEADERS);
 });

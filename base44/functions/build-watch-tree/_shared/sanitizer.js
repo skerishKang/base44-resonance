@@ -4,6 +4,12 @@ export const INTERNAL_FIELDS = new Set([
   "source_record_fingerprint",
   "input_digest",
   "source_digest",
+  "channel_id",
+  "category_id",
+  "published_at",
+  "duration_seconds",
+  "client_nonce_digest",
+  "payload_digest",
 ]);
 
 // Recursive response sanitizer: strips all internal fields from any response object.

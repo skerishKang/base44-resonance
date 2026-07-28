@@ -99,29 +99,35 @@ export function extractFeatures(events) {
 
   const countMap = new Map();
   const channels = new Map();
+  const knownChannels = new Map();
   let short = 0, med = 0, long = 0;
   const categories = new Map();
   const words = new Map();
   let wordTotal = 0;
   const bins = Array(28).fill(0);
   let transitions = 0;
+  let prevChannel = null;
+  let hasDuration = false;
 
   for (let i = 0; i < total; i++) {
     const e = active[i];
     countMap.set(e.normalized_content_id, (countMap.get(e.normalized_content_id) || 0) + 1);
     
-    const channel = e.creator_key || e.bounded_creator_label || "unknown";
-    channels.set(channel, (channels.get(channel) || 0) + 1);
+    const channel = e.creator_key || e.bounded_creator_label || "";
+    if (channel) {
+      channels.set(channel, (channels.get(channel) || 0) + 1);
+    }
 
-    const d = e.duration_seconds || 0;
-    if (d > 0) {
+    if (e.duration_seconds > 0) {
+      hasDuration = true;
+      const d = e.duration_seconds;
       if (d < 300) short++;
       else if (d < 1200) med++;
       else long++;
     }
 
-    const cat = String(e.category_id || "unknown");
-    if (cat !== "unknown") categories.set(cat, (categories.get(cat) || 0) + 1);
+    const cat = String(e.category_id || "");
+    if (cat) categories.set(cat, (categories.get(cat) || 0) + 1);
 
     const title = (e.bounded_title || "").toLowerCase().replace(/[^a-z0-9가-힣\s]/g, "");
     for (const w of title.split(/\s+/)) {
@@ -138,10 +144,10 @@ export function extractFeatures(events) {
       bins[date.getUTCDay() * 4 + part]++;
     }
 
-    if (i > 0) {
-      const prevChannel = active[i - 1].creator_key || active[i - 1].bounded_creator_label || "unknown";
+    if (i > 0 && channel && prevChannel) {
       if (channel !== prevChannel) transitions++;
     }
+    if (channel) prevChannel = channel;
   }
 
   const repeatRatio = Array.from(countMap.values()).filter(c => c > 1).reduce((s, c) => s + c, 0) / total;
@@ -153,35 +159,56 @@ export function extractFeatures(events) {
   const topWordRatio = wordTotal > 0 ? Math.max(...words.values()) / wordTotal : 0;
   const rhythmNorm = Math.hypot(...bins) || 1;
   const rhythmVector = bins.map(v => v / rhythmNorm);
-  const transitionRate = total > 1 ? transitions / (total - 1) : 0;
+  const transitionRate = channels.size > 1 ? transitions / total : 0;
+  const hasNonEmptyCreators = channels.size > 0;
+  const hasUserProvidedTitles = active.some(e => e.metadata_provenance === "user_provided");
 
-  return { repeatRatio, channelConcentration, channelDiversity, durationDist, topCategoryRatio, topWordRatio, rhythm: rhythmVector, transitionRate };
+  return { repeatRatio, channelConcentration, channelDiversity, durationDist, hasDuration, topCategoryRatio, topWordRatio, rhythm: rhythmVector, transitionRate, hasNonEmptyCreators, hasUserProvidedTitles };
 }
 
 export function scoreArchetype(features, candidateId) {
   if (!features) return 0;
   let score = 0;
-  const { repeatRatio, channelConcentration, channelDiversity, durationDist, topCategoryRatio, topWordRatio, rhythm, transitionRate } = features;
+  const { repeatRatio, channelConcentration, channelDiversity, hasDuration, durationDist, rhythm, transitionRate, hasNonEmptyCreators } = features;
   
   if (candidateId === "archetype-quiet-rewatcher") {
-    score = repeatRatio * 0.5 + channelConcentration * 0.5;
+    score = repeatRatio;
   } else if (candidateId === "archetype-night-documentary") {
-    const nightRhythm = rhythm.slice(0, 7).reduce((a, b) => a + b, 0); // simplistic night check
-    score = durationDist[2] * 0.5 + nightRhythm * 0.5;
+    const nightHours = rhythm[3] + rhythm[7] + rhythm[11] + rhythm[15] + rhythm[19] + rhythm[23] + rhythm[27];
+    score = nightHours;
+  } else if (candidateId === "archetype-night-rhythm") {
+    const nightHours = rhythm[3] + rhythm[7] + rhythm[11] + rhythm[15] + rhythm[19] + rhythm[23] + rhythm[27];
+    score = nightHours;
   } else if (candidateId === "archetype-learning-trail") {
-    score = topCategoryRatio * 0.4 + topWordRatio * 0.4 + (1 - transitionRate) * 0.2;
+    if (hasDuration) score = topCategoryRatio * 0.4 + topWordRatio * 0.4 + (1 - transitionRate) * 0.2;
   } else if (candidateId === "archetype-music-loop") {
-    score = repeatRatio * 0.4 + durationDist[0] * 0.3 + topCategoryRatio * 0.3;
+    if (hasDuration) score = repeatRatio * 0.4 + durationDist[0] * 0.3 + topCategoryRatio * 0.3;
   } else if (candidateId === "archetype-longform-cinema") {
-    score = durationDist[2] * 0.7 + (1 - channelDiversity) * 0.3;
+    if (hasDuration) score = durationDist[2] * 0.7 + (1 - channelDiversity) * 0.3;
   } else if (candidateId === "archetype-creator-loyalist") {
-    score = channelConcentration * 0.8 + repeatRatio * 0.2;
+    if (hasNonEmptyCreators) score = channelConcentration * 0.8 + repeatRatio * 0.2;
   } else if (candidateId === "archetype-rabbit-hole") {
-    score = transitionRate * 0.5 + topCategoryRatio * 0.5;
+    if (hasDuration) score = transitionRate * 0.5 + topCategoryRatio * 0.5;
   } else if (candidateId === "archetype-eclectic-wanderer") {
-    score = channelDiversity * 0.6 + transitionRate * 0.4;
+    if (hasNonEmptyCreators) score = channelDiversity * 0.6 + transitionRate * 0.4;
   }
   return Math.min(1, Math.max(0, score));
+}
+
+function isRealUrlCollection(events) {
+  const active = events.filter(eligible);
+  if (active.length === 0) return false;
+  // URL collection events have source_type url_collection and no synthetic_demo provenance
+  return active.every(e => e.source_type === "url_collection" || e.metadata_provenance === "none" || e.metadata_provenance === "user_provided");
+}
+
+function groundedCandidates() {
+  return [
+    { id: "archetype-quiet-rewatcher", label: "Quiet Rewatcher · 조용한 반복 감상자", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] },
+    { id: "archetype-night-rhythm", label: "Night Rhythm Viewer · 야간 시청형", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] },
+    { id: "archetype-creator-loyalist", label: "Creator Focus · 크리에이터 집중형", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] },
+    { id: "archetype-eclectic-wanderer", label: "Eclectic Explorer · 다양한 주제 탐험형", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] },
+  ];
 }
 
 export function buildEvidenceTokens(candidate, shared, rareCount, seq, sharedCreators, ac, bc, difference, features, archScore) {
@@ -254,12 +281,14 @@ export function scoreCandidate(ownerEvents, candidate, corpus = []) {
 export function orderCandidates(ownerEvents, candidates = SYNTHETIC_CANDIDATES) {
   const activeEvents = ownerEvents.filter(eligible);
   if (activeEvents.length < MIN_EVENTS_FOR_MATCHING) return [];
-  const scored = candidates
-    .map((candidate) => scoreCandidate(ownerEvents, candidate, candidates))
-    .sort((a, b) => b.score - a.score || b.rare_overlap_count - a.rare_overlap_count || b.shared_path_count - a.shared_path_count || b.exact_overlap_count - a.exact_overlap_count || a.id.localeCompare(b.id));
-  
-  // Rule: "4개 이상이더라도 실제 신호가 약하면 insufficient"
-  // If the top score is below strong threshold (0.28), return empty (insufficient)
+
+  const isReal = isRealUrlCollection(ownerEvents);
+  const candidatePool = isReal ? groundedCandidates() : candidates;
+
+  const scored = candidatePool
+    .map((candidate) => scoreCandidate(ownerEvents, candidate, isReal ? candidatePool : candidates))
+    .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+
   if (scored.length > 0 && scored[0].score < 0.28) {
     return [];
   }

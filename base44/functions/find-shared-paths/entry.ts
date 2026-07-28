@@ -43,7 +43,9 @@ Deno.serve(async (req) => {
 
   const sourceDigest = await digestHex(
     eligible.map((event: Record<string, unknown>) => [
-      event.source_record_fingerprint,
+      event.source_record_fingerprint ?? event.normalized_content_id,
+      event.watched_at,
+      event.repeat_count,
       event.matching_enabled,
       event.sensitivity_excluded,
     ]),

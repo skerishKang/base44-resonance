@@ -30,51 +30,49 @@ The agent never accessed:
 - Production secrets or environment variables
 - The deployment pipeline
 - Other users' data or account information
-- **Draft PR state** was maintained until CI and CTO review both passed.
 
-### Layer 4: CI and CTO review (validation)
+### Layer 3: GitHub integration and evidence
 
-Two CI jobs ran on every PR:
+GitHub served as the source-of-truth integration boundary and auditable evidence record:
 
-1. **test-build-browser** (25 min): 265 deterministic tests + browser validation + Vite build
-2. **release-build** (15 min): fail-closed verification + production build + bundle content assertion
+- **Draft PR** state was maintained until exact-head CI and AI CTO review passed.
+- **Exact base/head SHA** tracking: every review referenced the precise commit under review.
+- **Review comments** were tracked as PR comments and resolved before merge.
+- **CI** ran test-build-browser and release-build on each push, producing auditable pass/fail evidence.
+- **Auditable correction history**: every CTO finding linked to a fix commit; no correction was accepted without CI re-run.
 
-A human CTO then reviewed the source, checked the contract regexes, verified the exact base SHA, and either approved or sent the PR back for correction. **No model-produced output was trusted without both CI pass and human review.**
+### Layer 4: Validation and release governance
+
+The current release workflow runs two CI jobs:
+
+1. **test-build-browser**: deterministic tests + browser validation + Vite build
+2. **release-build**: fail-closed verification + production build + bundle content assertion
+
+The current final-source suite contains 265 deterministic tests. Test coverage and counts evolved during development.
+
+An AI CTO reviewed the exact source and CI evidence, while the human project owner retained final approval for consequential merge, deployment, and submission decisions. **No model-produced output was trusted without both CI pass and AI CTO review.**
 
 ---
 
-## Sequence diagram
+## Development and release flow
 
+```mermaid
+flowchart TD
+    A[Human project owner] -->|product intent and consequential approval| B[AI CTO]
+    B -->|execution contract| C[Local implementation agent]
+    C -->|isolated implementation + tests| D[Draft PR]
+    D --> E[GitHub / CI]
+    E -->|test-build-browser| F[CI evidence]
+    E -->|release-build| F
+    F --> B
+    B -->|exact-head review + merge-readiness decision| G[Merge]
+    G --> H[Exact release review]
+    H --> I[Explicit human approval]
+    I --> J[Base44 CLI/dashboard deployment]
+    J --> K[Authenticated Production UAT]
 ```
-Human (project owner)           Agent (LLM + IDE)              GitHub / CI              Base44
-AI CTO
-      │                                │                           │                       │
-      ├── Issue/contract ─────────────►│                           │                       │
-      │                                ├── create branch ────────►│                       │
-      │                                │── implement slice        │                       │
-      │                                │── commit ───────────────►│                       │
-      │                                │── push ─────────────────►│                       │
-      │                                │                           ├── CI run ───────────►│
-      │                                │                           │── test, build, check  │
-      │                                │                           │── result              │
-      │◄── PR + CI result ─────────────│                           │                       │
-      ├── CTO review ─────────────────►│                           │                       │
-      │   (approved or corrections)    ├── fix commits            │                       │
-      │                                │── push ─────────────────►│                       │
-       │                                │                           ├── re-run CI ────────►│
-       ├── merge (if approved) ────────►│──────────────────────────►│                       │
-       │                                │                           │                       │
-       │   (CI does not deploy)         │                           │                       │
-       │                                │                           │                       │
-       ├── exact release review ───────►│                           │                       │
-       ├── explicit human approval ─────┤                           │                       │
-       │                                ├── Base44 CLI/dashboard ──►│                       │
-       │                                │   deployment              │                      │
-       │                                │                           └── deploy ───────────►│
-       │                                │                                                    │
-       │◄── authenticated Production ───│                                                     │
-       │    UAT                                                                               │
-```
+
+**CI does not deploy.** Deployment occurs only after merge, exact release review, and explicit human project-owner approval.
 
 ---
 
@@ -91,11 +89,11 @@ The agent never deployed, never mutated secrets, never accessed the Base44 dashb
 
 ### 2. No model output is trusted without CI and code review
 
-Every implementation was verified by:
-- **Deterministic tests** (265 across the final build) that must pass
+Current reviewed submission slices are verified by:
+- **Deterministic tests** (265 in the current final-source suite) that must pass
 - **Browser validation** that screenshots every UI state and asserts no console errors, page errors, or unexpected external requests
 - **Release build verification** that checks production App ID presence and forbidden string absence
-- **Human CTO review** that checks contract regexes, exact SHA baselines, and PR body accuracy
+- **AI CTO review** with human project-owner approval, checking contract regexes, exact SHA baselines, and PR body accuracy
 
 ### 3. Parallel work uses disjoint file ownership
 

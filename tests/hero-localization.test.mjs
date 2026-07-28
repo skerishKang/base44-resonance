@@ -76,16 +76,21 @@ test("orphaned hero subline CSS is removed without changing mobile CTA contracts
   assert.match(productCss, /data-primary-cta="resonance"/);
 });
 
-test("unrelated Auth, journey, and backend copy contracts remain unchanged", () => {
+test("Auth and journey copy contracts remain unchanged and backend foundation names WatchTree", () => {
   const en = getCopy("en");
   const ko = getCopy("ko");
 
   assert.equal(en.auth.title, "Begin with a protected identity.");
   assert.equal(en.journey.title, "Build a signal that explains itself.");
-  assert.equal(en.backend.foundation, "Slice 2 product path");
+  assert.equal(en.backend.foundation, "WatchTree product path");
+  assert.match(en.backend.steps[1].title, /Owner-scoped Entity schemas/);
+  assert.match(en.backend.steps[1].text, /Thirteen owner-scoped schemas/);
+  assert.match(en.backend.steps[2].text, /Twelve caller-scoped Functions/);
   assert.equal(ko.auth.title, "보호된 신원에서 시작합니다.");
   assert.equal(ko.journey.title, "스스로 설명되는 공명 신호를 만듭니다.");
-  assert.equal(ko.backend.foundation, "Slice 2 제품 경로");
+  assert.equal(ko.backend.foundation, "WatchTree 제품 경로");
+  assert.match(ko.backend.steps[1].title, /Entity 스키마 13개/);
+  assert.match(ko.backend.steps[2].text, /12개 요청자 권한 Function/);
 });
 
 test("CapabilityPanel orbit markup remains paired with its exact CSS rule", () => {

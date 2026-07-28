@@ -18,16 +18,18 @@ import {
 
 const ACTIONS = new Set(["enable_import_matching", "disable_import_matching", "exclude_event", "exclude_creator", "exclude_date_range", "delete_import", "delete_all"]);
 
-async function clearDerived(base44, importId) {
-  const budget = createDeleteBudget();
-  const result = await clearDerivedRecords(base44, importId, budget);
-  if (!result.complete) throw new Error("DERIVED_DELETE_INCOMPLETE");
-  return result;
-}
-
 function deletionResponse(result, budget) {
   const progress = { ...result.progress, budget_remaining: budget.remaining };
   return json({ ok: true, deleted: result.complete, complete: result.complete, progress, events: [], tree: null, candidates: [] });
+}
+
+// Privacy cleanup actions report expected budget exhaustion as complete:false
+// with bounded progress instead of an exception, so the client can idempotently
+// resume the same action with a fresh budget. Refreshed events are returned
+// only once derived cleanup has fully completed.
+function privacyResponse(cleanup, budget, events) {
+  const progress = { ...cleanup.progress, budget_remaining: budget.remaining };
+  return json({ ok: true, complete: cleanup.complete, progress, events, tree: null, candidates: [] });
 }
 
 Deno.serve(async (req) => {
@@ -52,33 +54,33 @@ Deno.serve(async (req) => {
     if (input.action === "enable_import_matching") {
       await updateRecords(base44.entities.WatchEvent, events, (event) => event.sensitivity_excluded?{matching_enabled:false}:{ matching_enabled: true, visibility_state: "matchable_private", exclusion_reason: "" });
       await base44.entities.WatchImport.update(watchImport.id, { matching_enabled: true });
+      const current = await listAllRecords(base44.entities.WatchEvent, { import_id: watchImport.id }, "watched_at");
+      return json({ ok: true, complete: true, events: current.map(publicEvent), tree: null, candidates: [] });
     }
     if (input.action === "disable_import_matching") {
       await updateRecords(base44.entities.WatchEvent, events, (event) => ({ matching_enabled: false, visibility_state: "owner_only", exclusion_reason: event.sensitivity_excluded ? event.exclusion_reason : "import_disabled" }));
       await base44.entities.WatchImport.update(watchImport.id, { matching_enabled: false });
-      await clearDerived(base44, watchImport.id);
     }
     if (input.action === "exclude_event") {
       const event = await unavailable(() => base44.entities.WatchEvent.get(input.event_id));
       if (!event || event.import_id !== watchImport.id) return fail("RESOURCE_UNAVAILABLE", 404);
       await base44.entities.WatchEvent.update(event.id, { matching_enabled: false, sensitivity_excluded:true, exclusion_reason: "item" });
-      await clearDerived(base44, watchImport.id);
     }
     if (input.action === "exclude_creator") {
       const label = String(input.creator_label ?? "").trim();
       if (!label) return fail("CREATOR_INVALID", 400);
       await updateRecords(base44.entities.WatchEvent, events.filter((event) => event.bounded_creator_label === label), () => ({ matching_enabled: false, sensitivity_excluded:true, exclusion_reason: "creator" }));
-      await clearDerived(base44, watchImport.id);
     }
     if (input.action === "exclude_date_range") {
       const from = String(input.from ?? "");
       const to = String(input.to ?? "");
       if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) return fail("DATE_RANGE_INVALID", 400);
       await updateRecords(base44.entities.WatchEvent, events.filter((event) => event.watched_at.slice(0, 10) >= from && event.watched_at.slice(0, 10) <= to), () => ({ matching_enabled: false, sensitivity_excluded:true, exclusion_reason: "date_range" }));
-      await clearDerived(base44, watchImport.id);
     }
-    const current = await listAllRecords(base44.entities.WatchEvent, { import_id: watchImport.id }, "watched_at");
-    return json({ ok: true, events: current.map(publicEvent), tree: null, candidates: [] });
+    const budget = createDeleteBudget();
+    const cleanup = await clearDerivedRecords(base44, watchImport.id, budget);
+    const current = cleanup.complete ? await listAllRecords(base44.entities.WatchEvent, { import_id: watchImport.id }, "watched_at") : [];
+    return privacyResponse(cleanup, budget, current.map(publicEvent));
   } catch {
     return fail("DELETE_INCOMPLETE", 500, true);
   }

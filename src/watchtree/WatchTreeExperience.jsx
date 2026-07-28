@@ -112,7 +112,14 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
 
   const setMatching = (enabled) => run("matching", async () => {
     dispatch({ type: "BUSY", status: enabled ? "matching" : "private" });
-    await adapter.mutatePrivacy(enabled ? "enable_import_matching" : "disable_import_matching", { import_id: state.import?.id });
+    const action = enabled ? "enable_import_matching" : "disable_import_matching";
+    let result = await adapter.mutatePrivacy(action, { import_id: state.import?.id });
+    let round = 0;
+    while (result?.complete === false && round < LIMITS.deleteMaxRounds) {
+      round += 1;
+      result = await adapter.mutatePrivacy(action, { import_id: state.import?.id });
+    }
+    if (result?.complete === false) throw new Error("DELETE_INCOMPLETE");
     if (!enabled) {
       setSelectedTokens([]);
       dispatch({ type: "MATCHING_DISABLED" });
@@ -131,7 +138,13 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
   };
 
   const privacy = (action, payload) => run(`${action}:${JSON.stringify(payload)}`, async () => {
-    const mutation = await adapter.mutatePrivacy(action, payload);
+    let mutation = await adapter.mutatePrivacy(action, payload);
+    let round = 0;
+    while (mutation?.complete === false && round < LIMITS.deleteMaxRounds) {
+      round += 1;
+      mutation = await adapter.mutatePrivacy(action, payload);
+    }
+    if (mutation?.complete === false) throw new Error("DELETE_INCOMPLETE");
     setSelectedTokens([]);
     const refreshed = await refreshAfterPrivacy();
     dispatch({

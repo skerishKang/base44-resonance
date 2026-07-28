@@ -211,6 +211,61 @@ test("drainRecords is bounded and reports incomplete when the budget exhausts", 
   assert.equal(store.count("WatchEvent"), 12);
 });
 
+test("a candidate with more than one budget of children survives until fully drained", async () => {
+  const store = createMockBase44Store();
+  const watchImport = await seedImport(store, 0, { trees: 1, candidatesPerTree: 1, consentsPerCandidate: 200, mutualsPerCandidate: 250 });
+  // 450 child rows exceed the 400-operation budget of a single call.
+  const first = await deleteImportRecords(store, watchImport, createDeleteBudget());
+  assert.equal(first.complete, false);
+  assert.equal(store.count("MutualResonance"), 0, "mutuals drain first and fully");
+  assert.equal(store.count("RevealConsent"), 50, "remaining consents survive with the candidate");
+  assert.equal(store.count("SharedPathCandidate"), 1, "candidate must not be deleted before its children are verified empty");
+  assert.equal(store.count("WatchTreeFingerprint"), 1, "tree must not be deleted before its candidates are gone");
+  assert.equal(store.count("WatchImport"), 1, "import must not be deleted before its children are gone");
+
+  const { result, rounds } = await deleteInRounds((budget) => deleteImportRecords(store, watchImport, budget));
+  assert.equal(result.complete, true);
+  assert.ok(rounds <= MAX_DELETE_ROUNDS);
+  assert.equal(totalRemaining(store), 0, "resumed calls finish with every related Entity at zero");
+});
+
+test("failed child deletes retain the parent chain instead of orphaning children", async () => {
+  const store = createMockBase44Store();
+  await seedImport(store, 0, { trees: 1, candidatesPerTree: 1, consentsPerCandidate: 1, mutualsPerCandidate: 1 });
+  store.controls.failDeletes = 1000;
+  const result = await deleteImportRecords(store, { id: "imp_0" }, createDeleteBudget(30));
+  assert.equal(result.complete, false);
+  assert.equal(store.count("MutualResonance"), 1, "mutual survives its failed delete");
+  assert.equal(store.count("RevealConsent"), 1);
+  assert.equal(store.count("SharedPathCandidate"), 1, "candidate is retained while its mutual remains");
+  assert.equal(store.count("WatchTreeFingerprint"), 1);
+  assert.equal(store.count("WatchImport"), 1);
+
+  store.controls.failDeletes = 0;
+  const resumed = await deleteInRounds((budget) => deleteAllRecords(store, budget));
+  assert.equal(resumed.result.complete, true);
+  assert.equal(totalRemaining(store), 0);
+});
+
+test("delete_all sweeps owner-scoped orphans when zero imports remain", async () => {
+  const store = createMockBase44Store();
+  // The exact orphan state finding 1 could create: the import is gone but
+  // rows remain across every related Entity.
+  await store.entities.WatchEvent.create({ import_id: "imp_gone" });
+  await store.entities.WatchEvent.create({ import_id: "imp_gone" });
+  await store.entities.WatchMatchSignal.create({ import_id: "imp_gone" });
+  await store.entities.ImportChunkReceipt.create({ import_id: "imp_gone" });
+  await store.entities.WatchTreeFingerprint.create({ id: "tree_gone", import_id: "imp_gone" });
+  await store.entities.SharedPathCandidate.create({ id: "cand_gone", fingerprint_id: "tree_gone" });
+  await store.entities.RevealConsent.create({ candidate_id: "cand_gone", state: "granted" });
+  await store.entities.MutualResonance.create({ candidate_id: "cand_gone", state: "mutual" });
+  assert.equal(store.count("WatchImport"), 0);
+
+  const { result } = await deleteInRounds((budget) => deleteAllRecords(store, budget));
+  assert.equal(result.complete, true, "complete requires all eight collections verified empty");
+  assert.equal(totalRemaining(store), 0);
+});
+
 test("reconcile deletes orphan mutuals without consent and dangling candidate references", async () => {
   const store = createMockBase44Store();
   await seedImport(store, 0, { trees: 0 });
@@ -245,6 +300,38 @@ test("reconcile deletes orphan mutuals without consent and dangling candidate re
   assert.equal(store.count("RevealConsent"), 1, "valid consent survives");
   assert.equal(store.count("SharedPathCandidate"), 1);
   assert.equal(store.count("WatchTreeFingerprint"), 1);
+});
+
+test("privacy exclusion resumes bounded derived cleanup past one budget", async () => {
+  const store = createMockBase44Store();
+  const watchImport = await seedImport(store, 0, { events: 3, trees: 1, candidatesPerTree: 250, consentsPerCandidate: 1, mutualsPerCandidate: 1 });
+  // 250 candidates x (mutual + consent) + tree = 501 derived operations,
+  // more than one 400-operation budget behind a single exclusion.
+  const runExclusion = async () => {
+    const events = await listAllRecords(store.entities.WatchEvent, { import_id: watchImport.id }, "watched_at");
+    await store.entities.WatchEvent.update(events[0].id, { matching_enabled: false, sensitivity_excluded: true, exclusion_reason: "item" });
+    return clearDerivedRecords(store, watchImport.id, createDeleteBudget());
+  };
+
+  let cleanup = await runExclusion();
+  assert.equal(cleanup.complete, false, "expected budget exhaustion must surface as complete:false, not an exception");
+  assert.ok(store.count("SharedPathCandidate") > 0, "derived cleanup is partial after one budget");
+  assert.equal(store.count("WatchImport"), 1, "an exclusion never deletes the import");
+
+  let rounds = 1;
+  while (cleanup.complete === false) {
+    cleanup = await runExclusion();
+    rounds += 1;
+    assert.ok(rounds <= MAX_DELETE_ROUNDS, "repeated exclusion actions must stay within the bounded round cap");
+  }
+  assert.equal(store.count("SharedPathCandidate"), 0);
+  assert.equal(store.count("RevealConsent"), 0);
+  assert.equal(store.count("MutualResonance"), 0);
+  assert.equal(store.count("WatchTreeFingerprint"), 0);
+  assert.equal(store.count("WatchImport"), 1);
+  const after = await listAllRecords(store.entities.WatchEvent, { import_id: watchImport.id }, "watched_at");
+  assert.equal(after[0].sensitivity_excluded, true, "repeated exclusion actions stay idempotent");
+  assert.equal(after.length, 3);
 });
 
 test("restore queries consent and mutual scoped to the active candidate only", async () => {
@@ -306,6 +393,33 @@ test("restore rules: zero candidates, revoked consent, and unselected mutual", a
   assert.equal(ranked.mutual.id, "mutual_C");
 });
 
+test("restore selects the globally latest granted consent, not rank-first", async () => {
+  const store = createMockBase44Store();
+  const rank1 = await store.entities.SharedPathCandidate.create({ id: "cand_rank1", fingerprint_id: "tree_active", candidate_rank: 0 });
+  const rank2 = await store.entities.SharedPathCandidate.create({ id: "cand_rank2", fingerprint_id: "tree_active", candidate_rank: 1 });
+  await store.entities.RevealConsent.create({ id: "consent_old", candidate_id: "cand_rank1", state: "granted", created_date: "2026-05-01T00:00:00.000Z" });
+  await store.entities.MutualResonance.create({ id: "mutual_old", candidate_id: "cand_rank1", state: "mutual", created_date: "2026-05-01T00:00:00.000Z" });
+  await store.entities.RevealConsent.create({ id: "consent_new", candidate_id: "cand_rank2", state: "granted", created_date: "2026-05-03T00:00:00.000Z" });
+  await store.entities.MutualResonance.create({ id: "mutual_new", candidate_id: "cand_rank2", state: "mutual", created_date: "2026-05-03T00:00:00.000Z" });
+
+  const result = await restoreScopedMatching(store, [rank1, rank2]);
+  assert.equal(result.consent.id, "consent_new", "newer grant on rank-2 must win over the older rank-1 grant");
+  assert.equal(result.mutual.id, "mutual_new", "mutual is queried only for the selected candidate");
+});
+
+test("restore breaks created_date ties by candidate_rank then candidate_id", async () => {
+  const store = createMockBase44Store();
+  const sameDate = "2026-05-01T00:00:00.000Z";
+  const rankB = await store.entities.SharedPathCandidate.create({ id: "cand_b", fingerprint_id: "tree_active", candidate_rank: 1 });
+  const rankA = await store.entities.SharedPathCandidate.create({ id: "cand_a", fingerprint_id: "tree_active", candidate_rank: 0 });
+  await store.entities.RevealConsent.create({ id: "consent_b", candidate_id: "cand_b", state: "granted", created_date: sameDate });
+  await store.entities.RevealConsent.create({ id: "consent_a", candidate_id: "cand_a", state: "granted", created_date: sameDate });
+
+  const byRank = await restoreScopedMatching(store, [rankB, rankA]);
+  assert.equal(byRank.consent.id, "consent_a", "equal dates fall back to the lower candidate_rank regardless of list order");
+  assert.equal(byRank.mutual, null);
+});
+
 test("privacy exclusion regression flow clears consent, mutual, and evidence without reload", () => {
   for (const action of ["exclude_event", "exclude_creator", "exclude_date_range"]) {
     let state = initialState;
@@ -360,6 +474,17 @@ test("delete rounds are bounded in the UI and never claim false completion", () 
   assert.match(clearBlock, /result\?\.complete === false/);
   assert.match(clearBlock, /round < LIMITS\.deleteMaxRounds/);
   assert.match(clearBlock, /throw new Error\("DELETE_INCOMPLETE"\)/, "exhausted rounds must surface an error, not success");
+
+  const privacyStart = source.indexOf("const privacy =");
+  const privacyBlock = source.slice(privacyStart, source.indexOf("const consent ="));
+  assert.match(privacyBlock, /while \(mutation\?\.complete === false && round < LIMITS\.deleteMaxRounds\)/, "privacy actions must resume bounded cleanup");
+  assert.match(privacyBlock, /throw new Error\("DELETE_INCOMPLETE"\)/);
+  assert.ok(privacyBlock.indexOf("refreshAfterPrivacy") > privacyBlock.indexOf("DELETE_INCOMPLETE"), "UI state refreshes only after cleanup completes");
+
+  const matchingStart = source.indexOf("const setMatching =");
+  const matchingBlock = source.slice(matchingStart, source.indexOf("const refreshAfterPrivacy"));
+  assert.match(matchingBlock, /while \(result\?\.complete === false && round < LIMITS\.deleteMaxRounds\)/, "disable_import_matching must resume too");
+
   assert.match(read("src/watchtree/constants.js"), /deleteMaxRounds: 40/);
 });
 
@@ -368,10 +493,12 @@ test("delete-watch-data delegates to the bounded deletion core and drops legacy 
   assert.match(entry, /createDeleteBudget\(\)/);
   assert.match(entry, /deleteAllRecords\(base44, budget\)/);
   assert.match(entry, /deleteImportRecords\(base44, watchImport, budget\)/);
-  assert.match(entry, /clearDerivedRecords\(base44, importId, budget\)/);
+  assert.match(entry, /clearDerivedRecords\(base44, watchImport\.id, budget\)/);
+  assert.match(entry, /privacyResponse\(cleanup, budget/);
+  assert.match(entry, /complete: cleanup\.complete/);
   assert.match(entry, /budget_remaining: budget\.remaining/);
-  assert.match(entry, /complete: result\.complete/);
   assert.match(entry, /listAllRecords\(base44\.entities\.WatchEvent/);
+  assert.doesNotMatch(entry, /DERIVED_DELETE_INCOMPLETE/, "expected budget exhaustion must not become an exception");
   assert.doesNotMatch(entry, /,5000,0\)/, "event/signal listings must not be capped at 5000");
   assert.doesNotMatch(entry, /,20,0\)/, "derived listings must not be capped at 20");
   assert.doesNotMatch(entry, /\\\\d\{4\}/, "date validation must use a real digit class");
@@ -388,7 +515,9 @@ test("production restore uses candidate-scoped Entity queries, never global list
 
   const restore = read("src/watchtree/restore.js");
   assert.match(restore, /RevealConsent\.filter\(\{ candidate_id: candidate\.id, state: "granted" \}/);
-  assert.match(restore, /MutualResonance\.filter\(\{ candidate_id: consent\.candidate_id, state: "mutual" \}/);
+  assert.match(restore, /MutualResonance\.filter\(\{ candidate_id: selected\.consent\.candidate_id, state: "mutual" \}/);
   assert.match(restore, /if \(allowlist\.length === 0\) return \{ consent: null, mutual: null \};/);
-  assert.match(restore, /if \(grantedIndex < 0\) return \{ consent: null, mutual: null \};/);
+  assert.match(restore, /if \(!selected\) return \{ consent: null, mutual: null \};/);
+  assert.match(restore, /latestDate > selectedDate/, "the globally latest granted consent wins");
+  assert.match(restore, /rank < selected\.rank/, "deterministic candidate_rank tie-break");
 });

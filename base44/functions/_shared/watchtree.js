@@ -167,7 +167,7 @@ export async function drainRecords(entity, criteria, sort, budget, options = {})
   }
 }
 
-async function drainWithVisit(entity, criteria, sort, visit, budget, options = {}) {
+async function drainWithChildren(entity, criteria, sort, deleteChildren, budget, options = {}) {
   const batchSize = options.batchSize ?? DELETE_BATCH_SIZE;
   let deleted = 0;
   for (;;) {
@@ -176,8 +176,14 @@ async function drainWithVisit(entity, criteria, sort, visit, budget, options = {
     if (records.length === 0) return { deleted, complete: true };
     for (const record of records) {
       if (budget.remaining <= 0) return { deleted, complete: false };
+      const childrenComplete = await deleteChildren(record, budget);
+      // Child-first completion: a parent is retained until every child
+      // collection is verified empty AND budget remains to delete the parent
+      // itself, so the next invocation rediscovers the children through the
+      // surviving parent and resumes.
+      if (!childrenComplete) return { deleted, complete: false };
+      if (budget.remaining <= 0) return { deleted, complete: false };
       budget.remaining -= 1;
-      await visit(record);
       await entity.delete(record.id).catch(() => {});
       deleted += 1;
     }
@@ -186,26 +192,26 @@ async function drainWithVisit(entity, criteria, sort, visit, budget, options = {
 
 // Remove every derived matching record for one import: trees, candidates,
 // consents, and mutuals. Mutuals are drained independently of consents so an
-// orphan mutual is removed even when no RevealConsent remains.
+// orphan mutual is removed even when no RevealConsent remains. Mutual and
+// consent drains run sequentially for deterministic budget accounting; a
+// candidate is deleted only after both are verified empty, and a tree only
+// after all of its candidates are gone.
 export async function clearDerivedRecords(base44, importId, budget, options = {}) {
   const progress = { trees: 0, candidates: 0, consents: 0, mutuals: 0 };
-  let complete = true;
-  const trees = await drainWithVisit(base44.entities.WatchTreeFingerprint, { import_id: importId }, "-created_date", async (tree) => {
-    const candidates = await drainWithVisit(base44.entities.SharedPathCandidate, { fingerprint_id: tree.id }, "candidate_rank", async (candidate) => {
-      const [mutuals, consents] = await Promise.all([
-        drainRecords(base44.entities.MutualResonance, { candidate_id: candidate.id }, "-created_date", budget, options),
-        drainRecords(base44.entities.RevealConsent, { candidate_id: candidate.id }, "-created_date", budget, options),
-      ]);
+  const trees = await drainWithChildren(base44.entities.WatchTreeFingerprint, { import_id: importId }, "-created_date", async (tree) => {
+    const candidates = await drainWithChildren(base44.entities.SharedPathCandidate, { fingerprint_id: tree.id }, "candidate_rank", async (candidate) => {
+      const mutuals = await drainRecords(base44.entities.MutualResonance, { candidate_id: candidate.id }, "-created_date", budget, options);
       progress.mutuals += mutuals.deleted;
+      if (!mutuals.complete) return false;
+      const consents = await drainRecords(base44.entities.RevealConsent, { candidate_id: candidate.id }, "-created_date", budget, options);
       progress.consents += consents.deleted;
-      if (!mutuals.complete || !consents.complete) complete = false;
+      return consents.complete;
     }, budget, options);
     progress.candidates += candidates.deleted;
-    if (!candidates.complete) complete = false;
+    return candidates.complete;
   }, budget, options);
   progress.trees += trees.deleted;
-  if (!trees.complete) complete = false;
-  return { progress, complete };
+  return { progress, complete: trees.complete };
 }
 
 // Fully delete one import and everything derived from it. The import record is
@@ -235,25 +241,61 @@ export async function deleteImportRecords(base44, watchImport, budget, options =
   return { progress, complete: childrenComplete && !remaining };
 }
 
+// Owner-scoped collections swept after imports drain. The caller client is
+// RLS scoped, so criteria-less drains only ever touch the caller's rows.
+const ORPHAN_SWEEPS = (base44) => [
+  ["events", base44.entities.WatchEvent, "watched_at"],
+  ["signals", base44.entities.WatchMatchSignal, "-created_date"],
+  ["receipts", base44.entities.ImportChunkReceipt, "chunk_index"],
+  ["mutuals", base44.entities.MutualResonance, "-created_date"],
+  ["consents", base44.entities.RevealConsent, "-created_date"],
+  ["candidates", base44.entities.SharedPathCandidate, "candidate_rank"],
+  ["trees", base44.entities.WatchTreeFingerprint, "-created_date"],
+];
+
+const ALL_COLLECTIONS = (base44) => [
+  base44.entities.WatchImport,
+  base44.entities.WatchEvent,
+  base44.entities.WatchMatchSignal,
+  base44.entities.ImportChunkReceipt,
+  base44.entities.WatchTreeFingerprint,
+  base44.entities.SharedPathCandidate,
+  base44.entities.RevealConsent,
+  base44.entities.MutualResonance,
+];
+
 // Delete every caller-owned import (RLS scoped by the request client) until
-// none remain or the per-call operation budget is exhausted. Reports
-// complete:false with bounded progress when the budget runs out so the caller
-// can retry with a fresh budget and resume from whatever remains.
+// none remain or the per-call operation budget is exhausted, then sweep any
+// owner-scoped orphan rows across every related Entity. Reports complete only
+// after all eight WatchTree collections are verified empty; otherwise returns
+// complete:false with bounded progress so the caller retries with a fresh
+// budget and resumes from whatever remains.
 export async function deleteAllRecords(base44, budget, options = {}) {
   const batchSize = options.batchSize ?? DELETE_BATCH_SIZE;
   const progress = { imports: 0, trees: 0, candidates: 0, consents: 0, mutuals: 0, events: 0, receipts: 0, signals: 0 };
   for (;;) {
     if (budget.remaining <= 0) break;
     const imports = ((await base44.entities.WatchImport.list("-created_date", batchSize, 0)) ?? []).filter((record) => record?.id);
-    if (imports.length === 0) return { progress, complete: true };
+    if (imports.length === 0) break;
     for (const watchImport of imports) {
       if (budget.remaining <= 0) break;
       const result = await deleteImportRecords(base44, watchImport, budget, options);
       for (const key of Object.keys(progress)) progress[key] += result.progress[key] ?? 0;
     }
   }
-  const remaining = (await base44.entities.WatchImport.list("-created_date", 1, 0)) ?? [];
-  return { progress, complete: remaining.length === 0 };
+  let complete = budget.remaining > 0;
+  for (const [key, entity, sort] of ORPHAN_SWEEPS(base44)) {
+    const result = await drainRecords(entity, null, sort, budget, options);
+    progress[key] += result.deleted;
+    if (!result.complete) complete = false;
+  }
+  if (complete) {
+    for (const entity of ALL_COLLECTIONS(base44)) {
+      const remaining = (await entity.list("-created_date", 1, 0)) ?? [];
+      if (remaining.length > 0) { complete = false; break; }
+    }
+  }
+  return { progress, complete };
 }
 
 const CREATORS = ["Quiet Signal", "Studio Ember", "Night Archive", "Field Notes", "Long Light", "Small Frame"];

@@ -18,3 +18,12 @@ dist
 # Base44
 .app.json*
 .types/
+
+# Demo video local artifacts (never commit)
+.video-work/
+video-output/
+*.mp4
+*.mov
+*.webm
+*.wav
+*.aac

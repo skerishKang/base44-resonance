@@ -1,0 +1,171 @@
+1
+00:00:00,000 --> 00:00:04,000
+Your viewing history can say something
+about how you remember.
+
+2
+00:00:04,000 --> 00:00:07,500
+But it should never become
+another surveillance profile.
+
+3
+00:00:07,500 --> 00:00:12,000
+WatchTree lets you build a private memory tree —
+from links you choose, not data taken from you.
+
+4
+00:00:12,000 --> 00:00:16,000
+WatchTree never reads your YouTube account.
+
+5
+00:00:16,000 --> 00:00:20,500
+There is no OAuth, no API key,
+no automatic history import.
+
+6
+00:00:20,500 --> 00:00:24,500
+You paste a public YouTube URL.
+
+7
+00:00:24,500 --> 00:00:29,000
+WatchTree validates it and stores
+only what you deliberately add.
+
+8
+00:00:29,000 --> 00:00:34,000
+You can attach a watched date, mark a rewatch,
+or leave a private note.
+
+9
+00:00:34,000 --> 00:00:38,000
+Every record enters your collection
+only because you chose it.
+
+10
+00:00:38,000 --> 00:00:43,000
+As your collection grows,
+WatchTree builds your private tree.
+
+11
+00:00:43,000 --> 00:00:48,000
+It shows your event count,
+repeat tendency, and time rhythm.
+
+12
+00:00:48,000 --> 00:00:52,500
+These signals come only
+from records you provided.
+
+13
+00:00:52,500 --> 00:00:56,500
+User-added labels are shown as unverified.
+
+14
+00:00:56,500 --> 00:01:03,000
+WatchTree does not generate an AI profile.
+It reflects what you chose to remember.
+
+15
+00:01:03,000 --> 00:01:08,500
+WatchTree compares your records against
+clearly synthetic viewing archetypes —
+
+16
+00:01:08,500 --> 00:01:11,000
+not real people.
+
+17
+00:01:11,000 --> 00:01:15,500
+Matching is deterministic and explainable.
+
+18
+00:01:15,500 --> 00:01:20,500
+Each candidate shows bounded evidence
+drawn from your own records.
+
+19
+00:01:20,500 --> 00:01:24,000
+When signal is insufficient,
+WatchTree says so.
+
+20
+00:01:24,000 --> 00:01:28,000
+There is no soulmate score.
+There is no real-person scan.
+
+21
+00:01:28,000 --> 00:01:33,500
+Before any result is revealed,
+you select which evidence to share
+
+22
+00:01:33,500 --> 00:01:36,500
+and give explicit consent.
+
+23
+00:01:36,500 --> 00:01:41,500
+The mutual state shown here is simulated —
+it does not represent another real user.
+
+24
+00:01:41,500 --> 00:01:48,000
+Your consent choices persist across reloads.
+
+25
+00:01:48,000 --> 00:01:53,000
+Privacy is a product feature,
+not a footer promise.
+
+26
+00:01:53,000 --> 00:01:58,000
+You can turn matching off,
+exclude specific records,
+
+27
+00:01:58,000 --> 00:02:01,000
+or delete your entire collection.
+
+28
+00:02:01,000 --> 00:02:06,000
+After deletion, WatchTree restores
+a clean empty state.
+
+29
+00:02:06,000 --> 00:02:10,500
+Your data lifecycle is always in your hands.
+
+30
+00:02:06,000 --> 00:02:11,000
+Base44 is not only where WatchTree is hosted.
+
+31
+00:02:11,000 --> 00:02:16,500
+It is the authenticated data, permission,
+function, and deployment layer
+
+32
+00:02:16,500 --> 00:02:19,500
+behind the entire privacy model.
+
+33
+00:02:19,500 --> 00:02:22,500
+Base44 Auth verifies every caller.
+
+34
+00:02:22,500 --> 00:02:28,000
+Owner-scoped Entities enforce row-level security
+through created_by_id.
+
+35
+00:02:28,000 --> 00:02:33,000
+Caller-authenticated Deno Functions
+protect server state.
+
+36
+00:02:33,000 --> 00:02:36,000
+Base44 hosting deploys the verified release.
+
+37
+00:02:36,000 --> 00:02:40,000
+WatchTree by Resonance.
+Built for the Base44 Dev Build-Off.

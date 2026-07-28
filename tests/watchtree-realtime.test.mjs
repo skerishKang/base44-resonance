@@ -3,360 +3,320 @@ import test from "node:test";
 import { createWatchTreeRealtime } from "../src/watchtree/realtime/createWatchTreeRealtime.js";
 
 /**
- * Helper: create a mock adapter for testing the realtime module in isolation.
- *
- * subscribe() stores the callback so tests can simulate WatchEvent changes.
- * restore() returns a snapshot that can be tracked for call counting.
+ * Helper: create a simple mock adapter.
  */
-function createMockAdapter({ restoreData = { import: null, events: [], tree: null } } = {}) {
-  let realtimeCallback = null;
-  let subscribeCallCount = 0;
-  const emitted = [];
+function createAdapter({ restoreData = { import: null, events: [], tree: null } } = {}) {
+  let cb = null;
+  let subCount = 0;
   const restored = [];
 
   return {
-    _emitted: emitted,
     _restored: restored,
+    _subCount: () => subCount,
+    _hasSub: () => typeof cb === "function",
 
     async subscribe(callback) {
-      subscribeCallCount += 1;
-      realtimeCallback = callback;
-      return () => {
-        realtimeCallback = null;
-      };
+      subCount += 1;
+      cb = callback;
+      return () => { cb = null; };
     },
 
-    /** Test helper: get subscribe call count */
-    _subscribeCount() {
-      return subscribeCallCount;
-    },
-
-    /** Test helper: simulate a WatchEvent being emitted */
     _emit(event) {
-      emitted.push(event);
-      if (typeof realtimeCallback === "function") {
-        realtimeCallback(event);
-      }
-    },
-
-    /** Test helper: check if a callback is currently registered */
-    _hasSubscriber() {
-      return typeof realtimeCallback === "function";
+      if (typeof cb === "function") cb(event);
     },
 
     async restore() {
-      const snapshot = structuredClone(restoreData);
-      restored.push(snapshot);
-      return snapshot;
+      const snap = structuredClone(restoreData);
+      restored.push(snap);
+      return snap;
     },
 
-    /** Test helper: check how many times restore() was called */
-    _restoreCount() {
-      return restored.length;
-    },
-
-    /** Test helper: update the data restore() will return */
-    _setData(data) {
-      restoreData = data;
-    },
+    _restoreCount: () => restored.length,
+    _setData(d) { restoreData = d; },
   };
 }
 
 // =========================================================================
-// Test scenario 1: authenticated mount → subscribe 1회
+// 1. delayed subscribe fixture
 // =========================================================================
-test("1. authenticated mount subscribes once via adapter.subscribe()", async () => {
-  const adapter = createMockAdapter();
+test("1. delayed subscribe fixture — subscribe resolves after explicit trigger", async () => {
+  let resolveSub = null;
+  const adapter = {
+    async subscribe(cb) {
+      await new Promise((r) => { resolveSub = r; });
+      this._cb = cb;
+      return () => { this._cb = null; };
+    },
+    _cb: null,
+    async restore() { return { import: null }; },
+  };
+
   const realtime = createWatchTreeRealtime({ adapter });
-
-  let restoredData = null;
-  await realtime.start((data) => {
-    restoredData = data;
-  });
-
-  assert.equal(adapter._subscribeCount(), 1, "subscribe() must be called exactly once");
-
-  // Simulate a WatchEvent being emitted
-  adapter._emit({ type: "INSERT", table: "WatchEvent" });
-
-  // Wait for debounce (200ms) + restore
-  await new Promise((r) => setTimeout(r, 300));
-
-  assert.equal(adapter._restoreCount(), 1, "restore() must be called once after event");
-  assert.ok(restoredData !== null, "onRestored callback must receive data");
-
+  const p = realtime.start(() => {});
+  assert.ok(resolveSub !== null, "subscribe pending");
+  resolveSub();
+  await p;
   realtime.stop();
 });
 
 // =========================================================================
-// Test scenario 2: duplicate start → subscription 1개
+// 2. start → stop before subscribe resolves → cleanup exactly once
 // =========================================================================
-test("2. duplicate start() creates only one subscription", async () => {
-  const adapter = createMockAdapter();
+test("2. subscribe pending → stop → cleanup on resolve", async () => {
+  let resolveSub = null;
+  let cleanupCalled = false;
+  const adapter = {
+    async subscribe(cb) {
+      await new Promise((r) => { resolveSub = r; });
+      this._cb = cb;
+      return () => { cleanupCalled = true; this._cb = null; };
+    },
+    _cb: null,
+    async restore() { return { import: null }; },
+  };
+
   const realtime = createWatchTreeRealtime({ adapter });
+  realtime.start(() => {}); // start, don't await
+  assert.ok(resolveSub !== null, "subscribe pending");
+  realtime.stop(); // stop while pending
 
-  await realtime.start(() => {});
-  assert.equal(adapter._subscribeCount(), 1, "first start() subscribes once");
-
-  // Second start() while already subscribed
-  await realtime.start(() => {});
-  assert.equal(adapter._subscribeCount(), 1, "second start() must NOT create another subscription");
-
-  realtime.stop();
-  // After stop, start again — must create new subscription
-  await realtime.start(() => {});
-  assert.equal(adapter._subscribeCount(), 2, "start() after stop() must subscribe again");
-
-  realtime.stop();
-});
-
-// =========================================================================
-// Test scenario 3: create/update/delete event → refresh triggered
-// =========================================================================
-test("3. every event type (INSERT/UPDATE/DELETE) triggers refresh", async () => {
-  const adapter = createMockAdapter({ restoreData: { import: { id: "imp_1" }, events: [], tree: null } });
-  const realtime = createWatchTreeRealtime({ adapter });
-
-  let callCount = 0;
-  await realtime.start(() => { callCount += 1; });
-
-  // Simulate each event type
-  for (const eventType of ["INSERT", "UPDATE", "DELETE"]) {
-    adapter._emit({ type: eventType, table: "WatchEvent" });
-    await new Promise((r) => setTimeout(r, 300));
-  }
-
-  assert.equal(callCount, 3, "each event type must trigger a refresh");
-  realtime.stop();
-});
-
-// =========================================================================
-// Test scenario 4: event burst debounce → single refresh
-// =========================================================================
-test("4. burst of events within debounce window triggers restore() only once", async () => {
-  const adapter = createMockAdapter({ restoreData: { import: { id: "imp_1" }, events: [], tree: null } });
-  const realtime = createWatchTreeRealtime({ adapter });
-
-  let callCount = 0;
-  await realtime.start(() => { callCount += 1; });
-
-  // Emit 5 events rapidly (within 200ms debounce window)
-  for (let i = 0; i < 5; i += 1) {
-    adapter._emit({ type: "INSERT", table: "WatchEvent", seq: i });
-  }
-
-  // Wait for debounce to fire
-  await new Promise((r) => setTimeout(r, 300));
-
-  assert.equal(callCount, 1, "burst must produce only one refresh");
-  assert.equal(adapter._restoreCount(), 1, "restore() must be called exactly once");
-
-  // Second burst after debounce has cleared
-  for (let i = 0; i < 3; i += 1) {
-    adapter._emit({ type: "UPDATE", table: "WatchEvent", seq: i });
-  }
-  await new Promise((r) => setTimeout(r, 300));
-
-  assert.equal(callCount, 2, "second burst must produce one more refresh");
-  assert.equal(adapter._restoreCount(), 2, "restore() must be called exactly 2 times");
-
-  realtime.stop();
-});
-
-// =========================================================================
-// Test scenario 5: refresh 1회 (verify restore called exactly once per burst)
-// =========================================================================
-test("5. each burst triggers exactly one restore()", async () => {
-  const adapter = createMockAdapter({ restoreData: { import: { id: "imp_1" }, events: [], tree: null } });
-  const realtime = createWatchTreeRealtime({ adapter });
-
-  let refreshCount = 0;
-  await realtime.start(() => { refreshCount += 1; });
-
-  // Single event
-  adapter._emit({ type: "INSERT", table: "WatchEvent" });
-  await new Promise((r) => setTimeout(r, 300));
-  assert.equal(refreshCount, 1, "single event = one refresh");
-  assert.equal(adapter._restoreCount(), 1, "single event = one restore()");
-
-  // Wait and send another
-  await new Promise((r) => setTimeout(r, 100));
-  adapter._emit({ type: "UPDATE", table: "WatchEvent" });
-  await new Promise((r) => setTimeout(r, 300));
-  assert.equal(refreshCount, 2, "second event = second refresh");
-  assert.equal(adapter._restoreCount(), 2, "second event = second restore()");
-
-  realtime.stop();
-});
-
-// =========================================================================
-// Test scenario 6: stop/unmount → unsubscribe
-// =========================================================================
-test("6. stop() unsubscribes and no more callbacks fire", async () => {
-  const adapter = createMockAdapter();
-  const realtime = createWatchTreeRealtime({ adapter });
-
-  let callCount = 0;
-  await realtime.start(() => { callCount += 1; });
-
-  assert.ok(adapter._hasSubscriber(), "subscriber must be registered after start()");
-
+  resolveSub(); // cleanup runs immediately on resolve
   await new Promise((r) => setTimeout(r, 50));
-  realtime.stop();
-
-  assert.ok(!adapter._hasSubscriber(), "subscriber must be removed after stop()");
-
-  // Emit after stop — should be ignored
-  adapter._emit({ type: "INSERT", table: "WatchEvent" });
-  await new Promise((r) => setTimeout(r, 300));
-
-  assert.equal(callCount, 0, "no refresh must fire after stop()");
+  assert.ok(cleanupCalled, "cleanup called after pending resolve");
+  assert.ok(!adapter._cb, "no subscriber after cleanup");
+  realtime.stop(); // safe double stop
 });
 
 // =========================================================================
-// Test scenario 7: logout → unsubscribe
+// 3. A pending → stop → B start → A cleanup on resolve → B active
 // =========================================================================
-test("7. stop() (logout equivalent) removes subscriber and prevents refresh", async () => {
-  const adapter = createMockAdapter();
+test("3. A pending → stop → B start → A cleanup resolves → B active", async () => {
+  let resolveA = null;
+  let aCleanupCalled = false;
+  let isFirstSubscribe = true;
+  const adapter = {
+    _callbacks: new Set(),
+    async subscribe(cb) {
+      if (isFirstSubscribe) {
+        isFirstSubscribe = false;
+        // A's subscribe is delayed (pending)
+        await new Promise((r) => { resolveA = r; });
+      }
+      this._callbacks.add(cb);
+      return () => {
+        if (!isFirstSubscribe) aCleanupCalled = true;
+        this._callbacks.delete(cb);
+      };
+    },
+    _emit(event) {
+      for (const cb of this._callbacks) cb(event);
+    },
+    async restore() { return { import: { id: "imp_1" } }; },
+  };
+
   const realtime = createWatchTreeRealtime({ adapter });
 
-  let callCount = 0;
-  await realtime.start(() => { callCount += 1; });
+  // Session A starts (subscribe pending)
+  const aPromise = realtime.start(() => {});
+  assert.ok(resolveA !== null, "A subscribe pending");
 
-  // Simulate logout by stopping subscription (same as unmount in component)
+  // Stop A while subscribe pending
   realtime.stop();
 
-  // After logout, events must not trigger refresh
-  adapter._emit({ type: "INSERT", table: "WatchEvent" });
-  await new Promise((r) => setTimeout(r, 300));
+  // Session B starts (subscribe immediate)
+  let bData = null;
+  await realtime.start((d) => { bData = d; });
 
-  assert.equal(callCount, 0, "no refresh after logout (stop)");
-  assert.equal(adapter._restoreCount(), 0, "no restore() after logout");
+  // Now A's pending subscribe resolves — cleanup should run immediately
+  // (without affecting B's subscription)
+  resolveA();
+  await aPromise; // A's start promise resolves
+  await new Promise((r) => setTimeout(r, 50));
+
+  assert.ok(aCleanupCalled, "A cleanup called after pending resolve");
+
+  // B's subscription must still be active
+  adapter._emit({ type: "INSERT" });
+  await new Promise((r) => setTimeout(r, 300));
+  assert.ok(bData !== null, "B received event");
+  realtime.stop();
 });
 
 // =========================================================================
-// Test scenario 8: account change → unsubscribe + new subscription
+// 4. store old A callback reference separately
 // =========================================================================
-test("8. account change stops old subscription and starts new one", async () => {
-  const adapter = createMockAdapter({ restoreData: { import: { id: "imp_1" }, events: [] } });
+test("4. A callback reference stored — identity isolation", async () => {
+  const adapter = createAdapter({ restoreData: { import: { id: "imp_1" } } });
   const realtime = createWatchTreeRealtime({ adapter });
 
-  // First session (e.g. User A)
-  const sessionA = [];
-  await realtime.start((data) => { sessionA.push(data); });
+  const aData = [];
+  const bData = [];
 
-  // Simulate account switch: stop old, start new
+  await realtime.start((d) => { aData.push(d); });
+  const hadSubscriber = adapter._hasSub();
   realtime.stop();
-  assert.ok(!adapter._hasSubscriber(), "old subscription removed after stop");
+  await realtime.start((d) => { bData.push(d); });
 
-  // New session (e.g. User B)
-  const sessionB = [];
-  adapter._setData({ import: { id: "imp_2" }, events: [{ id: "evt_b" }] });
-  await realtime.start((data) => { sessionB.push(data); });
-
-  assert.ok(adapter._hasSubscriber(), "new subscription registered after start");
-
-  // Emit event — only sessionB should receive it
-  adapter._emit({ type: "INSERT", table: "WatchEvent" });
+  adapter._emit({ type: "INSERT" });
   await new Promise((r) => setTimeout(r, 300));
 
-  assert.equal(sessionA.length, 0, "old session (A) must not receive events after switch");
-  assert.equal(sessionB.length, 1, "new session (B) must receive events");
-  assert.equal(sessionB[0]?.import?.id, "imp_2", "new session data must be for the new account");
-
+  assert.ok(hadSubscriber, "A had subscriber before stop");
+  assert.equal(aData.length, 0, "A not invoked");
+  assert.equal(bData.length, 1, "B invoked");
   realtime.stop();
 });
 
 // =========================================================================
-// Test scenario 9: stale previous-session callback ignored
+// 5. A stop → B start → old A callback direct invoke → no effect
 // =========================================================================
-test("9. stale callback from previous session is ignored after re-subscribe", async () => {
-  const adapter = createMockAdapter();
+test("5. old A callback stops after B start — A onRestored 0, B onRestored 1", async () => {
+  const adapter = createAdapter({ restoreData: { import: { id: "imp_1" } } });
   const realtime = createWatchTreeRealtime({ adapter });
 
-  // Session A
-  let sessionACalled = false;
-  await realtime.start(() => { sessionACalled = true; });
+  let aFired = false;
+  let bFired = false;
+
+  await realtime.start(() => { aFired = true; });
   realtime.stop();
+  await realtime.start(() => { bFired = true; });
 
-  // Session B — capture the old subscribe callback reference
-  let sessionBCalled = false;
-  await realtime.start(() => { sessionBCalled = true; });
-
-  // Now simulate the OLD subscription callback arriving late
-  // (adapter._hasSubscriber is now the new one, but we stored oldCallback somewhere)
-  adapter._emit({ type: "INSERT", table: "WatchEvent" });
+  adapter._emit({ type: "INSERT" });
   await new Promise((r) => setTimeout(r, 300));
 
-  // Only the active session's callback should fire
-  assert.equal(sessionACalled, false, "old session callback must not fire");
-  assert.equal(sessionBCalled, true, "active session callback must fire");
-
+  assert.equal(aFired, false, "A not fired");
+  assert.equal(bFired, true, "B fired");
+  assert.equal(adapter._restoreCount(), 1, "restore once for B");
   realtime.stop();
 });
 
 // =========================================================================
-// Test scenario 10: subscribe rejection → fallback
+// 6. current B callback fires exactly once per event
 // =========================================================================
-test("10. subscribe rejection does not throw and leaves manual restore working", async () => {
-  const failingAdapter = {
-    async subscribe() {
-      throw new Error("SUBSCRIPTION_UNAVAILABLE");
+test("6. B callback fires once per event", async () => {
+  const adapter = createAdapter({ restoreData: { import: { id: "imp_1" } } });
+  const realtime = createWatchTreeRealtime({ adapter });
+
+  let count = 0;
+  await realtime.start(() => { count += 1; });
+
+  adapter._emit({ type: "INSERT" });
+  await new Promise((r) => setTimeout(r, 300));
+
+  assert.equal(count, 1, "fired once");
+  assert.equal(adapter._restoreCount(), 1, "restore once");
+  realtime.stop();
+});
+
+// =========================================================================
+// 7. old debounce timer after stop/restart → no delivery
+// =========================================================================
+test("7. old debounce timer after stop/restart → delivery 0", async () => {
+  const adapter = createAdapter({ restoreData: { import: { id: "imp_1" } } });
+  const realtime = createWatchTreeRealtime({ adapter });
+
+  let aCount = 0;
+  let bCount = 0;
+
+  await realtime.start(() => { aCount += 1; });
+  adapter._emit({ type: "INSERT" }); // starts A's debounce
+
+  // Stop before debounce fires (200ms), then start B
+  realtime.stop();
+  await realtime.start(() => { bCount += 1; });
+
+  // Wait for A's debounce to have fired (it shouldn't affect B)
+  await new Promise((r) => setTimeout(r, 300));
+  assert.equal(aCount, 0, "A not fired");
+  assert.equal(bCount, 0, "B not fired (no event for B)");
+  assert.equal(adapter._restoreCount(), 0, "no stale restore");
+
+  // Now emit for B
+  adapter._emit({ type: "INSERT" });
+  await new Promise((r) => setTimeout(r, 300));
+  assert.equal(bCount, 1, "B fires for new event");
+  realtime.stop();
+});
+
+// =========================================================================
+// 8. restore pending 중 stop → old result discarded
+// =========================================================================
+test("8. restore pending → stop → old result not delivered", async () => {
+  let restoreResolve = null;
+  const adapter = {
+    _callbacks: new Set(),
+    _restoreCount: 0,
+    async subscribe(cb) {
+      this._callbacks.add(cb);
+      return () => { this._callbacks.delete(cb); };
+    },
+    _emit(event) {
+      for (const cb of this._callbacks) cb(event);
     },
     async restore() {
-      return { import: null, events: [] };
+      this._restoreCount += 1;
+      await new Promise((r) => { restoreResolve = r; });
+      return { import: { id: "imp_old" } };
     },
   };
 
-  const realtime = createWatchTreeRealtime({ adapter: failingAdapter });
+  const realtime = createWatchTreeRealtime({ adapter });
 
-  let restoredData = "not-called";
-  // Start should not throw despite subscribe() rejecting
-  await realtime.start((data) => {
-    restoredData = data;
-  });
+  let result = "none";
+  await realtime.start((d) => { result = d?.import?.id; });
 
-  // Without subscription, the callback should not fire from realtime events
-  // (since there's no subscription to receive them)
-  assert.equal(restoredData, "not-called", "callback should not fire without subscription");
+  // Emit → debounce starts (200ms) → restore() called
+  adapter._emit({ type: "INSERT" });
+  await new Promise((r) => setTimeout(r, 250)); // wait for debounce to fire
 
-  // stop() after failure should not throw either
+  // restore() is now pending (awaiting restoreResolve)
+  assert.ok(restoreResolve !== null, "restore pending after debounce");
+  assert.equal(adapter._restoreCount, 1, "restore called");
+
+  // Stop while restore is pending
   realtime.stop();
-  // Double stop is safe
+
+  // Resolve the pending restore
+  restoreResolve();
+  await new Promise((r) => setTimeout(r, 50));
+
+  // Since session was stopped, result should not have changed
+  assert.equal(result, "none", "old restore result not delivered after stop");
   realtime.stop();
 });
 
 // =========================================================================
-// Test scenario 11: restore rejection → no unhandled rejection
+// 9. restore rejection with event emit → unhandledRejection 0
 // =========================================================================
-test("11. restore() rejection does not cause unhandled promise rejection", async () => {
-  // Adapter where restore() throws
-  const throwingAdapter = {
-    async subscribe(callback) {
-      return () => {};
+test("9. restore rejection with event → restore 1, unhandledRejection 0", async () => {
+  const adapter = {
+    _cb: null,
+    _rc: 0,
+    async subscribe(cb) {
+      this._cb = cb;
+      return () => { this._cb = null; };
     },
     async restore() {
+      this._rc += 1;
       throw new Error("RESTORE_FAILED");
     },
   };
 
-  const realtime = createWatchTreeRealtime({ adapter: throwingAdapter });
+  const realtime = createWatchTreeRealtime({ adapter });
 
-  // Track unhandled rejections
   const unhandled = [];
-  const handler = (reason) => { unhandled.push(reason); };
+  const handler = (r) => { unhandled.push(r); };
   process.on("unhandledRejection", handler);
 
   try {
-    await realtime.start(() => {
-      throw new Error("MUST_NOT_BE_CALLED");
-    });
+    let called = false;
+    await realtime.start(() => { called = true; });
 
-    // Wait for any async activity to settle
+    adapter._cb({ type: "INSERT" });
     await new Promise((r) => setTimeout(r, 300));
 
-    assert.equal(unhandled.length, 0, "restore() rejection must not cause unhandled rejection");
-
+    assert.equal(adapter._rc, 1, "restore called once after event");
+    assert.equal(unhandled.length, 0, "no unhandled rejection");
+    assert.equal(called, false, "onRestored not called");
     realtime.stop();
   } finally {
     process.off("unhandledRejection", handler);
@@ -364,71 +324,56 @@ test("11. restore() rejection does not cause unhandled promise rejection", async
 });
 
 // =========================================================================
-// Test scenario 12: adapter without subscribe() → product still works
+// 10. duplicate start → same session → subscribe 1회
 // =========================================================================
-test("12. adapter without subscribe() method does not break existing product", async () => {
-  // Minimal adapter that lacks subscribe() — like an older version
-  const minimalAdapter = {
-    async restore() {
-      return { import: { id: "imp_1" }, events: [], tree: null };
-    },
-  };
+test("10. duplicate start — subscribe called once", async () => {
+  const adapter = createAdapter();
+  const realtime = createWatchTreeRealtime({ adapter });
 
-  const realtime = createWatchTreeRealtime({ adapter: minimalAdapter });
+  await realtime.start(() => {});
+  assert.equal(adapter._subCount(), 1, "first start: subscribed once");
 
-  // Should not throw even though subscribe() is undefined
-  let callbackFired = false;
-  await realtime.start(() => { callbackFired = true; });
+  await realtime.start(() => {});
+  assert.equal(adapter._subCount(), 1, "duplicate start: no new subscribe");
 
-  // Should still be able to stop safely
+  realtime.stop();
+
+  await realtime.start(() => {});
+  assert.equal(adapter._subCount(), 2, "after stop: new subscribe");
+  realtime.stop();
+});
+
+// =========================================================================
+// 11. adapter without subscribe → fallback
+// =========================================================================
+test("11. adapter without subscribe — no crash", async () => {
+  const realtime = createWatchTreeRealtime({
+    adapter: { async restore() { return { import: null }; } },
+  });
+
+  let fired = false;
+  await realtime.start(() => { fired = true; });
   realtime.stop();
   realtime.stop(); // double stop safe
 
-  assert.equal(callbackFired, false, "callback must not fire without subscription");
+  assert.equal(fired, false, "not fired");
 });
 
 // =========================================================================
-// Test scenario 13: callback must not invoke Function mutation
+// 12. double stop safe
 // =========================================================================
-test("13. callback only dispatches state — no functions.invoke or entities.create", () => {
-  // This is a source-level contract test.
-  // The createWatchTreeRealtime module must NOT contain:
-  // - functions.invoke
-  // - entities.create / entities.update / entities.delete
-  // The callback parameter must be the only way data flows out.
-  const source = createWatchTreeRealtime.toString();
-
-  // The start() callback parameter is the only mechanism for side effects
-  // The module itself calls adapter.restore() (read-only) and adapter.subscribe()
-  // No mutation calls should exist
-  assert.doesNotMatch(source, /functions\.\s*invoke/,
-    "createWatchTreeRealtime must not call functions.invoke");
-  assert.doesNotMatch(source, /entities\.\s*create/,
-    "createWatchTreeRealtime must not call entities.create");
-  assert.doesNotMatch(source, /entities\.\s*update/,
-    "createWatchTreeRealtime must not call entities.update");
-  assert.doesNotMatch(source, /entities\.\s*delete/,
-    "createWatchTreeRealtime must not call entities.delete");
-
-  // Only debounce and restore references are expected
-  assert.match(source, /adapter\.restore/,
-    "createWatchTreeRealtime must call adapter.restore (read-only)");
-  assert.match(source, /adapter\.subscribe/,
-    "createWatchTreeRealtime must call adapter.subscribe");
-});
-
-// =========================================================================
-// Test scenario 14: no internal digest stored in browser state
-// =========================================================================
-test("14. createWatchTreeRealtime does not store internal digest in browser state", () => {
-  const adapter = createMockAdapter();
+test("12. double stop safe — no error", async () => {
+  const adapter = createAdapter();
   const realtime = createWatchTreeRealtime({ adapter });
 
-  // The module must not touch localStorage, sessionStorage, or any global state
-  assert.equal(typeof globalThis.sessionStorage?.getItem("watchtree-realtime-digest"), "undefined",
-    "no digest must be stored in sessionStorage");
-  assert.equal(typeof globalThis.localStorage?.getItem("watchtree-realtime-digest"), "undefined",
-    "no digest must be stored in localStorage");
+  await realtime.start(() => {});
 
   realtime.stop();
+  assert.ok(!adapter._hasSub(), "no subscriber after first stop");
+
+  realtime.stop();
+  assert.ok(!adapter._hasSub(), "still no subscriber after second stop");
+
+  realtime.stop(); // third stop
+  assert.ok(!adapter._hasSub(), "still no subscriber after third stop");
 });

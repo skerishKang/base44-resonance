@@ -24,7 +24,7 @@ async function loadAndCaptureHandler(filePath) {
     serve: (handler) => { capturedHandler = handler; }
   };
   try {
-    await import(`file://${tmpFile}`);
+    await import(pathToFileURL(tmpFile).href);
     return capturedHandler;
   } finally {
     delete globalThis.Deno;

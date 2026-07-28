@@ -48,6 +48,12 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
   const stateRef = useRef(state);
   stateRef.current = state;
 
+  // States where the realtime subscription is allowed to dispatch RESTORED.
+  // All other states (seeding, parsing, preview, resolving, url_preview,
+  // adding, committing, matching, private) represent an in-flight user
+  // operation that must not be overwritten by a background refresh.
+  const REALTIME_SAFE_STATUSES = new Set(["idle", "ready", "error"]);
+
   // Realtime subscription: WatchEvent changes in other tabs trigger
   // a debounced restore through the normal state-machine path.
   // Subscription starts on mount and stops on unmount.
@@ -56,12 +62,8 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
 
     realtime.start((data) => {
       // Guard: do not overwrite an in-flight mutation.
-      // The realtime refresh should only apply when the user is
-      // currently idle or ready — not during import, preview,
-      // commit, matching, privacy mutation, consent, or mutual.
       const status = stateRef.current.status;
-      const skipStatuses = new Set(["idle", "ready", "error"]);
-      if (!skipStatuses.has(status)) return;
+      if (!REALTIME_SAFE_STATUSES.has(status)) return;
 
       // Dispatch RESTORED — the state machine's normal restore path.
       // The realtime module calls adapter.restore() internally after

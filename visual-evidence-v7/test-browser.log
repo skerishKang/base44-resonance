@@ -1,5 +1,0 @@
-command: npm run test:browser
-status: PASS
-generated_at: 2026-07-28T22:50:23.317Z
-states: 21
-assertions: {"console_errors":0,"page_errors":0,"unexpected_external_requests":0,"raw_file_network_uploads":0,"scene_count":7,"reduced_motion_complete":true,"mobile_css_viewport":"390x844","primary_cta_visible_count":1,"mobile_scene_6_foreground_verified":true,"mobile_initial_composition_verified":true,"desktop_scene_6_people_verified":true,"mobile_scene_6_people_verified":true,"desktop_scene_6_path_geometry_verified":true,"mobile_scene_6_path_geometry_verified":true,"desktop_reduced_path_geometry_verified":true,"mobile_reduced_path_geometry_verified":true,"shared_path_nodes_verified":true,"desktop_header_verified":true,"mobile_header_verified":true,"reduced_motion_header_verified":true,"header_child_geometry_verified":true,"header_language_custom_style_verified":true,"internal_field_exposure_verified":true,"vite_port_closed_after_cleanup":true}

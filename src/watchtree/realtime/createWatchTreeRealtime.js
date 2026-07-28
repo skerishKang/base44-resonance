@@ -3,15 +3,21 @@
  *
  * Isolated module for owner-scoped realtime WatchTree refresh.
  *
- * Listens for WatchEvent create/update/delete events via the production
- * adapter's subscribe() wrapper and triggers a single debounced
- * adapter.restore() per burst. The restored data is forwarded to the
- * component's state machine through the normal RESTORED path.
+ * Each start() call creates a unique session object. All async paths
+ * (subscribe callback, debounce timer, restore completion, onRestored
+ * invocation) verify currentSession identity AND session.active before
+ * proceeding. This prevents:
+ *
+ * - A stale callback from an old session firing after a new session starts
+ * - A subscribe() resolution leaking its cleanup when the session is stopped
+ *   while subscribe() is pending — the cleanup is called immediately
+ * - A debounce timer or restore promise from an old session delivering its
+ *   result after the session has been replaced
  *
  * Security:
  * - caller-scoped Base44 client (RLS preserved, no service role)
  * - logout/account switch: call stop() to unsubscribe
- * - stale callback ignored via active flag
+ * - stale callback ignored via session identity + active flag
  * - internal digest never stored in browser state
  * - cross-user events never reach the callback (RLS)
  *
@@ -23,48 +29,53 @@
  */
 
 export function createWatchTreeRealtime({ adapter }) {
-  /** @type {boolean} guards against stale callbacks after stop() */
-  let active = false;
+  /** @type {{ id: number, active: boolean, onRestored: Function, unsubscribe: (() => void)|null, debounceTimer: ReturnType<typeof setTimeout>|null, startPromise: Promise<void>|null }|null} */
+  let currentSession = null;
 
-  /** @type {(() => void)|null} unsubscribe function from adapter.subscribe() */
-  let unsubscribe = null;
-
-  /** @type {Promise<void>|null} guards against concurrent start() calls */
-  let subscribeGuard = null;
-
-  /** @type {ReturnType<typeof setTimeout>|null} */
-  let debounceTimer = null;
+  /** @type {number} monotonic session counter */
+  let nextSessionId = 0;
 
   /**
    * Start subscribing to WatchEvent changes.
    * Each burst of events triggers a single adapter.restore() after 200ms.
-   * Safe to call multiple times — concurrent calls are serialised.
+   *
+   * If there is already an active session, returns its startPromise
+   * without creating a second subscription.
    *
    * @param {(data: object) => void} onRestored
    *   Called once with the result of adapter.restore() after debounce.
-   *   The component should dispatch through its state machine:
-   *   `dispatch({ type: "RESTORED", payload: data })`
    */
   async function start(onRestored) {
-    if (unsubscribe) return; // already subscribed
-    if (subscribeGuard) return subscribeGuard; // concurrent start in flight
+    if (currentSession?.active) return currentSession.startPromise;
 
-    active = true;
+    const session = {
+      id: nextSessionId++,
+      active: true,
+      onRestored,
+      unsubscribe: null,
+      debounceTimer: null,
+      startPromise: null,
+    };
 
-    subscribeGuard = (async () => {
+    currentSession = session;
+
+    session.startPromise = (async () => {
       try {
         const cleanup = await adapter.subscribe(() => {
-          if (!active) return; // stale callback guard
+          // Guard: verify session identity AND active state.
+          if (currentSession !== session || !session.active) return;
 
           // Debounce: 150-300ms window (200ms chosen)
-          if (debounceTimer) clearTimeout(debounceTimer);
-          debounceTimer = setTimeout(async () => {
-            debounceTimer = null;
-            if (!active) return;
+          if (session.debounceTimer) clearTimeout(session.debounceTimer);
+          session.debounceTimer = setTimeout(async () => {
+            session.debounceTimer = null;
+            if (currentSession !== session || !session.active) return;
 
             try {
               const data = await adapter.restore();
-              if (active && data) onRestored(data);
+              if (currentSession === session && session.active && data) {
+                session.onRestored(data);
+              }
             } catch {
               // Fail silently — existing mutation responses and manual
               // restore continue to work without this subscription.
@@ -72,8 +83,14 @@ export function createWatchTreeRealtime({ adapter }) {
           }, 200);
         });
 
-        if (typeof cleanup === "function" && active) {
-          unsubscribe = cleanup;
+        if (typeof cleanup === "function") {
+          if (currentSession === session && session.active) {
+            session.unsubscribe = cleanup;
+          } else {
+            // Session was stopped while adapter.subscribe() was pending.
+            // Call the cleanup immediately so no resource is leaked.
+            try { cleanup(); } catch { /* adapter cleanup should never throw */ }
+          }
         }
       } catch {
         // Subscription unavailable (offline, no WebSocket, etc.)
@@ -81,8 +98,7 @@ export function createWatchTreeRealtime({ adapter }) {
       }
     })();
 
-    await subscribeGuard;
-    subscribeGuard = null;
+    return session.startPromise;
   }
 
   /**
@@ -90,14 +106,23 @@ export function createWatchTreeRealtime({ adapter }) {
    * Safe to call multiple times.
    */
   function stop() {
-    active = false;
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-      debounceTimer = null;
+    const session = currentSession;
+    if (!session) return;
+
+    session.active = false;
+
+    if (session.debounceTimer) {
+      clearTimeout(session.debounceTimer);
+      session.debounceTimer = null;
     }
-    if (typeof unsubscribe === "function") {
-      unsubscribe();
-      unsubscribe = null;
+
+    if (typeof session.unsubscribe === "function") {
+      session.unsubscribe();
+      session.unsubscribe = null;
+    }
+
+    if (currentSession === session) {
+      currentSession = null;
     }
   }
 

@@ -19,12 +19,14 @@ const functionDependencies = {
   "build-watch-tree": ["watchtree.js", "sanitizer.js"],
   "commit-watch-import": ["watchtree.js", "sanitizer.js"],
   "delete-watch-data": ["watchtree.js", "sanitizer.js"],
-  "find-shared-paths": ["watchtree.js", "sanitizer.js"],
+  "find-shared-paths": ["watchtree.js", "sanitizer.js", "watchtree-archetypes.js"],
   "parse-watch-history": ["watchtree.js", "sanitizer.js"],
   "reconcile-watch-data": ["watchtree.js", "sanitizer.js", "reconcile.js"],
   "seed-demo-history": ["watchtree.js", "sanitizer.js"],
   "set-reveal-consent": ["watchtree.js", "sanitizer.js"],
   "simulate-mutual": ["watchtree.js", "sanitizer.js"],
+  "resolve-youtube-video": ["watchtree.js", "sanitizer.js"],
+  "add-watch-url-event": ["watchtree.js", "sanitizer.js"],
 };
 
 let changed = 0;

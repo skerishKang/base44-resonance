@@ -240,10 +240,19 @@ test("release fail-closed applies only to builds, not dev serve", async () => {
   delete process.env.VITE_BASE44_APP_ID;
   delete process.env.BASE44_APP_ID;
 
+  const appJsoncPath = path.resolve(import.meta.dirname, "../base44/.app.jsonc");
+  const hasAppJsonc = fs.existsSync(appJsoncPath);
+  if (hasAppJsonc) {
+    fs.renameSync(appJsoncPath, appJsoncPath + ".bak");
+  }
+
   try {
     const config = await viteConfigFunc({ command: "serve", mode: "release" });
     assert.equal(config.define["import.meta.env.VITE_BASE44_APP_ID"], '""');
   } finally {
+    if (hasAppJsonc) {
+      fs.renameSync(appJsoncPath + ".bak", appJsoncPath);
+    }
     if (originalEnv !== undefined) process.env.VITE_BASE44_APP_ID = originalEnv;
     if (originalBase44Env !== undefined) process.env.BASE44_APP_ID = originalBase44Env;
   }

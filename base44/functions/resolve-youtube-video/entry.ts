@@ -1,13 +1,15 @@
+import { createClientFromRequest } from "npm:@base44/sdk";
 import {
   json, fail, authenticate, requirePostJson, readInput, validNonce,
   parseYouTubeUrl, fetchYouTubeMetadata, buildYouTubeMetadataResponse,
   generateConfirmationToken, JSON_HEADERS,
 } from "./_shared/watchtree.js";
 
-export default async function resolveYouTubeVideo(req, context) {
+Deno.serve(async (req) => {
   const guardError = await requirePostJson(req);
   if (guardError) return guardError;
-  const user = await authenticate(context.base44);
+  const base44 = createClientFromRequest(req);
+  const user = await authenticate(base44);
   if (!user) return fail("AUTH_REQUIRED", 401, false);
   const input = await readInput(req);
   if (!input) return fail("REQUEST_TOO_LARGE", 413, false);
@@ -29,4 +31,4 @@ export default async function resolveYouTubeVideo(req, context) {
     metadata,
     confirmation_token: confirmationToken,
   }, 200, JSON_HEADERS);
-}
+});

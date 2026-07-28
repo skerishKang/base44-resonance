@@ -22,12 +22,14 @@ const FUNCTION_DEPENDENCIES = {
   "build-watch-tree": ["watchtree.js", "sanitizer.js"],
   "commit-watch-import": ["watchtree.js", "sanitizer.js"],
   "delete-watch-data": ["watchtree.js", "sanitizer.js"],
-  "find-shared-paths": ["watchtree.js", "sanitizer.js"],
+  "find-shared-paths": ["watchtree.js", "sanitizer.js", "watchtree-archetypes.js"],
   "parse-watch-history": ["watchtree.js", "sanitizer.js"],
   "reconcile-watch-data": ["watchtree.js", "sanitizer.js", "reconcile.js"],
   "seed-demo-history": ["watchtree.js", "sanitizer.js"],
   "set-reveal-consent": ["watchtree.js", "sanitizer.js"],
   "simulate-mutual": ["watchtree.js", "sanitizer.js"],
+  "resolve-youtube-video": ["watchtree.js", "sanitizer.js"],
+  "add-watch-url-event": ["watchtree.js", "sanitizer.js"],
 };
 
 const ALL_FUNCTIONS = readdirSync(FUNCTIONS_DIR, { withFileTypes: true })
@@ -110,33 +112,67 @@ describe("Base44 function bundle boundary", () => {
       const srcDir = join(import.meta.dirname, "..");
       const { execSync } = await import("node:child_process");
 
+      const { cpSync, rmSync } = await import("node:fs");
       const excludes = ["node_modules", ".git", "dist", "validator-evidence", "tests/evidence"];
-      const excludeArgs = excludes.map((e) => `--exclude=${e}`).join(" ");
-      execSync(`rsync -a ${excludeArgs} "${srcDir}/" "${workDir}/"`, { stdio: "pipe" });
+
+      cpSync(srcDir, workDir, {
+        recursive: true,
+        filter: (src) => {
+          const rel = src.slice(srcDir.length + 1);
+          return !excludes.some((e) => rel === e || rel.startsWith(e + "/"));
+        },
+      });
 
       const syncScript = join(workDir, "scripts", "sync-base44-function-shared.mjs");
       execSync(`node "${syncScript}"`, { cwd: workDir, stdio: "pipe" });
 
       const snapshotDir = mkdtempSync(join(tmpdir(), "base44-sync-snapshot-"));
-      execSync(`cp -r "${workDir}/base44/functions" "${snapshotDir}/functions"`, { stdio: "pipe" });
+      cpSync(join(workDir, "base44", "functions"), join(snapshotDir, "functions"), { recursive: true });
 
       execSync(`node "${syncScript}"`, { cwd: workDir, stdio: "pipe" });
 
-      const diff = execSync(
-        `diff -rq "${snapshotDir}/functions" "${workDir}/base44/functions"`,
-        { cwd: workDir, stdio: "pipe" },
-      ).toString().trim();
+      // Compare snapshotDir vs workDir functions
+      const readAllFiles = (dir) => {
+        const entries = readdirSync(dir, { withFileTypes: true });
+        let files = [];
+        for (const entry of entries) {
+          const res = join(dir, entry.name);
+          if (entry.isDirectory()) {
+            files = files.concat(readAllFiles(res));
+          } else {
+            files.push(res);
+          }
+        }
+        return files;
+      };
+
+      const snapFiles = readAllFiles(join(snapshotDir, "functions")).map((f) => f.slice(join(snapshotDir, "functions").length));
+      const workFiles = readAllFiles(join(workDir, "base44", "functions")).map((f) => f.slice(join(workDir, "base44", "functions").length));
+
+      let diff = "";
+      if (JSON.stringify(snapFiles.sort()) !== JSON.stringify(workFiles.sort())) {
+        diff = "File list mismatch";
+      } else {
+        for (const rel of snapFiles) {
+          const snapContent = readFileSync(join(snapshotDir, "functions", rel), "utf8");
+          const workContent = readFileSync(join(workDir, "base44", "functions", rel), "utf8");
+          if (snapContent !== workContent) {
+            diff += `File ${rel} changed\n`;
+          }
+        }
+      }
 
       assert.equal(diff, "", `Second sync run produced changes:\n${diff}`);
 
-      execSync(`rm -rf "${tmpDir}" "${snapshotDir}"`, { stdio: "pipe" });
+      rmSync(tmpDir, { recursive: true, force: true });
+      rmSync(snapshotDir, { recursive: true, force: true });
     });
   });
 
   describe("7.5 Forbidden import regression detection", () => {
     it("detects escaping import in synthetic fixture", async () => {
       const tmpDir = mkdtempSync(join(tmpdir(), "base44-forbidden-test-"));
-      const { execSync } = await import("node:child_process");
+      const { cpSync, rmSync } = await import("node:fs");
 
       try {
         mkdirSync(join(tmpDir, "base44", "functions", "_shared"), { recursive: true });
@@ -153,7 +189,7 @@ describe("Base44 function bundle boundary", () => {
         for (const f of originalFunctions) {
           const src = join(funcDir, f);
           const dst = join(tmpDir, "base44", "functions", f);
-          execSync(`cp -r "${src}" "${dst}"`, { stdio: "pipe" });
+          cpSync(src, dst, { recursive: true });
         }
 
         const funcPath = join(tmpDir, "base44", "functions", "test-func");
@@ -164,7 +200,7 @@ describe("Base44 function bundle boundary", () => {
         });
         assert.ok(hasEscaping, "Positive control: escaping import must be detected");
       } finally {
-        execSync(`rm -rf "${tmpDir}"`, { stdio: "pipe" });
+        rmSync(tmpDir, { recursive: true, force: true });
       }
     });
   });

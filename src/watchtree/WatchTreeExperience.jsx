@@ -56,24 +56,33 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
     }
     dispatch({ type: "BUSY", status: "resolving" });
     const result = await adapter.resolveYouTubeVideo(trimmed);
-    if (!result?.ok && result?.metadata?.video_id === "VIDEO_UNAVAILABLE") {
-      dispatch({ type: "ERROR", error: copy.errors.videoUnavailable });
+    if (!result?.ok) {
+      if (result?.error?.code === "VIDEO_UNAVAILABLE") dispatch({ type: "ERROR", error: copy.errors.videoUnavailable });
+      else if (result?.error?.code === "METADATA_LOOKUP_FAILED") dispatch({ type: "ERROR", error: copy.errors.lookupFailed });
+      else if (result?.error?.code === "URL_INVALID") dispatch({ type: "ERROR", error: copy.errors.urlInvalid });
+      else dispatch({ type: "ERROR", error: `${copy.errors.lookupFailed} (${result?.error?.code})` });
       return;
     }
     if (!result?.metadata?.video_id) {
       dispatch({ type: "ERROR", error: copy.errors.lookupFailed });
       return;
     }
-    dispatch({ type: "URL_PREVIEW", urlPreview: { metadata: result.metadata, confirmationToken: result.confirmation_token } });
+    dispatch({ type: "URL_PREVIEW", urlPreview: { metadata: result.metadata, confirmationToken: result.confirmation_token, watchedAt: new Date().toISOString().slice(0,16), privateNote: "", rewatch: false } });
   });
 
   const addUrlEvent = () => run("add-url", async () => {
     dispatch({ type: "BUSY", status: "adding" });
     const result = await adapter.addWatchUrlEvent({
       videoId: state.urlPreview.metadata.video_id,
-      watchedAt: new Date().toISOString(),
+      watchedAt: (state.urlPreview.watchedAt ? new Date(state.urlPreview.watchedAt) : new Date()).toISOString(),
       confirmationToken: state.urlPreview.confirmationToken,
+      rewatch: state.urlPreview.rewatch ?? false,
+      privateNote: state.urlPreview.privateNote ?? "",
     });
+    if (!result?.ok) {
+      dispatch({ type: "ERROR", error: `${copy.errors.unavailable} (${result?.error?.code})` });
+      return;
+    }
     const restored = await adapter.restore();
     if (restored.import) {
       const treeResult = await adapter.buildTree(restored.import.id);
@@ -305,6 +314,20 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
             {state.urlPreview.metadata.duration_seconds != null ? (
               <small>{Math.floor(state.urlPreview.metadata.duration_seconds / 60)}:{(state.urlPreview.metadata.duration_seconds % 60).toString().padStart(2, "0")}</small>
             ) : null}
+          </div>
+          <div className="url-preview-inputs" style={{ display: "flex", flexDirection: "column", gap: "10px", margin: "16px 0" }}>
+            <label style={{ display: "flex", flexDirection: "column" }}>
+              <small>Watched Date</small>
+              <input type="datetime-local" value={state.urlPreview.watchedAt || ""} onChange={(e) => dispatch({ type: "UPDATE_URL_PREVIEW", payload: { watchedAt: e.target.value } })} />
+            </label>
+            <label style={{ display: "flex", flexDirection: "column" }}>
+              <small>Private Note (optional)</small>
+              <input type="text" maxLength="500" placeholder="Why did you watch this?" value={state.urlPreview.privateNote || ""} onChange={(e) => dispatch({ type: "UPDATE_URL_PREVIEW", payload: { privateNote: e.target.value } })} />
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <input type="checkbox" checked={state.urlPreview.rewatch || false} onChange={(e) => dispatch({ type: "UPDATE_URL_PREVIEW", payload: { rewatch: e.target.checked } })} />
+              <small>I have watched this before (rewatch)</small>
+            </label>
           </div>
           <div className="button-row">
             <button className="button button--primary" data-testid="confirm-url-event" type="button" onClick={addUrlEvent}>{copy.experience.confirm}</button>

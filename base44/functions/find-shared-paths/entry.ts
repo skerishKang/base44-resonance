@@ -6,13 +6,13 @@ import {
   fail,
   json,
   MATCHING_VERSION,
-  orderCandidates,
-  publicCandidate,
   requirePostJson,
   readInput,
+  publicCandidate,
   unavailable,
   validNonce,
 } from "./_shared/watchtree.js";
+import { orderCandidates } from "./_shared/watchtree-archetypes.js";
 
 Deno.serve(async (req) => {
   const rejected = await requirePostJson(req);

@@ -59,7 +59,9 @@ it("confirmation token roundtrip validates correctly", async () => {
     video_id: "AbCdEfGhI01",
     bounded_title: "Test Title",
     bounded_creator_label: "Test Creator",
+    channel_id: "UC_test",
     duration_seconds: 330,
+    category_id: "22",
     published_at: "2024-01-15T10:00:00.000Z",
   };
   const token = await shared.generateConfirmationToken(metadata);
@@ -71,14 +73,14 @@ it("confirmation token roundtrip validates correctly", async () => {
 
 it("confirmation token rejects wrong video ID", async () => {
   const token = await shared.generateConfirmationToken({
-    video_id: "AbCdEfGhI01", bounded_title: "T", bounded_creator_label: "", duration_seconds: null, published_at: "",
+    video_id: "AbCdEfGhI01", bounded_title: "T", bounded_creator_label: "", channel_id: "", duration_seconds: null, category_id: "", published_at: "",
   });
   assert.equal(await shared.validateConfirmationToken(token, "WrongIdXXXXX"), null);
 });
 
 it("confirmation token rejects tampered payload", async () => {
   const token = await shared.generateConfirmationToken({
-    video_id: "AbCdEfGhI01", bounded_title: "T", bounded_creator_label: "", duration_seconds: null, published_at: "",
+    video_id: "AbCdEfGhI01", bounded_title: "T", bounded_creator_label: "", channel_id: "", duration_seconds: null, category_id: "", published_at: "",
   });
   const parts = token.split(".");
   const tampered = "tampered." + parts[1];
@@ -96,7 +98,9 @@ it("confirmation token rejects expired token", async () => {
     video_id: "AbCdEfGhI01",
     bounded_title: "T",
     bounded_creator_label: "",
+    channel_id: "",
     duration_seconds: null,
+    category_id: "",
     published_at: "",
     expires_at: Date.now() - 100_000,
   };

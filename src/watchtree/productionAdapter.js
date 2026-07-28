@@ -244,15 +244,17 @@ export function createProductionWatchTreeAdapter() {
     },
 
     async resolveYouTubeVideo(videoUrl) {
-      return invokeWithRetry("resolve-youtube-video", {
+      const base44 = await getBase44Client();
+      return unwrap(await base44.functions.invoke("resolve-youtube-video", {
         schema_version: 1,
         client_nonce: nonce(),
         video_url: videoUrl,
-      });
+      }));
     },
 
     async addWatchUrlEvent(payload) {
-      return invokeWithRetry("add-watch-url-event", {
+      const base44 = await getBase44Client();
+      return unwrap(await base44.functions.invoke("add-watch-url-event", {
         schema_version: 1,
         client_nonce: nonce(),
         video_id: payload.videoId,
@@ -260,7 +262,7 @@ export function createProductionWatchTreeAdapter() {
         private_note: payload.privateNote ?? "",
         rewatch: payload.rewatch ?? false,
         confirmation_token: payload.confirmationToken,
-      });
+      }));
     },
   };
 }

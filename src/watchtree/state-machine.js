@@ -24,6 +24,8 @@ export function watchTreeReducer(state, action) {
       return { ...state, status: state.import ? "ready" : "idle", preview: null, error: "" };
     case "URL_PREVIEW":
       return { ...state, status: "url_preview", urlPreview: action.urlPreview, error: "" };
+    case "UPDATE_URL_PREVIEW":
+      return { ...state, urlPreview: { ...state.urlPreview, ...action.payload } };
     case "CANCEL_URL_PREVIEW":
       return { ...state, status: state.import ? "ready" : "idle", urlPreview: null, error: "" };
     case "READY":

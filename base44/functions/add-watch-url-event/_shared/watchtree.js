@@ -21,7 +21,7 @@ const YOUTUBE_FETCH_TIMEOUT_MS = 8000;
 const YOUTUBE_MAX_RESPONSE_BYTES = 65536;
 const CONFIRMATION_TOKEN_TTL_MS = 300_000;
 const CONFIRMATION_TOKEN_PREFIX = "yt-confirm-v1";
-const URL_COLLECTION_DIGEST = "url-collection-v1";
+export const URL_COLLECTION_DIGEST = "url-collection-v1";
 
 export function json(body, status = 200, headers = {}) { return Response.json(body, { status, headers: { ...JSON_HEADERS, ...headers } }); }
 export function fail(code, status = 400, retryable = false) { return json({ ok: false, error: { code, retryable } }, status); }
@@ -382,12 +382,12 @@ export function parseYouTubeUrl(input) {
 export async function fetchYouTubeMetadata(videoId) {
   const apiKey = typeof Deno !== "undefined" ? (Deno.env?.get?.("YOUTUBE_API_KEY") ?? "") : "";
   if (!apiKey || apiKey.length < 8) throw new Error("YOUTUBE_API_KEY_UNAVAILABLE");
-  const url = `${YOUTUBE_API_HOST}${YOUTUBE_API_PATH}?part=${YOUTUBE_API_PARTS}&id=${encodeURIComponent(videoId)}&fields=${encodeURIComponent(YOUTUBE_API_FIELDS)}&key=${encodeURIComponent(apiKey)}`;
+  const url = `${YOUTUBE_API_HOST}${YOUTUBE_API_PATH}?part=${YOUTUBE_API_PARTS}&id=${encodeURIComponent(videoId)}&fields=${encodeURIComponent(YOUTUBE_API_FIELDS)}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), YOUTUBE_FETCH_TIMEOUT_MS);
   let response;
   try {
-    response = await fetch(url, { signal: controller.signal, headers: { "Accept": "application/json" } });
+    response = await fetch(url, { signal: controller.signal, headers: { "Accept": "application/json", "x-goog-api-key": apiKey } });
   } catch (error) {
     clearTimeout(timer);
     if (error?.name === "AbortError") throw new Error("METADATA_LOOKUP_FAILED");
@@ -411,6 +411,9 @@ export async function fetchYouTubeMetadata(videoId) {
   if (payload.items.length === 0) throw new Error("VIDEO_UNAVAILABLE");
   const item = payload.items[0];
   if (!item?.snippet || !item?.id) throw new Error("METADATA_LOOKUP_FAILED");
+  if (item.id !== videoId) throw new Error("METADATA_LOOKUP_FAILED");
+  const privacy = item.status?.privacyStatus;
+  if (privacy === "private") throw new Error("VIDEO_UNAVAILABLE");
   return item;
 }
 
@@ -453,7 +456,9 @@ export async function generateConfirmationToken(metadata) {
     video_id: metadata.video_id,
     bounded_title: metadata.bounded_title,
     bounded_creator_label: metadata.bounded_creator_label,
+    channel_id: metadata.channel_id,
     duration_seconds: metadata.duration_seconds,
+    category_id: metadata.category_id,
     published_at: metadata.published_at,
     expires_at: Date.now() + CONFIRMATION_TOKEN_TTL_MS,
   };
@@ -486,7 +491,9 @@ export async function validateConfirmationToken(token, videoId) {
   return {
     bounded_title: bounded(payload.bounded_title ?? "", 240),
     bounded_creator_label: bounded(payload.bounded_creator_label ?? "", 160),
+    channel_id: bounded(payload.channel_id ?? "", 64),
     duration_seconds: typeof payload.duration_seconds === "number" ? payload.duration_seconds : null,
+    category_id: bounded(payload.category_id ?? "", 8),
     published_at: bounded(payload.published_at ?? "", 40),
   };
 }

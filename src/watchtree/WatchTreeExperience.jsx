@@ -7,8 +7,14 @@ import { WatchTreeGraphic } from "./WatchTreeGraphic.jsx";
 import { createWatchTreeRealtime } from "./realtime/createWatchTreeRealtime.js";
 import { WatchTreeTutorial } from "./tutorial/WatchTreeTutorial.jsx";
 import { getTutorialCopy } from "./tutorial/tutorial-copy.js";
+import {
+  createLatestUrlRequestGate,
+  isResolvableYouTubeUrl,
+  normalizeYouTubeUrlInput,
+} from "./url-preview.js";
 
 const createWorker = () => new Worker(new URL("./watch-history.worker.js", import.meta.url), { type: "module" });
+const URL_PREVIEW_DEBOUNCE_MS = 350;
 
 export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
   const [tutorialActive, setTutorialActive] = useState(false);
@@ -20,6 +26,11 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
   const [urlInput, setUrlInput] = useState("");
   const workerRef = useRef(null);
   const inFlight = useRef(new Set());
+  const urlInputRef = useRef("");
+  const urlDebounceRef = useRef(null);
+  const urlRequestGateRef = useRef(null);
+  if (!urlRequestGateRef.current) urlRequestGateRef.current = createLatestUrlRequestGate();
+  urlInputRef.current = urlInput;
 
   const run = async (key, operation) => {
     if (inFlight.current.has(key)) return null;
@@ -41,40 +52,25 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
       .catch(() => { if (active) dispatch({ type: "ERROR", error: copy.errors.unavailable }); });
     return () => {
       active = false;
+      clearTimeout(urlDebounceRef.current);
+      urlRequestGateRef.current.invalidate();
       workerRef.current?.postMessage({ type: "release" });
       workerRef.current?.terminate();
       workerRef.current = null;
     };
   }, [adapter, copy.errors.unavailable]);
 
-  // Keep a ref to the latest state so the realtime callback can check
-  // whether a mutation is in-flight before dispatching RESTORED.
   const stateRef = useRef(state);
   stateRef.current = state;
-
-  // States where the realtime subscription is allowed to dispatch RESTORED.
-  // All other states (seeding, parsing, preview, resolving, url_preview,
-  // adding, committing, matching, private) represent an in-flight user
-  // operation that must not be overwritten by a background refresh.
   const REALTIME_SAFE_STATUSES = new Set(["idle", "ready", "error"]);
 
-  // Realtime subscription: WatchEvent changes in other tabs trigger
-  // a debounced restore through the normal state-machine path.
-  // Subscription starts on mount and stops on unmount.
   useEffect(() => {
     const realtime = createWatchTreeRealtime({ adapter });
-
     realtime.start((data) => {
-      // Guard: do not overwrite an in-flight mutation.
       const status = stateRef.current.status;
       if (!REALTIME_SAFE_STATUSES.has(status)) return;
-
-      // Dispatch RESTORED — the state machine's normal restore path.
-      // The realtime module calls adapter.restore() internally after
-      // debounce, so the callback never modifies state directly.
       dispatch({ type: "RESTORED", payload: data });
     });
-
     return () => {
       realtime.stop();
     };
@@ -86,29 +82,79 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
     dispatch({ type: "READY", payload: result });
   });
 
-  const resolveUrl = () => run("resolve-url", async () => {
-    const trimmed = urlInput.trim();
-    if (!trimmed) {
-      dispatch({ type: "ERROR", error: copy.errors.urlInvalid });
-      return;
+  const resolveUrl = async (rawValue = urlInputRef.current, { reportInvalid = false } = {}) => {
+    const trimmed = normalizeYouTubeUrlInput(rawValue);
+    if (!isResolvableYouTubeUrl(trimmed)) {
+      if (reportInvalid) dispatch({ type: "ERROR", error: copy.errors.urlInvalid });
+      return null;
     }
+
+    const token = urlRequestGateRef.current.begin(trimmed);
+    if (!token) return null;
+
     dispatch({ type: "BUSY", status: "resolving" });
-    const result = await adapter.resolveYouTubeVideo(trimmed);
-    if (!result?.ok) {
-      if (result?.error?.code === "VIDEO_UNAVAILABLE") dispatch({ type: "ERROR", error: copy.errors.videoUnavailable });
-      else if (result?.error?.code === "METADATA_LOOKUP_FAILED") dispatch({ type: "ERROR", error: copy.errors.lookupFailed });
-      else if (result?.error?.code === "URL_INVALID") dispatch({ type: "ERROR", error: copy.errors.urlInvalid });
-      else dispatch({ type: "ERROR", error: `${copy.errors.lookupFailed} (${result?.error?.code})` });
-      return;
+    try {
+      const result = await adapter.resolveYouTubeVideo(trimmed);
+      if (!urlRequestGateRef.current.isCurrent(token, urlInputRef.current)) return null;
+
+      if (!result?.ok) {
+        if (result?.error?.code === "VIDEO_UNAVAILABLE") dispatch({ type: "ERROR", error: copy.errors.videoUnavailable });
+        else if (result?.error?.code === "METADATA_LOOKUP_FAILED") dispatch({ type: "ERROR", error: copy.errors.lookupFailed });
+        else if (result?.error?.code === "URL_INVALID") dispatch({ type: "ERROR", error: copy.errors.urlInvalid });
+        else dispatch({ type: "ERROR", error: `${copy.errors.lookupFailed} (${result?.error?.code})` });
+        return null;
+      }
+      if (!result?.metadata?.video_id) {
+        dispatch({ type: "ERROR", error: copy.errors.lookupFailed });
+        return null;
+      }
+
+      dispatch({
+        type: "URL_PREVIEW",
+        urlPreview: {
+          sourceUrl: trimmed,
+          metadata: result.metadata,
+          confirmationToken: result.confirmation_token,
+          watchedAt: new Date().toISOString().slice(0, 16),
+          privateNote: "",
+          rewatch: false,
+        },
+      });
+      return result;
+    } catch (error) {
+      if (urlRequestGateRef.current.isCurrent(token, urlInputRef.current)) {
+        dispatch({ type: "ERROR", error: `${copy.errors.unavailable} (${error?.code ?? error?.message ?? "URL_LOOKUP_FAILED"})` });
+      }
+      return null;
+    } finally {
+      urlRequestGateRef.current.settle(token);
     }
-    if (!result?.metadata?.video_id) {
-      dispatch({ type: "ERROR", error: copy.errors.lookupFailed });
-      return;
+  };
+
+  useEffect(() => {
+    clearTimeout(urlDebounceRef.current);
+    const trimmed = normalizeYouTubeUrlInput(urlInput);
+    if (!isResolvableYouTubeUrl(trimmed)) return undefined;
+    if (state.urlPreview?.sourceUrl === trimmed) return undefined;
+
+    urlDebounceRef.current = setTimeout(() => {
+      void resolveUrl(trimmed);
+    }, URL_PREVIEW_DEBOUNCE_MS);
+
+    return () => clearTimeout(urlDebounceRef.current);
+  }, [urlInput, state.urlPreview?.sourceUrl]);
+
+  const updateUrlInput = (nextValue) => {
+    clearTimeout(urlDebounceRef.current);
+    urlRequestGateRef.current.invalidate();
+    if (state.urlPreview || state.status === "resolving" || state.error) {
+      dispatch({ type: "CANCEL_URL_PREVIEW" });
     }
-    dispatch({ type: "URL_PREVIEW", urlPreview: { metadata: result.metadata, confirmationToken: result.confirmation_token, watchedAt: new Date().toISOString().slice(0,16), privateNote: "", rewatch: false } });
-  });
+    setUrlInput(nextValue);
+  };
 
   const addUrlEvent = () => run("add-url", async () => {
+    if (!state.urlPreview) return;
     dispatch({ type: "BUSY", status: "adding" });
     const result = await adapter.addWatchUrlEvent({
       videoId: state.urlPreview.metadata.video_id,
@@ -122,6 +168,8 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
       return;
     }
     const restored = await adapter.restore();
+    setUrlInput("");
+    urlRequestGateRef.current.invalidate();
     if (restored.import) {
       const treeResult = await adapter.buildTree(restored.import.id);
       let candidates = [];
@@ -136,8 +184,22 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
   });
 
   const cancelUrlPreview = () => {
+    clearTimeout(urlDebounceRef.current);
+    urlRequestGateRef.current.invalidate();
     setUrlInput("");
     dispatch({ type: "CANCEL_URL_PREVIEW" });
+  };
+
+  const handleUrlKeyDown = (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    clearTimeout(urlDebounceRef.current);
+    const trimmed = normalizeYouTubeUrlInput(urlInputRef.current);
+    if (state.urlPreview?.sourceUrl === trimmed) {
+      void addUrlEvent();
+      return;
+    }
+    void resolveUrl(trimmed, { reportInvalid: true });
   };
 
   const parseFile = (file) => {
@@ -280,8 +342,46 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
     }
     if (result?.complete === false) throw new Error("DELETE_INCOMPLETE");
     setSelectedTokens([]);
+    setUrlInput("");
+    urlRequestGateRef.current.invalidate();
     dispatch({ type: "CLEARED" });
   });
+
+  const importPrivacyDescription = state.import?.is_synthetic
+    ? copy.experience.syntheticPrivate
+    : state.import?.source_type === "url_collection"
+      ? copy.experience.urlCollectionPrivate
+      : copy.experience.rawLocal;
+
+  const renderUrlInput = (testId) => (
+    <div className="url-input-row">
+      <input
+        data-testid={testId}
+        type="url"
+        inputMode="url"
+        autoComplete="url"
+        aria-label={copy.experience.urlInput}
+        aria-describedby={`${testId}-status`}
+        placeholder={copy.experience.urlPlaceholder}
+        value={urlInput}
+        onChange={(event) => updateUrlInput(event.target.value)}
+        onKeyDown={handleUrlKeyDown}
+      />
+      <small
+        id={`${testId}-status`}
+        data-testid={`${testId}-status`}
+        role="status"
+        aria-live="polite"
+        style={{ alignSelf: "center", color: "rgba(244, 236, 221, 0.58)", flex: "0 1 17rem", minWidth: 0 }}
+      >
+        {state.status === "resolving"
+          ? copy.experience.urlResolving
+          : state.urlPreview?.sourceUrl === normalizeYouTubeUrlInput(urlInput)
+            ? copy.experience.urlPreviewReady
+            : copy.experience.urlAutoHint}
+      </small>
+    </div>
+  );
 
   return (
     <section className="watchtree-experience" id="experience" aria-labelledby="experience-title" data-status={state.status}>
@@ -294,61 +394,50 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
         {onLogout ? <button className="text-action" type="button" onClick={onLogout}>{copy.experience.logout}</button> : null}
       </header>
 
-      {state.status !== "idle" && state.status !== "ready" && state.status !== "preview" && state.status !== "error" && state.status !== "url_preview" ? (
+      {state.status !== "idle" && state.status !== "ready" && state.status !== "preview" && state.status !== "error" && state.status !== "url_preview" && state.status !== "resolving" ? (
         <p className="watchtree-progress" role="status" data-testid="watchtree-progress">{state.status}</p>
       ) : null}
 
-      {/* Tutorial mode overrides the default entry UI */}
       {tutorialActive ? (
         <WatchTreeTutorial
           language={language}
           adapter={adapter}
           onExit={() => setTutorialActive(false)}
-          onBuildOwn={() => { setTutorialActive(false); /* stays in product mode */ }}
+          onBuildOwn={() => { setTutorialActive(false); }}
         />
       ) : null}
 
-      {!tutorialActive && !state.import && !state.preview && !state.urlPreview ? (
+      {!tutorialActive && !state.import && !state.preview ? (
         <div className="url-collection" data-testid="url-collection">
-          <div className="url-input-row">
-            <input
-              data-testid="url-input"
-              type="url"
-              placeholder={copy.experience.urlPlaceholder}
-              value={urlInput}
-              onChange={(event) => setUrlInput(event.target.value)}
-              onKeyDown={(event) => { if (event.key === "Enter") resolveUrl(); }}
-            />
-            <button className="button button--primary" data-testid="url-lookup" type="button" onClick={resolveUrl} disabled={!urlInput.trim()}>
-              {copy.experience.urlLookup}
-            </button>
-          </div>
-          <div className="entry-choices" data-testid="entry-choices">
-            <button className="entry-choice entry-choice--demo" data-testid="seed-demo" type="button" onClick={seed}>
-              <strong>{copy.experience.demo}</strong>
-              <small>48 synthetic events · watchtree-demo-v1</small>
-            </button>
-            <button className="entry-choice entry-choice--story" data-testid="start-tutorial" type="button" onClick={() => setTutorialActive(true)}>
-              <strong>{tutorialCopy.outerCta.title}</strong>
-              <small>{tutorialCopy.outerCta.subtitle}</small>
-            </button>
-            <details className="entry-choice entry-choice--advanced">
-              <summary><strong>{copy.experience.import}</strong><small>{copy.experience.importDetails}</small></summary>
-              <label className="file-input-label">
-                <small>{copy.experience.fileHint}</small>
-                <input
-                  data-testid="watch-history-file"
-                  type="file"
-                  accept=".json,.html,.htm,application/json,text/html"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) parseFile(file);
-                    event.target.value = "";
-                  }}
-                />
-              </label>
-            </details>
-          </div>
+          {renderUrlInput("url-input")}
+          {!state.urlPreview ? (
+            <div className="entry-choices" data-testid="entry-choices">
+              <button className="entry-choice entry-choice--demo" data-testid="seed-demo" type="button" onClick={seed}>
+                <strong>{copy.experience.demo}</strong>
+                <small>48 synthetic events · watchtree-demo-v1</small>
+              </button>
+              <button className="entry-choice entry-choice--story" data-testid="start-tutorial" type="button" onClick={() => setTutorialActive(true)}>
+                <strong>{tutorialCopy.outerCta.title}</strong>
+                <small>{tutorialCopy.outerCta.subtitle}</small>
+              </button>
+              <details className="entry-choice entry-choice--advanced">
+                <summary><strong>{copy.experience.import}</strong><small>{copy.experience.importDetails}</small></summary>
+                <label className="file-input-label">
+                  <small>{copy.experience.fileHint}</small>
+                  <input
+                    data-testid="watch-history-file"
+                    type="file"
+                    accept=".json,.html,.htm,application/json,text/html"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) parseFile(file);
+                      event.target.value = "";
+                    }}
+                  />
+                </label>
+              </details>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -369,20 +458,20 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
           </div>
           <div className="url-preview-inputs" style={{ display: "flex", flexDirection: "column", gap: "10px", margin: "16px 0" }}>
             <label style={{ display: "flex", flexDirection: "column" }}>
-              <small>Watched Date</small>
-              <input type="datetime-local" value={state.urlPreview.watchedAt || ""} onChange={(e) => dispatch({ type: "UPDATE_URL_PREVIEW", payload: { watchedAt: e.target.value } })} />
+              <small>{copy.experience.watchedDate}</small>
+              <input type="datetime-local" value={state.urlPreview.watchedAt || ""} onChange={(event) => dispatch({ type: "UPDATE_URL_PREVIEW", payload: { watchedAt: event.target.value } })} />
             </label>
             <label style={{ display: "flex", flexDirection: "column" }}>
-              <small>Private Note (optional)</small>
-              <input type="text" maxLength="500" placeholder="Why did you watch this?" value={state.urlPreview.privateNote || ""} onChange={(e) => dispatch({ type: "UPDATE_URL_PREVIEW", payload: { privateNote: e.target.value } })} />
+              <small>{copy.experience.privateNote}</small>
+              <input type="text" maxLength="500" placeholder={copy.experience.privateNotePlaceholder} value={state.urlPreview.privateNote || ""} onChange={(event) => dispatch({ type: "UPDATE_URL_PREVIEW", payload: { privateNote: event.target.value } })} />
             </label>
             <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <input type="checkbox" checked={state.urlPreview.rewatch || false} onChange={(e) => dispatch({ type: "UPDATE_URL_PREVIEW", payload: { rewatch: e.target.checked } })} />
-              <small>I have watched this before (rewatch)</small>
+              <input type="checkbox" checked={state.urlPreview.rewatch || false} onChange={(event) => dispatch({ type: "UPDATE_URL_PREVIEW", payload: { rewatch: event.target.checked } })} />
+              <small>{copy.experience.rewatch}</small>
             </label>
           </div>
           <div className="button-row">
-            <button className="button button--primary" data-testid="confirm-url-event" type="button" onClick={addUrlEvent}>{copy.experience.confirm}</button>
+            <button className="button button--primary" data-testid="confirm-url-event" type="button" onClick={addUrlEvent}>{copy.experience.addToTree}</button>
             <button className="button button--ghost" type="button" onClick={cancelUrlPreview}>{copy.experience.cancel}</button>
           </div>
         </section>
@@ -407,23 +496,14 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
       {state.import ? (
         <>
           <section className="url-collection url-collection--inline" data-testid="url-collection-inline">
-            <div className="url-input-row">
-              <input
-                data-testid="url-input-inline"
-                type="url"
-                placeholder={copy.experience.urlPlaceholder}
-                value={urlInput}
-                onChange={(event) => setUrlInput(event.target.value)}
-                onKeyDown={(event) => { if (event.key === "Enter") resolveUrl(); }}
-              />
-              <button className="button button--primary" data-testid="url-lookup-inline" type="button" onClick={resolveUrl} disabled={!urlInput.trim()}>
-                {copy.experience.urlLookup}
-              </button>
-            </div>
+            {renderUrlInput("url-input-inline")}
           </section>
 
           <section className="privacy-console" id="watchtree-privacy">
-            <div><span>{copy.experience.matchingOff}</span><p>{copy.experience.rawLocal}</p></div>
+            <div>
+              <span>{state.matchingEnabled ? copy.experience.matchingOn : copy.experience.matchingOff}</span>
+              <p>{copy.experience.matchingExplanation}</p>
+            </div>
             <label className="switch">
               <input data-testid="matching-toggle" type="checkbox" checked={state.matchingEnabled} onChange={(event) => setMatching(event.target.checked)} />
               <span>{state.matchingEnabled ? copy.experience.disableImport : copy.experience.enableMatching}</span>
@@ -434,7 +514,7 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
             <div>
               <span className="section-kicker">{copy.experience.tree}</span>
               <h3>{state.tree?.unique_content_count ?? new Set(state.events.map((event) => event.normalized_content_id)).size} leaves · {state.tree?.repeat_signal_count ?? 0} revisits</h3>
-              <p>{state.import.is_synthetic ? "Competition demo · no real viewing history" : copy.experience.rawLocal}</p>
+              <p>{importPrivacyDescription}</p>
             </div>
             <WatchTreeGraphic events={state.events} label={copy.experience.tree} />
           </section>
@@ -460,6 +540,7 @@ export function WatchTreeExperience({ language = "en", adapter, onLogout }) {
           {state.matchingEnabled ? (
             <section className="candidate-list" data-product-result="candidates" data-testid="candidate-list">
               <h3>{copy.experience.candidates}</h3>
+              <p>{copy.experience.candidatesBody}</p>
               {state.candidates.length === 0 ? (
                 <p className="insufficient-signal">{copy.experience.insufficientSignal}</p>
               ) : null}

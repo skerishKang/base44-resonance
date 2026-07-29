@@ -1,5 +1,23 @@
 # WatchTree by Resonance
 
+> **🔴 Live app:** [base44-resonance-40117c91.base44.app](https://base44-resonance-40117c91.base44.app) — no login required to see the landing page.
+>
+> Sign in with email/password or Google to enter the private WatchTree experience.
+
+---
+
+## Judge Quick Start (60 seconds)
+
+1. Open the **live app** → see the WatchTree landing page (English, mobile-responsive).
+2. Click **Enter WatchTree** → sign in via email/password or Google (both enabled).
+3. Choose **See Mina’s WatchTree story** for a six-step guided tutorial, or **Build my WatchTree** to add your own YouTube link.
+4. Inspect the synthetic matches, consent to evidence reveal, and run the simulated mutual state.
+5. Delete all tutorial data — deletion is bounded, resumable, and verifiable.
+
+> ⚠️ The six-step tutorial and Realtime owner-scoped refresh are **merged in source but not yet deployed** to Production. All other features are live at the current production baseline.
+
+---
+
 **WatchTree** is a privacy-first viewing-memory product built on Base44. It turns the video links or viewing records a person deliberately contributes into a private behavioral tree, then compares that tree only with clearly synthetic viewing archetypes using deterministic, explainable signals.
 
 It does **not** automatically read a YouTube account, scan other users, perform real-person matching, or use runtime AI for matching. Every mutual state in the competition build is explicitly simulated.
@@ -8,7 +26,7 @@ It does **not** automatically read a YouTube account, scan other users, perform 
 
 | Surface | Status |
 | --- | --- |
-| Public Base44 app | Live at https://base44-resonance-40117c91.base44.app |
+| Public Base44 app | Live at [base44-resonance-40117c91.base44.app](https://base44-resonance-40117c91.base44.app) |
 | Public App ID | `6a6538c71a8e3e1640117c91` |
 | Latest reviewed source on `main` | `4efc2827bf9fae2ad99602090c2621845b7c89a3` |
 | Current production deployment | Older reviewed baseline; final source deployment and authenticated UAT are still pending |

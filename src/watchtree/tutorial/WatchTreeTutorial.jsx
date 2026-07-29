@@ -207,7 +207,7 @@ export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn
               {state.mutual ? (
                 <div className="tutorial-mutual">
                   <p className="tutorial-label tutorial-label--simulated">{copy.truth.simulated}</p>
-                  <p>{state.mutual.message ?? copy.status.mutualMessage}</p>
+                  <p>{copy.status.mutualMessage}</p>
                   <p className="tutorial-label tutorial-label--small">{copy.truth.noRealUser}</p>
                 </div>
               ) : null}

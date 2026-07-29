@@ -1459,6 +1459,9 @@ try {
     assert.equal(koSimulated, "시뮬레이션된 상호 공명", "Korean STEP5 simulated label");
     const koNoRealUser = (await page.locator(".tutorial-label--small").first().textContent()).trim();
     assert.equal(koNoRealUser, "실제 사용자에게 연락되지 않음", "Korean STEP5 no-real-user label");
+    assert.ok(await page.getByText("두 synthetic 경로가 공명합니다.").isVisible(), "Korean STEP5 mutual message visible");
+    assert.ok(!(await page.getByText("Two synthetic paths now resonate.").isVisible()), "English mutual message not visible in Korean");
+    assert.ok(!(await page.getByText("Two synthetic viewing paths now resonate.").isVisible()), "English alt mutual message not visible in Korean");
 
     await nextBtn.click();
     await page.getByTestId("tutorial-step-6").waitFor({ state: "visible" });

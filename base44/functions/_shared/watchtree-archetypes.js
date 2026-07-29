@@ -17,14 +17,14 @@ export const SYNTHETIC_CANDIDATES = [
   demoCandidate("viewer-b","Viewer B · Same quiet arc",[1,2,3,4,5,6,7,8],[1,2,3,4],31,0,[3,4,5]),
   demoCandidate("viewer-c","Viewer C · Repeated night path",[2,3,4,5,9,12],[2,3],45,2,[3,4,5]),
   demoCandidate("viewer-d","Viewer D · Adjacent creator trail",[1,3,9,11],[1],58,4,[]),
-  { id: "archetype-quiet-rewatcher", label: "Quiet Rewatcher · 조용한 반복 감상자", synthetic_label: "Synthetic archetype · 시청 유형", events: [] },
-  { id: "archetype-night-documentary", label: "Night Documentary Explorer · 심야 다큐 탐험가", synthetic_label: "Synthetic archetype · 시청 유형", events: [] },
-  { id: "archetype-learning-trail", label: "Learning Trail Builder · 학습 경로 수집가", synthetic_label: "Synthetic archetype · 시청 유형", events: [] },
-  { id: "archetype-music-loop", label: "Music Loop Listener · 음악 반복 청취자", synthetic_label: "Synthetic archetype · 시청 유형", events: [] },
-  { id: "archetype-longform-cinema", label: "Long-form Cinema Viewer · 장편 영상 감상자", synthetic_label: "Synthetic archetype · 시청 유형", events: [] },
-  { id: "archetype-creator-loyalist", label: "Creator Loyalist · 특정 크리에이터 집중형", synthetic_label: "Synthetic archetype · 시청 유형", events: [] },
-  { id: "archetype-rabbit-hole", label: "Topic Rabbit-hole Explorer · 연관 주제 탐험형", synthetic_label: "Synthetic archetype · 시청 유형", events: [] },
-  { id: "archetype-eclectic-wanderer", label: "Eclectic Wanderer · 다양한 주제 유랑형", synthetic_label: "Synthetic archetype · 시청 유형", events: [] }
+  { id: "archetype-quiet-rewatcher", label: "Quiet Rewatcher", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] },
+  { id: "archetype-night-documentary", label: "Night Documentary Explorer", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] },
+  { id: "archetype-learning-trail", label: "Learning Trail Builder", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] },
+  { id: "archetype-music-loop", label: "Music Loop Listener", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] },
+  { id: "archetype-longform-cinema", label: "Long-form Cinema Viewer", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] },
+  { id: "archetype-creator-loyalist", label: "Creator Loyalist", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] },
+  { id: "archetype-rabbit-hole", label: "Topic Rabbit-hole Explorer", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] },
+  { id: "archetype-eclectic-wanderer", label: "Eclectic Wanderer", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] }
 ];
 
 const set = (events) => new Set(events.filter(eligible).map((e) => e.normalized_content_id));
@@ -204,10 +204,10 @@ function isRealUrlCollection(events) {
 
 function groundedCandidates() {
   return [
-    { id: "archetype-quiet-rewatcher", label: "Quiet Rewatcher · 조용한 반복 감상자", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] },
-    { id: "archetype-night-rhythm", label: "Night Rhythm Viewer · 야간 시청형", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] },
-    { id: "archetype-creator-loyalist", label: "Creator Focus · 크리에이터 집중형", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] },
-    { id: "archetype-eclectic-wanderer", label: "Eclectic Explorer · 다양한 주제 탐험형", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] },
+    { id: "archetype-quiet-rewatcher", label: "Quiet Rewatcher", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] },
+    { id: "archetype-night-rhythm", label: "Night Rhythm Viewer", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] },
+    { id: "archetype-creator-loyalist", label: "Creator Focus", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] },
+    { id: "archetype-eclectic-wanderer", label: "Eclectic Explorer", synthetic_label: "Synthetic archetype · Viewer pattern", events: [] },
   ];
 }
 

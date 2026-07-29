@@ -1,146 +1,188 @@
-# Backend Capability Ledger — Resonance / 공명
+# Backend Capability Ledger — Resonance / WatchTree
 
-Base44 capabilities audited for the Build-Off submission build. Status values: `VERIFIED_PRODUCTION` (deployed and active), `MERGED_NOT_DEPLOYED` (merged to main, not yet deployed), `EXPERIMENTAL_PR` (branch-only, not merged), `ROADMAP_ONLY` (planned post-submission), `NOT_USED` (decided against).
+This public ledger distinguishes implemented source, deployed runtime, roadmap, and intentionally unused Base44 capabilities.
 
----
+## Status vocabulary
 
-## Authentication & user management
+| Status | Meaning |
+| --- | --- |
+| `VERIFIED_PRODUCTION` | Deployed and verified against the public Base44 app |
+| `MERGED_NOT_DEPLOYED` | Merged to `main`; exact Production deployment or UAT still pending |
+| `ROADMAP_ONLY` | Planned or researched; not implemented in the competition build |
+| `NOT_USED` | Intentionally excluded |
 
-| Field | Value |
-|-------|-------|
-| **Status** | `VERIFIED_PRODUCTION` |
-| **Implementation** | Base44 Auth via `createClientFromRequest(req)` and `base44.auth.me()`. The SDK extracts caller identity from request context — no credentials, tokens, or passwords exposed in application code. |
-| **Judge-visible proof** | Every Function entrypoint calls `authenticate(base44)` and returns `AUTH_REQUIRED (401)` when unauthenticated. AuthPanel component renders sign-in/sign-up forms. Production site requires authentication to enter WatchTree. |
-| **Source path** | `base44/functions/*/entry.ts` — authenticated guard in all 13 Functions (12 deployed, 1 merged not deployed). `src/lib/AuthPanel.jsx` — Auth UI. |
-| **Merged SHA** | `7a16adb` — current main. |
-| **Production verification** | Production App at `base44-resonance-40117c91.base44.app` requires authentication. Final release deployment will reconfirm before submission deadline. |
-| **Submission checkbox eligible** | Yes, after deployed release confirmation. |
-| **Notes** | No service role used. No custom Auth provider. No email exposure in response payloads. |
+## Release snapshot
 
----
+| Item | State |
+| --- | --- |
+| Public Base44 app | https://base44-resonance-40117c91.base44.app |
+| Public App ID | `6a6538c71a8e3e1640117c91` |
+| Latest reviewed `main` | `4efc2827bf9fae2ad99602090c2621845b7c89a3` |
+| Current Production | Older reviewed baseline; final source deployment pending |
+| Entity schemas in source | 13 |
+| Function sources | 13 |
+| Earlier Production Function baseline | 12 |
+| Deterministic tests | 314 |
+| Browser scenarios | 11 |
 
-## Database / Entities
-
-| Field | Value |
-|-------|-------|
-| **Status** | `VERIFIED_PRODUCTION` (capability); PR #37 schema delta (`url_collection`, `metadata_provenance`, `client_nonce_digest`, `payload_digest`) is `MERGED_NOT_DEPLOYED` |
-| **Implementation** | 13 Entity schemas defined in `base44/entities/*.jsonc`. All use Base44's `created_by_id` Row-Level Security: create allowed for authenticated `user` and `admin` roles; read, update, delete restricted to owner scope. No Entity uses `read: true`, public mutation, client-controlled owner fields, or browser service-role paths. |
-| **Judge-visible proof** | Entity schema files checked into repository. `base44/entities/` directory contains 13 JSONC files, each with identical RLS pattern. |
-| **Source path** | `base44/entities/*.jsonc` (13 files). |
-| **Merged SHA** | `959afdc` — all 13 schemas present. |
-| **Production verification** | Previous Entity baseline deployed and active. PR #37 additive schema fields not yet deployed. Final release will reconfirm before submission. |
-| **Submission checkbox eligible** | Yes, after deployed release confirmation of the full schema set. |
-| **Notes** | Entities: `CapabilityProbe`, `ConsentRecord`, `ImportChunkReceipt`, `MatchDecision`, `MemoryCard`, `MutualResonance`, `RevealConsent`, `SharedPathCandidate`, `WatchEvent`, `WatchImport`, `WatchMatchSignal`, `WatchTreeFingerprint`, `ResonanceFingerprint`. Two Entities (`ConsentRecord`, `MemoryCard`) are deployed but unused by current product — retained for deployment compatibility. |
+A source capability is not treated as Production-active until the exact release is deployed and its runtime evidence is recorded.
 
 ---
 
-## Backend Functions (Deno)
+## Authentication and caller identity
 
 | Field | Value |
-|-------|-------|
-| **Status** | `VERIFIED_PRODUCTION` (capability, 12-function production baseline); `add-watch-url-event` is `MERGED_NOT_DEPLOYED` |
-| **Implementation** | 13 caller-scoped Deno Functions in source (12 deployed baseline + 1 merged not deployed), each wrapping `Deno.serve(async (req) => { const base44 = createClientFromRequest(req); ... })`. Uniform entrypoint pattern: POST + JSON guard, request body size limit (192KB), caller authentication, nonce validation, deterministic logic, standardized `json()`/`fail()` response format. Shared modules (`watchtree.js`, `sanitizer.js`, `watchtree-archetypes.js`, `reconcile.js`) vendored from canonical `_shared/` directory with SHA-256 enforced parity. |
-| **Judge-visible proof** | All 13 `entry.ts` files in `base44/functions/*/`. CI runs `check:base44-shared` and bundle boundary test to verify vendored module consistency. |
-| **Source path** | `base44/functions/*/entry.ts` (13 files). Shared: `base44/functions/_shared/`. |
-| **Merged SHA** | `959afdc` — all 13 function sources present. 12-function production baseline at previous deployment; `add-watch-url-event` merged but not yet deployed. |
-| **Production verification** | 12-function baseline deployed and active. `add-watch-url-event` not yet deployed. Final release deployment will reconfirm. |
-| **Submission checkbox eligible** | Yes, after deployed release confirmation of all 13 functions. |
-| **Notes** | Functions: `add-watch-url-event` (MERGED_NOT_DEPLOYED), `build-watch-tree`, `commit-watch-import`, `compute-matches` (vestigial), `delete-watch-data`, `find-shared-paths`, `generate-fingerprint` (vestigial), `parse-watch-history`, `reconcile-watch-data`, `seed-demo-history`, `set-reveal-consent`, `simulate-mutual`, `verify-capability` (vestigial). No function uses service role, live AI, Agents, or raw authentication material. The `resolve-youtube-video` function was removed from the submission build (API key dependency). |
+| --- | --- |
+| **Status** | `VERIFIED_PRODUCTION` capability; final release reconfirmation pending |
+| **Implementation** | Base44 Auth establishes the caller. Function entrypoints use `createClientFromRequest(req)` and `base44.auth.me()` through shared authentication guards. |
+| **Owner boundary** | No custom password store, browser service-role client, or caller-controlled owner field. |
+| **Source proof** | `src/lib/AuthPanel.jsx`, `base44/functions/*/entry.ts` |
+| **Judge-visible proof** | The public app requires authentication before entering private WatchTree state. |
+| **Submission eligibility** | Yes after final release reconfirmation |
 
 ---
 
-## AI / LLM / Agents
+## Database and Entity RLS
 
 | Field | Value |
-|-------|-------|
-| **Status** | `ROADMAP_ONLY` |
-| **Implementation** | WatchTree matching is entirely deterministic — no runtime AI, no LLM inference, no Base44 AI call capability. The initial product concept included AI fingerprint generation (`generate-fingerprint` function), but the product pivoted away from AI dependency. Base44 Agents were documented but not evaluated within the Build-Off timeline. |
-| **Judge-visible proof** | `matching.js` and `watchtree-archetypes.js` contain only deterministic scoring functions — no AI model invocation, no LLM prompt, no AI SDK import. |
-| **Source path** | `src/watchtree/matching.js`, `base44/functions/_shared/watchtree-archetypes.js`. |
-| **Merged SHA** | Not applicable — not implemented. |
-| **Production verification** | Production site matching produces identical results across reloads (deterministic). |
-| **Submission checkbox eligible** | No — explicitly scoped out. Product is intentionally AI-free for auditability. |
-| **Notes** | Future roadmap: Agent evaluation tracked in Issue #43. Current product is stronger for NOT using AI in matching — every candidate score is reproducible and explainable. |
+| --- | --- |
+| **Status** | `VERIFIED_PRODUCTION` capability; latest additive source fields are `MERGED_NOT_DEPLOYED` |
+| **Implementation** | 13 JSONC Entity schemas. Create is allowed for authenticated `user` and `admin` roles; read, update, and delete are owner-scoped through `created_by_id`. |
+| **Source proof** | `base44/entities/*.jsonc` |
+| **Restrictions** | No private Entity uses `read: true`, public mutation, cross-user scan, browser service role, or client-supplied ownership. |
+| **Submission eligibility** | Yes after exact final schema deployment verification |
+
+### Entity inventory
+
+| Entity | Product role | Current use |
+| --- | --- | --- |
+| `WatchImport` | Import or deliberate collection session | Core |
+| `WatchEvent` | One normalized viewing occurrence | Core |
+| `WatchTreeFingerprint` | Private computed tree | Core |
+| `SharedPathCandidate` | Synthetic matching result | Core |
+| `RevealConsent` | Selected-evidence consent | Core |
+| `MutualResonance` | Explicitly simulated mutual state | Core |
+| `WatchMatchSignal` | Deterministic matching digest | Core |
+| `ImportChunkReceipt` | Idempotent import progress | Core |
+| `CapabilityProbe` | Earlier backend proof | Retained |
+| `ConsentRecord` | Earlier Resonance consent model | Retained |
+| `MatchDecision` | Earlier simulated decision model | Retained |
+| `MemoryCard` | Earlier Memory Resonance input | Retained |
+| `ResonanceFingerprint` | Earlier fingerprint model | Retained |
+
+Retained Entities are not presented as required WatchTree functionality and are not removed from a live data model without a migration decision.
+
+---
+
+## Caller-scoped Deno Functions
+
+| Field | Value |
+| --- | --- |
+| **Status** | 12-Function baseline `VERIFIED_PRODUCTION`; `add-watch-url-event` and final source set are `MERGED_NOT_DEPLOYED` |
+| **Implementation** | 13 `Deno.serve` entrypoints using request-scoped Base44 SDK clients, caller authentication, bounded POST/JSON validation, nonce or idempotency guards, deterministic logic, and sanitized responses. |
+| **Shared-source proof** | Canonical modules under `base44/functions/_shared/` are synchronized and checked for parity in CI. |
+| **Source proof** | `base44/functions/*/entry.ts` |
+| **Submission eligibility** | Yes after all 13 exact release Functions are deployed and inventoried |
+
+### Function inventory
+
+| Function | Responsibility | Product status |
+| --- | --- | --- |
+| `add-watch-url-event` | Deliberate URL collection commit | Core; source merged, deployment pending |
+| `build-watch-tree` | Private tree computation | Core |
+| `commit-watch-import` | Bounded import commit | Core |
+| `delete-watch-data` | Privacy mutations and bounded deletion | Core |
+| `find-shared-paths` | Deterministic synthetic scoring | Core |
+| `parse-watch-history` | Bounded import preview contract | Core |
+| `reconcile-watch-data` | Orphan and consistency repair | Core |
+| `seed-demo-history` | Clearly synthetic demo data | Core |
+| `set-reveal-consent` | Evidence consent persistence | Core |
+| `simulate-mutual` | Explicitly simulated mutual state | Core |
+| `compute-matches` | Earlier matching path | Retained |
+| `generate-fingerprint` | Earlier Resonance fingerprint path | Retained |
+| `verify-capability` | Earlier backend proof | Retained |
+
+No Function uses service role, live AI inference, a Base44 Agent, raw authentication material, or a cross-user matching scan.
 
 ---
 
 ## Realtime subscriptions
 
 | Field | Value |
-|-------|-------|
+| --- | --- |
 | **Status** | `MERGED_NOT_DEPLOYED` |
-| **Implementation** | Caller-scoped `base44.entities.WatchEvent.subscribe(callback)` with 200ms debounced caller-scoped restore. Session-object identity isolation prevents stale callbacks after account or session replacement. Pending subscribe cleanup, unsubscribe on unmount/logout/session replacement, and subscription failure fallback are all implemented. No Function or Entity mutation occurs from the callback. |
-| **Judge-visible proof** | `src/watchtree/realtime/createWatchTreeRealtime.js`, `src/watchtree/productionAdapter.js`, `src/watchtree/WatchTreeExperience.jsx`, `tests/watchtree-realtime.test.mjs` (12 focused lifecycle scenarios). |
-| **Source path** | `src/watchtree/realtime/createWatchTreeRealtime.js`, `src/watchtree/productionAdapter.js`. |
-| **Merged SHA** | `7a16adbd977ff5f2df2ceb2acc4130d242606dec` (PR #45 squash merge). |
-| **Production verification** | Not deployed or authenticated-UAT verified yet. |
-| **Submission checkbox eligible** | No — check only after exact Production deployment and authenticated two-tab UAT. |
-| **Notes** | Issue #41 completed through PR #45. Source merged; Production verification pending. |
+| **Implementation** | Caller-owned `WatchEvent` subscription, 200 ms debounced restore, per-session identity isolation, late-subscription cleanup, unsubscribe lifecycle, stale-callback guard, and non-mutating callbacks. |
+| **Merged evidence** | PR #45, squash merge `7a16adbd977ff5f2df2ceb2acc4130d242606dec` |
+| **Source proof** | `src/watchtree/realtime/createWatchTreeRealtime.js`, `src/watchtree/productionAdapter.js`, `tests/watchtree-realtime.test.mjs` |
+| **Production requirement** | Exact deployment plus authenticated two-tab owner-scoped UAT |
+| **Submission eligibility** | No until Production verification is complete |
 
 ---
 
-## File & media storage
+## Guided judge tutorial
 
 | Field | Value |
-|-------|-------|
+| --- | --- |
+| **Status** | `MERGED_NOT_DEPLOYED` |
+| **Implementation** | Six-step Mina story reusing actual adapters for synthetic seed, tree construction, synthetic matching, evidence, consent, simulated mutual state, replay, and deletion. |
+| **Truth boundary** | Mina and all candidates are synthetic; no real user is contacted; no automatic YouTube-account access; no runtime AI. |
+| **Merged evidence** | PR #47, squash merge `4efc2827bf9fae2ad99602090c2621845b7c89a3` |
+| **Validation** | 314 deterministic tests; 11 browser scenarios including desktop, mobile, reduced motion, and Korean UI |
+| **Production requirement** | Exact release deployment and authenticated tutorial UAT |
+
+The broader route-based information architecture remains open separately; the competition slice is intentionally bounded.
+
+---
+
+## AI, LLM, and Base44 Agent
+
+| Field | Value |
+| --- | --- |
+| **Status** | `NOT_USED` in the competition build; Agent evaluation is `ROADMAP_ONLY` |
+| **Implementation** | Matching uses deterministic versioned scoring. No LLM prompt, runtime inference, AI SDK import, or Base44 Agent is required. |
+| **Source proof** | `src/watchtree/matching.js`, `base44/functions/_shared/watchtree-archetypes.js` |
+| **Submission eligibility** | No |
+| **Reason** | Reproducibility, explainability, bounded latency, and a truthful synthetic-only product boundary |
+
+External coding agents helped implement source, but that is a development method—not a runtime AI capability of the product.
+
+---
+
+## File and media storage
+
+| Field | Value |
+| --- | --- |
 | **Status** | `NOT_USED` |
-| **Implementation** | WatchTree does not store uploaded files. Raw watch-history files (HTML/JSON) are parsed entirely inside a dedicated browser Worker and zeroed after parsing. The Worker enforces 8 MiB, 5,000-record, JSON-depth, HTML-node, and 8-second budgets. Emitted records are bounded normalized previews — never raw source content. URL collection does not involve file upload at all. |
-| **Judge-visible proof** | No file upload endpoints exist in any Function. `source_disposition: "browser_local_not_uploaded"` on every `WatchImport` record from Takeout import. URL input stores only canonical URL and video ID — no file transfer. |
-| **Source path** | `src/watchtree/watch-history.worker.js` — browser Worker. |
-| **Merged SHA** | `959afdc`. |
-| **Production verification** | Worker runs in production site. Network tab shows no file uploads to Base44. |
-| **Submission checkbox eligible** | No — the product does not use Base44 File & media storage. Raw watch-history files are parsed in a browser Worker and never uploaded. |
-| **Notes** | The privacy-by-design choice to keep raw data in the browser worker is stronger than uploading and trusting server-side deletion. |
+| **Implementation** | Raw HTML/JSON viewing-history files are parsed inside a browser Worker and are not uploaded as files. Deliberate URL collection does not require file storage. |
+| **Source proof** | `src/watchtree/watch-history.worker.js`; no upload Function exists |
+| **Submission eligibility** | No |
+| **Privacy result** | The server receives bounded normalized records rather than a raw history file. |
+
+---
+
+## Video-platform source boundary
+
+| Field | Value |
+| --- | --- |
+| **Current source** | YouTube-first deliberate URL input plus an explicitly authorized import path |
+| **Automatic account-history access** | Not implemented |
+| **YouTube API / OAuth** | Not used in the competition build |
+| **TikTok / Instagram / Facebook** | `ROADMAP_ONLY`; feasibility research incomplete |
+| **Expansion rule** | Add a bounded adapter only after URL, metadata provenance, user-authorized access, export, retention, privacy, and deletion behavior are verified |
+
+The architecture is platform-extensible, but unsupported platforms are not listed as implemented integrations.
 
 ---
 
 ## Capability summary
 
-| Capability | Status | Judge-verifiable |
-|------------|--------|-----------------|
-| Authentication & user management | `VERIFIED_PRODUCTION` | AuthPanel UI, Function auth guards |
-| Database / Entities | `VERIFIED_PRODUCTION` | 13 schema files, RLS declarations |
-| Backend Functions (Deno) | `VERIFIED_PRODUCTION` (12-function baseline); `add-watch-url-event` `MERGED_NOT_DEPLOYED` | 13 entry.ts files (source), CI verifies shared module parity |
-| AI / LLM / Agents | `ROADMAP_ONLY` | No AI imports in matching code |
-| Realtime subscriptions | `MERGED_NOT_DEPLOYED` | `createWatchTreeRealtime.js`, `productionAdapter.js`, 12 lifecycle tests |
-| File & media storage | `NOT_USED` | Worker-local parsing, no upload endpoints |
-
----
-
-## Entities detail
-
-| Entity | Active use | RLS pattern | Notes |
-|--------|-----------|-------------|-------|
-| `WatchImport` | Active | `created_by_id` | One per synthetic seed or URL collection owner |
-| `WatchEvent` | Active | `created_by_id` | One per viewing occurrence |
-| `WatchTreeFingerprint` | Active | `created_by_id` | Computed tree state |
-| `SharedPathCandidate` | Active | `created_by_id` | Deterministic scoring output |
-| `RevealConsent` | Active | `created_by_id` | Evidence consent record |
-| `MutualResonance` | Active | `created_by_id` | Simulated mutual state |
-| `WatchMatchSignal` | Active | `created_by_id` | Matching digest records |
-| `ImportChunkReceipt` | Active | `created_by_id` | Takeout import chunk tracking |
-| `CapabilityProbe` | Vestigial | `created_by_id` | Deployed, unused |
-| `ConsentRecord` | Vestigial | `created_by_id` | Deployed, unused |
-| `MatchDecision` | Vestigial | `created_by_id` | Deployed, unused |
-| `MemoryCard` | Vestigial | `created_by_id` | Deployed, unused |
-| `ResonanceFingerprint` | Vestigial | `created_by_id` | Deployed, unused |
-
----
-
-## Functions detail
-
-| Function | Role | Vestigial |
-|----------|------|-----------|
-| `add-watch-url-event` | URL collection commit | No |
-| `build-watch-tree` | Tree computation after import | No |
-| `commit-watch-import` | Takeout import commit | No |
-| `compute-matches` | Legacy matching | Vestigial |
-| `delete-watch-data` | Privacy deletion | No |
-| `find-shared-paths` | Deterministic scoring | No |
-| `generate-fingerprint` | Legacy fingerprint | Vestigial |
-| `parse-watch-history` | Takeout preview | No |
-| `reconcile-watch-data` | Orphan cleanup | No |
-| `seed-demo-history` | Synthetic demo seed | No |
-| `set-reveal-consent` | Consent recording | No |
-| `simulate-mutual` | Mutual state simulation | No |
-| `verify-capability` | Legacy probe | Vestigial |
+| Capability | Status now | Final verification required |
+| --- | --- | --- |
+| Base44 Auth | `VERIFIED_PRODUCTION` capability | Final release sign-in and caller-identity UAT |
+| Entities / RLS | Baseline `VERIFIED_PRODUCTION`; latest source delta pending | Exact 13-schema deployment inventory and owner-isolation UAT |
+| Deno Functions | 12 baseline verified; 13-source release pending | Exact Function deployment inventory and runtime contract UAT |
+| Realtime | `MERGED_NOT_DEPLOYED` | Authenticated two-tab UAT |
+| Judge tutorial | `MERGED_NOT_DEPLOYED` | Authenticated end-to-end tutorial and deletion UAT |
+| AI / LLM / Agent | `NOT_USED` | None; do not select the submission capability |
+| File storage | `NOT_USED` | None; do not select the submission capability |
+| Additional video platforms | `ROADMAP_ONLY` | Platform-specific feasibility and privacy research |

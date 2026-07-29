@@ -1,147 +1,190 @@
-# Agentic Development Method — Resonance / 공명
+# Agentic Development Method — Resonance / WatchTree
 
-How external agentic coding and Base44 worked together to build WatchTree.
+WatchTree was not produced by a single model generating a finished application. It was built through a role-defined development system in which human approval, AI-assisted review, isolated coding agents, GitHub evidence, and Base44 runtime authority remained separate.
 
----
+## Responsibility model
 
-## The working model
+### 1. Human project owner
 
-WatchTree was not built by a single AI generating a complete application. It was built by a **multi-agent system with role-defined contracts**, where Base44 served as the authoritative backend platform and GitHub was the evidence and integration boundary.
+The human project owner defined product intent and retained final authority over consequential decisions:
 
-### Layer 1: Product intent and contract (human project owner + AI CTO)
+- product direction and trust boundaries;
+- acceptance of scope tradeoffs;
+- merge approval where required;
+- Production deployment;
+- public submission and capability claims.
 
-A human project owner defined product intent and held final approval authority. An AI CTO defined execution contracts, performed source review, verified exact-head SHAs, and made merge-readiness decisions. Together they specified:
+The owner could delegate implementation and review work, but not responsibility for the final release.
 
-- **Product requirements:** What the feature should do, in what order, and what it must not do. Written as GitHub Issues with acceptance criteria, forbidden behaviors, and priority labels.
-- **Security boundaries:** Exact SHA baselines, allowed and forbidden file changes, contract regexes that entrypoint code must match (and must not match), and explicit prohibitions (no service role, no other-user scan, no runtime AI).
-- **Review checklists:** Each PR was reviewed against a written checklist. AI CTO review findings were tracked as PR comments and resolved before merge.
+### 2. AI CTO
 
-### Layer 2: Local model + agentic IDE (implementation)
+The AI CTO converted product intent into explicit execution contracts and reviewed exact remote evidence:
 
-A local language model (running outside Base44's infrastructure) and an agentic IDE implemented isolated source slices. Each implementation session had:
+- known base and expected head SHAs;
+- allowed and forbidden file scopes;
+- security and privacy constraints;
+- acceptance tests and browser journeys;
+- review findings and correction prompts;
+- merge-readiness decisions;
+- separation of source, Production, roadmap, and unused capabilities.
 
-- A defined **file scope** (e.g., "only `src/watchtree/` and `tests/`")
-- A known **base commit** (e.g., "start from `a4975906`")
-- An explicit **allowed/changed forbidden list** (e.g., "you may modify `src/watchtree/matching.js` and `src/watchtree/fixtures.js`; you may NOT modify Auth/RLS, add dependencies, or change the CI pipeline")
-- CI feedback from the **previous attempt** (if any)
+The AI CTO did not treat a worker’s completion report as proof. Source, diff, PR state, and CI were checked independently before merge.
 
-The agent never accessed:
-- The Base44 dashboard or console
-- Production secrets or environment variables
-- The deployment pipeline
-- Other users' data or account information
+### 3. Coding agents and agentic IDEs
 
-### Layer 3: GitHub integration and evidence
+Implementation agents worked on isolated branches or worktrees with bounded contracts. A typical contract specified:
 
-GitHub served as the source-of-truth integration boundary and auditable evidence record:
+- the exact repository and branch;
+- the starting SHA;
+- the files that could change;
+- prohibited changes such as RLS weakening, service-role access, new dependencies, or Production deployment;
+- focused and full validation commands;
+- the required Draft PR body and evidence.
 
-- **Draft PR** state was maintained until exact-head CI and AI CTO review passed.
-- **Exact base/head SHA** tracking: every review referenced the precise commit under review.
-- **Review comments** were tracked as PR comments and resolved before merge.
-- **CI** ran test-build-browser and release-build on each push, producing auditable pass/fail evidence.
-- **Auditable correction history**: every CTO finding linked to a fix commit; no correction was accepted without CI re-run.
+Coding agents did not receive Production passwords, OTPs, cookies, Base44 secret values, or unrestricted dashboard access.
 
-### Layer 4: Validation and release governance
+### 4. GitHub and CI
 
-The current release workflow runs two CI jobs:
+GitHub was the public version-control, review, and evidence boundary:
 
-1. **test-build-browser**: deterministic tests + browser validation + Vite build
-2. **release-build**: fail-closed verification + production build + bundle content assertion
+- every product change entered through a PR;
+- Draft status was maintained until exact-head review and green CI;
+- PR bodies recorded exact base/head references and validation results;
+- review findings were preserved publicly;
+- corrections produced new commits and fresh CI rather than unverifiable local claims;
+- superseded work was closed with an explanation rather than silently discarded.
 
-The current final-source suite contains 277 deterministic tests. Test coverage and counts evolved during development.
+The two primary CI jobs are:
 
-An AI CTO reviewed the exact source and CI evidence, while the human project owner retained final approval for consequential merge, deployment, and submission decisions. **No model-produced output was trusted without both CI pass and AI CTO review.**
+1. `test-build-browser` — shared-source parity, deterministic tests, Vite build, and browser validation.
+2. `release-build` — fail-closed Production App-ID verification, release build, and bundle-content assertions.
 
----
+**CI does not deploy.**
+
+### 5. Base44 runtime authority
+
+Base44 remained authoritative for:
+
+- Auth and caller identity;
+- owner-scoped Entity storage and `created_by_id` RLS;
+- caller-scoped Deno Function execution;
+- backend secret provisioning;
+- Realtime-capable Entity resources;
+- public hosting and deployment.
+
+No separate database, Auth provider, permission middleware, API server, or service-role matching system was introduced.
 
 ## Development and release flow
 
 ```mermaid
 flowchart TD
     A[Human project owner] -->|product intent and consequential approval| B[AI CTO]
-    B -->|execution contract| C[Local implementation agent]
-    C -->|isolated implementation + tests| D[Draft PR]
-    D --> E[GitHub / CI]
-    E -->|test-build-browser| F[CI evidence]
+    B -->|bounded execution contract| C[Coding agent / agentic IDE]
+    C -->|isolated source + tests| D[Draft GitHub PR]
+    D --> E[GitHub Actions]
+    E -->|test-build-browser| F[Exact-head evidence]
     E -->|release-build| F
     F --> B
-    B -->|exact-head review + merge-readiness decision| G[Merge]
+    B -->|review findings or merge readiness| D
+    B -->|ready decision| G[Squash merge]
     G --> H[Exact release review]
-    H --> I[Explicit human approval]
-    I --> J[Base44 CLI/dashboard deployment]
+    H --> I[Explicit owner approval]
+    I --> J[Base44 deployment]
     J --> K[Authenticated Production UAT]
+    K --> L[Public capability and submission update]
 ```
 
-**CI does not deploy.** Deployment occurs only after merge, exact release review, and explicit human project-owner approval.
+## Why the contracts were strict
 
----
+Agentic implementation is most useful when the agent’s freedom is bounded by product and security rules.
 
-## Key principles
+Examples:
 
-### 1. Base44 is the runtime authority
+| Allowed | Forbidden |
+| --- | --- |
+| Add a deliberate URL collection path | Automatically read a YouTube account |
+| Store bounded user-provided labels with provenance | Present those labels as verified platform metadata |
+| Match against versioned synthetic archetypes | Scan other users or imply a real-person match |
+| Add caller-scoped Realtime restore | Mutate Entity or Function state from a Realtime callback |
+| Add tutorial presentation state | Duplicate matching, consent, mutual, or deletion logic in the browser |
+| Document an Agent roadmap | Claim a runtime Agent was used when it was not |
 
-The agent never deployed, never mutated secrets, never accessed the Base44 dashboard, and never called production APIs directly. Base44 remained the single authority for:
-- Authentication and caller identity
-- Entity storage and RLS enforcement
-- Deno function execution
-- Secrets provision (the `WATCHTREE_HMAC_KEY` was set via the Base44 console, not in code)
-- Hosting and deployment
+The written contract was intentionally narrower than what the code or platform could technically do.
 
-### 2. No model output is trusted without CI and code review
+## Review-driven corrections
 
-Current reviewed submission slices are verified by:
-- **Deterministic tests** (277 in the current final-source suite) that must pass
-- **Browser validation** that screenshots every UI state and asserts no console errors, page errors, or unexpected external requests
-- **Release build verification** that checks production App ID presence and forbidden string absence
-- **AI CTO review** with human project-owner approval, checking contract regexes, exact SHA baselines, and PR body accuracy
+Public review history records material failures rather than hiding them. Examples include:
 
-### 3. Parallel work uses disjoint file ownership
+- invalid initial Base44 Function entrypoint assumptions;
+- reveal-consent token namespace mismatch;
+- deletion ordering and interrupted-resume risks;
+- unsupported creator and duration evidence in no-key matching;
+- Realtime session and late-subscription races;
+- tutorial mount, reducer/action, delete-loop, replay, and localization failures;
+- stale PR bodies and source-versus-Production wording.
 
-Multiple agents could work simultaneously because:
-- Each issue defined a non-overlapping file scope (e.g., Issue #29 = `base44/functions/_shared/watchtree.js` + `src/watchtree/`; Issue #33 = `base44/functions/add-watch-url-event/` + `src/watchtree/`)
-- Shared modules were managed by a vendoring script (`sync-base44-function-shared.mjs`) that copied canonical sources to all function directories
-- Each branch was in a separate git worktree, avoiding in-flight merge conflicts
+Each accepted correction required a committed fix and fresh exact-head CI.
 
-### 4. The contract is stricter than the implementation
+## Current verification baseline
 
-The written contract (Issue body + CTO review comments) was always more restrictive than what the code could technically do. For example:
-- **Allowed:** Add `url_collection` to existing enum
-- **Forbidden:** Create new Entities, weaken RLS, add service role
-- **Allowed:** Parse URL and store video ID
-- **Forbidden:** Fetch YouTube API, use API key, scrape page
+At the latest reviewed source (`4efc2827bf9fae2ad99602090c2621845b7c89a3`):
 
-This asymmetry was deliberate: the contract constrained the agent from capabilities that were technically possible but product-wise wrong.
+- 13 Entity schemas;
+- 13 Deno Function sources;
+- 314 deterministic tests;
+- 11 browser scenarios;
+- desktop, mobile, reduced-motion, and Korean tutorial coverage;
+- release build and bundle-boundary checks;
+- no runtime AI matching, service role, cross-user scan, external metadata API, or Base44 File storage.
 
-### 5. Failures are recorded, not hidden
+Realtime and the judge tutorial are merged in source but remain Production-ineligible until the exact release is deployed and authenticated UAT is complete.
 
-Every CTO review finding was documented in the PR body and linked to a fix commit. The build journal records each failure, its correction, and the verification evidence. No correction was accepted without CI re-run.
+## Parallel development rule
 
----
+Parallel work was permitted only with disjoint file ownership. Product source, submission documentation, and video-production packages used separate branches and scopes. Shared backend modules were synchronized from canonical sources by repository scripts rather than edited independently in every Function directory.
+
+This reduced merge conflicts and made each PR reviewable as a bounded change.
+
+## Public repository hygiene
+
+Because the repository and PR history are part of the submission:
+
+- README language must be understandable without internal project context;
+- old counts remain historical, not “current” claims;
+- current source and deployed runtime are separated explicitly;
+- superseded PRs are closed with replacement links and reasons;
+- secret names may appear only as safe architecture labels, never with values;
+- roadmap ideas are not presented as implemented integrations;
+- video scripts and upload records remain provisional until final release evidence exists.
 
 ## Repository evidence
 
-| Artifact | Location |
-|----------|----------|
-| PR history with CTO reviews | PR #32, #36, #37 on GitHub |
-| Contract specifications | Issues #1, #20, #29, #30, #33 |
-| CI results | GitHub Actions (release-build + test-build-browser) |
-| Deterministic tests | `tests/*.test.mjs` (277 tests) |
+| Evidence | Location |
+| --- | --- |
+| Core product baseline | PR #4 and PR #25 |
+| Reveal-consent correction | PR #27 |
+| Release CI | PR #32 |
+| Privacy lifecycle | PR #36 |
+| URL collection and grounded matching | PR #37 |
+| Public build journal and platform narrative | PR #44 |
+| Realtime source | PR #45 |
+| Judge tutorial and localization corrections | PR #47 |
+| Deterministic tests | `tests/*.test.mjs` |
 | Browser validation | `tests/browser/run-watchtree.mjs` |
-| Release bundle verification | `scripts/verify-release-bundle.mjs` |
-| Shared module parity | `scripts/sync-base44-function-shared.mjs`, `scripts/check-base44-function-shared.mjs` |
-| Function boundary test | `tests/base44-function-bundle-boundary.test.mjs` |
+| Release verification | `scripts/verify-release-bundle.mjs` |
+| Shared Function parity | `scripts/sync-base44-function-shared.mjs`, `scripts/check-base44-function-shared.mjs` |
 
----
-
-## Tools used
+## Tools and roles
 
 | Tool | Role |
-|------|------|
-| **Base44** | Auth, Entities, RLS, Deno Functions, secrets, hosting |
-| **GitHub** | Issues, PRs, code review, CI (Actions), artifact storage |
-| **Git worktrees** | Parallel development isolation |
-| **Local LLM** | Code generation under human-defined contract |
-| **Agentic IDE** | File editing, git operations, shell execution |
-| **Vite** | Frontend build tooling |
-| **Playwright** | Browser validation |
-| **Node test runner** | Deterministic unit/integration tests |
+| --- | --- |
+| Base44 | Auth, Entities/RLS, Deno Functions, secrets, Realtime-capable resources, hosting, deployment |
+| GitHub | Issues, PRs, review history, CI, evidence artifacts |
+| Git worktrees / isolated clones | Parallel file ownership and branch isolation |
+| Coding models | Contract-bounded implementation and correction |
+| AI CTO | Execution contracts, independent review, source/Production truth boundary |
+| Vite | Frontend and release build tooling |
+| Playwright | Browser journey and error-boundary validation |
+| Node test runner | Deterministic unit and integration verification |
+
+The core claim is therefore precise: **external agentic development implemented WatchTree against Base44’s SDK and data contracts, while Base44 remained the authoritative production backend and the human project owner retained final release authority.**

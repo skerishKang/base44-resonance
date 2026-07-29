@@ -12,11 +12,11 @@
 
 1. Open the **live app** → see the WatchTree landing page (English, mobile-responsive).
 2. Click **Enter WatchTree** → sign in via email/password.
-3. Choose **Build my WatchTree** to add your own YouTube link.
+3. Choose **Build my WatchTree** — you can start with synthetic demo data or import a viewing-history file.
 4. Inspect the synthetic matches, consent to evidence reveal, and run the simulated mutual state.
 5. Delete all data — deletion is bounded, resumable, and verifiable.
 
-> ⚠️ The six-step guided tutorial and Realtime owner-scoped refresh are **merged in source but not yet deployed** to Production. They are not available in the current production build.
+> ⚠️ The six-step guided tutorial, Realtime owner-scoped refresh, and deliberate YouTube URL addition are **merged in source but not yet deployed** to Production. They are not available in the current production build.
 
 ### B. Judge path after final release
 

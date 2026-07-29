@@ -136,11 +136,14 @@
 | --- | --- | --- |
 | Refresh the page | Empty state persists — no stale events, matches, or consent records | Screenshot |
 
-### 17. Re-sign-in / sign-in after deletion (restore post-data)
+### 17. Re-sign-in after full deletion
 
 | Step | Expectation | Evidence |
 | --- | --- | --- |
-| Sign in again | Events, matches, and consent from prior data creation are restored (or empty state persists if deletion completed) | Screenshot |
+| Sign out | Session ends | — |
+| Sign in again with same credentials | Empty state persists — deleted events, matches, and consent do not return | Screenshot |
+
+> Note: If pre-deletion restore verification is also required, add a separate "Sign-in restore (pre-deletion)" step before data deletion (step 15). That step would verify that events, matches, and consent created prior survive a sign-out/sign-in cycle.
 
 ### 18. Realtime two-tab owner-scoped refresh
 

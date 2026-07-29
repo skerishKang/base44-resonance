@@ -33,7 +33,7 @@ const en = {
   experience: {
     member: "Resonance member",
     title: "Grow a private WatchTree.",
-    body: "Paste a YouTube URL. Its preview appears automatically, and nothing is saved until you choose Add to WatchTree.",
+    body: "Paste a YouTube URL to add a video you watched, or start with synthetic data.",
     urlInput: "Paste YouTube URL",
     urlPlaceholder: "https://www.youtube.com/watch?v=... or https://youtu.be/...",
     urlAutoHint: "Paste a YouTube link to preview it automatically.",

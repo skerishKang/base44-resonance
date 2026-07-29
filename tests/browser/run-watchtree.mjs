@@ -1424,6 +1424,65 @@ try {
     await context.close();
   }
 
+  // ── Tutorial flow — Korean parity (desktop) ────────────────────────────
+  {
+    const { context, page, diagnostics } = await openContext(browser);
+
+    await page.getByRole("button", { name: "한국어" }).click();
+    const outerCta = page.getByTestId("start-tutorial");
+    await outerCta.getByText("Mina의 WatchTree 이야기 보기").waitFor({ state: "visible" });
+    assert.ok(await outerCta.getByText("6단계 가이드 데모 · 약 45–75초").isVisible(), "Korean outer CTA subtitle visible");
+
+    await page.getByTestId("start-tutorial").click();
+    await page.getByTestId("tutorial-entry").waitFor({ state: "visible" });
+    assert.ok(await page.getByText("WatchTree 여정 시작하기").isVisible(), "Korean entry title");
+
+    await page.getByTestId("tutorial-start-story").click();
+    await page.getByTestId("tutorial-step-1").waitFor({ state: "visible" });
+    assert.ok(await page.getByText("선택적 수집").isVisible(), "Korean STEP1 title");
+    assert.ok(await page.getByText("Mina는 자신이 선택한 링크만 추가합니다").isVisible(), "Korean STEP1 subtitle");
+
+    const nextBtn = page.getByTestId("tutorial-next");
+    assert.equal((await nextBtn.textContent()).trim(), "다음", "Korean Next button");
+
+    await nextBtn.click();
+    await page.getByTestId("tutorial-step-2").waitFor({ state: "visible" });
+    await nextBtn.click();
+    await page.getByTestId("tutorial-step-3").waitFor({ state: "visible" });
+    await nextBtn.click();
+    await page.getByTestId("tutorial-step-4").waitFor({ state: "visible" });
+    await nextBtn.click();
+    await page.getByTestId("tutorial-step-5").waitFor({ state: "visible" });
+
+    await page.locator(".tutorial-label--simulated").first().waitFor({ state: "visible" });
+    const koSimulated = (await page.locator(".tutorial-label--simulated").first().textContent()).trim();
+    assert.equal(koSimulated, "시뮬레이션된 상호 공명", "Korean STEP5 simulated label");
+    const koNoRealUser = (await page.locator(".tutorial-label--small").first().textContent()).trim();
+    assert.equal(koNoRealUser, "실제 사용자에게 연락되지 않음", "Korean STEP5 no-real-user label");
+
+    await nextBtn.click();
+    await page.getByTestId("tutorial-step-6").waitFor({ state: "visible" });
+    assert.equal((await page.getByTestId("tutorial-build-own-after").textContent()).trim(), "내 WatchTree 만들기", "Korean STEP6 build-own");
+    assert.equal((await page.getByTestId("tutorial-replay").textContent()).trim(), "다시 보기", "Korean STEP6 replay");
+    assert.equal((await page.getByTestId("tutorial-delete-data").textContent()).trim(), "데이터 삭제", "Korean STEP6 delete");
+
+    await page.getByTestId("tutorial-delete-data").click();
+    await page.getByTestId("tutorial-delete-complete").waitFor({ state: "visible" });
+    assert.ok(await page.getByText("튜토리얼 데이터가 삭제되었습니다").isVisible(), "Korean delete-complete title");
+    assert.ok(await page.getByText("모든 synthetic 데모 기록이 삭제되었습니다.").isVisible(), "Korean delete-complete body");
+
+    await page.getByTestId("tutorial-exit-after-delete").click();
+    await page.getByTestId("url-collection").waitFor({ state: "visible" });
+
+    const koLayout = await layoutState(page);
+    assert.equal(koLayout.horizontalOverflow, false, "Korean tutorial: no horizontal overflow");
+    await capture(page, "tutorial-korean-complete", { tutorial_flow: "korean-desktop" });
+    assert.deepEqual(diagnostics.consoleErrors, []);
+    assert.deepEqual(diagnostics.pageErrors, []);
+    assert.deepEqual(diagnostics.externalRequests, []);
+    await context.close();
+  }
+
   manifest.assertions = {
     console_errors: 0,
     page_errors: 0,
@@ -1452,6 +1511,7 @@ try {
     tutorial_desktop_flow_verified: true,
     tutorial_mobile_flow_verified: true,
     tutorial_reduced_motion_verified: true,
+    tutorial_korean_flow_verified: true,
   };
   await writeFile(new URL("watchtree-browser-evidence.json", evidenceDir), `${JSON.stringify(manifest, null, 2)}\n`);
   await Promise.all([

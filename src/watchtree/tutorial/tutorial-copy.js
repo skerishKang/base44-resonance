@@ -90,6 +90,34 @@ const en = {
       exit: "Exit demo",
     },
   },
+
+  outerCta: {
+    title: "See Mina's WatchTree story",
+    subtitle: "Guided 6-step demo · 45–75 seconds",
+  },
+  deleteComplete: {
+    title: "Tutorial data deleted",
+    body: "All synthetic demo records have been removed.",
+  },
+  status: {
+    eventsCollected: (count) => `${count} events collected`,
+    seeding: "Seeding demo data...",
+    treeStats: (unique, repeats) => `${unique} unique leaves · ${repeats} revisits`,
+    buildingTree: "Building WatchTree...",
+    insufficientSignal: "Insufficient signal — add more events to see matches.",
+    noEvidence: "No evidence tokens available.",
+    matchCount: (count) => `${count} ${count === 1 ? "match" : "matches"}`,
+    consentGranted: "Consent granted for selected evidence",
+    processingConsent: "Processing consent and mutual...",
+    mutualMessage: "Two synthetic paths now resonate.",
+    working: "Working...",
+  },
+  aria: {
+    entry: "Tutorial entry",
+    step: (n) => `Tutorial step ${n}`,
+    deleteComplete: "Tutorial data deleted",
+    watchTree: "Tutorial WatchTree",
+  },
 };
 
 const ko = {
@@ -179,6 +207,34 @@ const ko = {
       replay: "다시 보기",
       exit: "데모 종료",
     },
+  },
+
+  outerCta: {
+    title: "Mina의 WatchTree 이야기 보기",
+    subtitle: "6단계 가이드 데모 · 약 45–75초",
+  },
+  deleteComplete: {
+    title: "튜토리얼 데이터가 삭제되었습니다",
+    body: "모든 synthetic 데모 기록이 삭제되었습니다.",
+  },
+  status: {
+    eventsCollected: (count) => `${count}개 이벤트 수집됨`,
+    seeding: "데모 데이터 준비 중...",
+    treeStats: (unique, repeats) => `고유한 잎 ${unique}개 · 재방문 ${repeats}회`,
+    buildingTree: "WatchTree 생성 중...",
+    insufficientSignal: "신호가 부족합니다. 매칭을 보려면 이벤트를 더 추가하세요.",
+    noEvidence: "사용 가능한 증거 토큰이 없습니다.",
+    matchCount: (count) => `${count} ${count === 1 ? "일치" : "일치 항목"}`,
+    consentGranted: "선택한 증거 공개에 동의했습니다",
+    processingConsent: "동의와 상호 공명 처리 중...",
+    mutualMessage: "두 synthetic 경로가 공명합니다.",
+    working: "처리 중...",
+  },
+  aria: {
+    entry: "튜토리얼 시작",
+    step: (n) => `튜토리얼 ${n}단계`,
+    deleteComplete: "튜토리얼 데이터 삭제됨",
+    watchTree: "튜토리얼 WatchTree",
   },
 };
 

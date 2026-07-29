@@ -495,3 +495,55 @@ describe("25 — Delete loop tracks latest result", () => {
     assert.equal(result.mutual, null);
   });
 });
+
+describe("26 — Status copy functions", () => {
+  it("eventsCollected, treeStats, matchCount produce output in both languages", () => {
+    for (const lang of ["en", "ko"]) {
+      const copy = getTutorialCopy(lang);
+      assert.ok(typeof copy.status.eventsCollected === "function", `${lang}: eventsCollected is function`);
+      assert.ok(typeof copy.status.treeStats === "function", `${lang}: treeStats is function`);
+      assert.ok(typeof copy.status.matchCount === "function", `${lang}: matchCount is function`);
+      assert.ok(copy.status.eventsCollected(48).length > 0, `${lang}: eventsCollected(48) non-empty`);
+      assert.ok(copy.status.treeStats(12, 5).length > 0, `${lang}: treeStats(12,5) non-empty`);
+      assert.ok(copy.status.matchCount(1).length > 0, `${lang}: matchCount(1) non-empty`);
+      assert.ok(copy.status.matchCount(3).length > 0, `${lang}: matchCount(3) non-empty`);
+      assert.ok(copy.status.seeding.length > 0, `${lang}: seeding non-empty`);
+      assert.ok(copy.status.buildingTree.length > 0, `${lang}: buildingTree non-empty`);
+      assert.ok(copy.status.insufficientSignal.length > 0, `${lang}: insufficientSignal non-empty`);
+      assert.ok(copy.status.noEvidence.length > 0, `${lang}: noEvidence non-empty`);
+      assert.ok(copy.status.consentGranted.length > 0, `${lang}: consentGranted non-empty`);
+      assert.ok(copy.status.processingConsent.length > 0, `${lang}: processingConsent non-empty`);
+      assert.ok(copy.status.mutualMessage.length > 0, `${lang}: mutualMessage non-empty`);
+      assert.ok(copy.status.working.length > 0, `${lang}: working non-empty`);
+    }
+  });
+
+  it("English matchCount distinguishes singular and plural", () => {
+    const copy = getTutorialCopy("en");
+    assert.ok(copy.status.matchCount(1).includes("match"), "singular contains match");
+    assert.ok(copy.status.matchCount(2).includes("matches"), "plural contains matches");
+  });
+});
+
+describe("27 — Aria, deleteComplete, outerCta copy", () => {
+  it("aria labels exist and step is a function in both languages", () => {
+    for (const lang of ["en", "ko"]) {
+      const copy = getTutorialCopy(lang);
+      assert.ok(copy.aria.entry, `${lang}: aria.entry`);
+      assert.ok(typeof copy.aria.step === "function", `${lang}: aria.step is function`);
+      assert.ok(copy.aria.step(3).length > 0, `${lang}: aria.step(3) non-empty`);
+      assert.ok(copy.aria.deleteComplete, `${lang}: aria.deleteComplete`);
+      assert.ok(copy.aria.watchTree, `${lang}: aria.watchTree`);
+    }
+  });
+
+  it("deleteComplete and outerCta copy exist in both languages", () => {
+    for (const lang of ["en", "ko"]) {
+      const copy = getTutorialCopy(lang);
+      assert.ok(copy.deleteComplete.title, `${lang}: deleteComplete.title`);
+      assert.ok(copy.deleteComplete.body, `${lang}: deleteComplete.body`);
+      assert.ok(copy.outerCta.title, `${lang}: outerCta.title`);
+      assert.ok(copy.outerCta.subtitle, `${lang}: outerCta.subtitle`);
+    }
+  });
+});

@@ -82,9 +82,9 @@ export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn
 
   if (state.currentStep === TUTORIAL_STEPS.DELETE_COMPLETE) {
     return (
-      <section className="tutorial tutorial-delete-complete" data-testid="tutorial-delete-complete" aria-label="Tutorial data deleted">
-        <h2 ref={headingRef} tabIndex={-1} className="tutorial-step-title">Tutorial data deleted</h2>
-        <p className="tutorial-step-detail">All synthetic demo records have been removed.</p>
+      <section className="tutorial tutorial-delete-complete" data-testid="tutorial-delete-complete" aria-label={copy.aria.deleteComplete}>
+        <h2 ref={headingRef} tabIndex={-1} className="tutorial-step-title">{copy.deleteComplete.title}</h2>
+        <p className="tutorial-step-detail">{copy.deleteComplete.body}</p>
         <div className="tutorial-finish-actions" data-testid="tutorial-delete-actions">
           <button className="button button--primary" data-testid="tutorial-build-after-delete" type="button" onClick={handleBuildOwn}>{copy.buildOwn}</button>
           <button className="button button--ghost" data-testid="tutorial-exit-after-delete" type="button" onClick={handleExit}>{copy.exit}</button>
@@ -95,7 +95,7 @@ export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn
 
   if (state.currentStep === TUTORIAL_STEPS.ENTRY) {
     return (
-      <section className="tutorial tutorial-entry" data-testid="tutorial-entry" aria-label="Tutorial entry">
+      <section className="tutorial tutorial-entry" data-testid="tutorial-entry" aria-label={copy.aria.entry}>
         <h2 ref={headingRef} tabIndex={-1} className="tutorial-entry-title">{copy.entry.title}</h2>
         <p className="tutorial-entry-body">{copy.entry.body}</p>
         <div className="tutorial-entry-choices">
@@ -121,7 +121,7 @@ export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn
         className="tutorial tutorial-step"
         data-testid={`tutorial-step-${state.currentStep}`}
         data-step={state.currentStep}
-        aria-label={`Tutorial step ${state.currentStep}`}
+        aria-label={copy.aria.step(state.currentStep)}
         aria-busy={state.transitionPending}
       >
         <div className="tutorial-progress" role="progressbar" aria-valuenow={state.currentStep} aria-valuemin={1} aria-valuemax={6} aria-label={copy.progress.replace("{current}", state.currentStep)}>
@@ -139,9 +139,9 @@ export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn
             <div className="tutorial-visual tutorial-visual--collection" data-testid="tutorial-visual-step1">
               <span className="tutorial-label">{step.label}</span>
               {state.events.length > 0 ? (
-                <p className="tutorial-stat">{state.events.length} events collected</p>
+                <p className="tutorial-stat">{copy.status.eventsCollected(state.events.length)}</p>
               ) : state.transitionPending ? (
-                <p className="tutorial-pending">Seeding demo data...</p>
+                <p className="tutorial-pending">{copy.status.seeding}</p>
               ) : null}
             </div>
           )}
@@ -151,11 +151,11 @@ export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn
               <span className="tutorial-label">{step.label}</span>
               {state.tree ? (
                 <>
-                  <p className="tutorial-stat">{state.tree.unique_content_count ?? 0} unique leaves · {state.tree.repeat_signal_count ?? 0} revisits</p>
-                  <WatchTreeGraphic events={state.events} label="Tutorial WatchTree" />
+                  <p className="tutorial-stat">{copy.status.treeStats(state.tree.unique_content_count ?? 0, state.tree.repeat_signal_count ?? 0)}</p>
+                  <WatchTreeGraphic events={state.events} label={copy.aria.watchTree} />
                 </>
               ) : state.transitionPending ? (
-                <p className="tutorial-pending">Building WatchTree...</p>
+                <p className="tutorial-pending">{copy.status.buildingTree}</p>
               ) : null}
             </div>
           )}
@@ -173,7 +173,7 @@ export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn
                   ))}
                 </div>
               ) : (
-                <p className="tutorial-stat">Insufficient signal — add more events to see matches.</p>
+                <p className="tutorial-stat">{copy.status.insufficientSignal}</p>
               )}
             </div>
           )}
@@ -186,12 +186,12 @@ export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn
                   {state.candidates[0].evidence_tokens.slice(0, 3).map((token) => (
                     <div key={token.id} className={`tutorial-evidence-item tutorial-evidence--${token.type}`}>
                       <strong>{token.label}</strong>
-                      <span>{token.count} {token.count === 1 ? "match" : "matches"}</span>
+                      <span>{copy.status.matchCount(token.count)}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="tutorial-stat">No evidence tokens available.</p>
+                <p className="tutorial-stat">{copy.status.noEvidence}</p>
               )}
             </div>
           )}
@@ -200,14 +200,14 @@ export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn
             <div className="tutorial-visual" data-testid="tutorial-visual-step5">
               <span className="tutorial-label tutorial-label--synthetic">{copy.truth.synthetic}</span>
               {state.consent ? (
-                <p className="tutorial-stat">Consent granted for selected evidence</p>
+                <p className="tutorial-stat">{copy.status.consentGranted}</p>
               ) : state.transitionPending ? (
-                <p className="tutorial-pending">Processing consent and mutual...</p>
+                <p className="tutorial-pending">{copy.status.processingConsent}</p>
               ) : null}
               {state.mutual ? (
                 <div className="tutorial-mutual">
                   <p className="tutorial-label tutorial-label--simulated">{copy.truth.simulated}</p>
-                  <p>{state.mutual.message ?? "Two synthetic paths now resonate."}</p>
+                  <p>{state.mutual.message ?? copy.status.mutualMessage}</p>
                   <p className="tutorial-label tutorial-label--small">{copy.truth.noRealUser}</p>
                 </div>
               ) : null}
@@ -239,7 +239,7 @@ export function WatchTreeTutorial({ language = "en", adapter, onExit, onBuildOwn
               disabled={state.transitionPending}
               aria-busy={state.transitionPending}
             >
-              {state.transitionPending ? "Working..." : copy.next}
+              {state.transitionPending ? copy.status.working : copy.next}
             </button>
           ) : (
             <div className="tutorial-finish-actions" data-testid="tutorial-finish-actions">

@@ -8,6 +8,7 @@ import { createServer } from "vite";
 
 const host = "127.0.0.1";
 const port = 4173;
+const browserTestAppId = "6a6538c71a8e3e1640117c91";
 const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
 const rootUrl = `http://${host}:${port}/tests/harness/index.html`;
 const evidenceDir = new URL("../../visual-evidence-v7/", import.meta.url);
@@ -21,6 +22,10 @@ await Promise.all([
 const server = await createServer({
   root: repoRoot,
   logLevel: "error",
+  define: {
+    "import.meta.env.VITE_BASE44_APP_ID": JSON.stringify(browserTestAppId),
+    "import.meta.env.VITE_BASE44_APP_SOURCE": JSON.stringify("browser-uat"),
+  },
   server: { host, port, strictPort: true },
 });
 

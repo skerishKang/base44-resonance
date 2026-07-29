@@ -1,98 +1,134 @@
-# Resonance — WatchTree
+# WatchTree by Resonance
 
-Resonance / 공명 is a bilingual Base44 Build-Off product. The primary product is **WatchTree**: a private viewing-path experience that turns your own watch history into explainable, synthetic-only resonance candidates — without exposing raw history and without scanning other users.
+**WatchTree** is a privacy-first viewing-memory product built on Base44. It turns the video links or viewing records a person deliberately contributes into a private behavioral tree, then compares that tree only with clearly synthetic viewing archetypes using deterministic, explainable signals.
 
-This repository belongs only to **Business 56 · Resonance / 공명**. It is not Business 25, Love Matchmaking, or an AI Revenue Lab registry application.
+It does **not** automatically read a YouTube account, scan other users, perform real-person matching, or use runtime AI for matching. Every mutual state in the competition build is explicitly simulated.
 
-## Production
+## Project status
 
-| Field | Value |
+| Surface | Status |
 | --- | --- |
-| Production URL | https://base44-resonance-40117c91.base44.app |
-| Production app | `base44-resonance` |
+| Public Base44 app | Live at https://base44-resonance-40117c91.base44.app |
 | Public App ID | `6a6538c71a8e3e1640117c91` |
-| Reviewed production baseline before Issue #30 | `249332bbfe62f9c065c116f098165d87c46f6a9b` |
-| Exact deployed commit | recorded in the corresponding production disposition |
-| Status | Deployed and live |
+| Latest reviewed source on `main` | `4efc2827bf9fae2ad99602090c2621845b7c89a3` |
+| Current production deployment | Older reviewed baseline; final source deployment and authenticated UAT are still pending |
+| Entity schemas in source | 13 |
+| Deno Function sources | 13 |
+| Production Function baseline | 12 |
+| Deterministic tests at latest reviewed source | 314 |
+| Realtime | Source merged; Production verification pending |
+| Guided judge tutorial | Source merged; Production verification pending |
+| AI / LLM / Base44 Agent | Not used in the competition build |
+| Base44 File storage | Not used |
 
-The App ID is a public application identifier, not a credential or secret.
+The public app may temporarily lag the latest source. A source feature is not described as deployed until the exact Production release and UAT evidence are recorded.
 
-## 90-second judge path
-
-1. Open the production URL.
-2. Sign in or create a verified Base44 account.
-3. Enter WatchTree and paste a YouTube URL (no API key required), or start with synthetic data.
-4. Confirm the video, then opt in to matching and review up to three clearly labeled synthetic candidates with bounded causal evidence.
-5. Select the evidence you are willing to reveal, record explicit reveal consent, and inspect the revealed shared path.
-6. Run the explicitly labeled **simulated** mutual-resonance state.
-
-All candidates are server-defined synthetic profiles. The mutual state is a simulation. No real person is contacted, notified, or matched.
-
-## WatchTree product journey
+## What WatchTree does
 
 ```text
-YouTube URL (paste, parse, optional label, confirm)
-or
-local Worker parse (raw bytes never leave the browser)
-→ parse-watch-history bounded validation (or add-watch-url-event)
-→ explicit confirmation with chunk receipts / nonce idempotency
-→ build-watch-tree
+Deliberately added YouTube URL
+or browser-local viewing-history import
+→ owner-private WatchEvent records
+→ deterministic WatchTree construction
 → matching opt-in
-→ up to three server-defined synthetic candidates
-→ selected-evidence reveal consent
+→ synthetic archetype candidates
+→ inspectable evidence
+→ explicit reveal consent
 → explicitly simulated mutual state
+→ privacy controls and bounded deletion
 ```
 
-Raw viewing history is parsed only inside a browser Worker, is never sent to Base44 or stored in Entities, and candidate evidence stays causal and bounded: exact overlap, rare signal, shared path, and meaningful difference. No compatibility percentage or soulmate claim is rendered.
+Raw imported history is parsed in a browser Worker and is not uploaded as a raw file. URL collection stores only a validated deliberate addition and bounded user-provided fields. Candidate evidence remains causal and inspectable; the product does not render a compatibility percentage or “soulmate” claim.
 
-YouTube URL collection works without an API key and without external metadata enrichment. User-entered title and creator labels are marked as unverified. An optional future enhancement may allow users to supply their own YouTube Data API key for verified metadata enrichment (see Issue #38).
+## Judge path after final release
 
-## Durable Base44 resources
+1. Open the Base44 app and sign in or create a verified account.
+2. Choose **See Mina’s WatchTree story** for the six-step synthetic tutorial, or start with your own deliberately added video link.
+3. Build the private WatchTree.
+4. Inspect clearly labeled synthetic matches and their evidence.
+5. Select what evidence may be revealed and grant explicit consent.
+6. Run the clearly labeled simulated mutual state.
+7. Replay, return to the real product path, or delete the tutorial data.
 
-Base44 Auth establishes caller identity. All **13 Entity schemas** are owner-scoped through Base44's built-in `created_by_id` metadata (RLS): create is allowed for authenticated `user` and `admin` roles, while read, update, and delete are owner-only. No private Entity uses `read: true`, public mutation, client-controlled owner fields, or a browser service-role path.
+The tutorial persona and every candidate are synthetic. No real person is contacted, notified, or matched.
 
-See [docs/submission/](docs/submission/) for the build journal, platform discovery narrative, and capability ledger.
+## Why YouTube was selected first
 
-Entity schemas (13):
+WatchTree is **YouTube-first, not YouTube-only**.
+
+TikTok, Instagram, Facebook, and other video platforms may also contain meaningful viewing signals. During this Build-Off, however, their user-history exports, API permissions, retention behavior, metadata reliability, and practical privacy boundaries were not sufficiently validated for a truthful production claim.
+
+YouTube offered the clearest bounded starting point: a person can deliberately choose a public video link, optionally add a watched date or private note, and create repeat, sequence, creator, and time-rhythm signals only from records they intentionally contribute. The current build does not assume that any platform API exposes a complete watch history or authoritative repeat-view count.
+
+The source architecture is platform-extensible. Another platform can be added through a bounded source adapter after its URL formats, metadata provenance, user-authorized history access, export availability, privacy terms, and deletion behavior are separately researched and verified.
+
+## Base44 architecture
+
+Base44 is the production backend and runtime authority:
+
+- **Auth** establishes caller identity.
+- **13 Entity schemas** use owner-scoped `created_by_id` RLS.
+- **13 Deno Function sources** use caller-scoped Base44 SDK clients and bounded request contracts.
+- **Realtime source** subscribes to caller-owned `WatchEvent` resources and restores state with session isolation; Production UAT remains pending.
+- **Hosting and deployment** are provided by Base44.
+
+The project does not use service-role access, cross-user Entity scans, runtime AI matching, or a separate database/Auth/API stack. The backend-only `WATCHTREE_HMAC_KEY` is referenced by name for architecture documentation; its value is never stored in the repository, browser bundle, logs, or response payloads.
+
+## Source inventory
+
+Entity schemas:
 
 `CapabilityProbe` · `ConsentRecord` · `ImportChunkReceipt` · `MatchDecision` · `MemoryCard` · `MutualResonance` · `ResonanceFingerprint` · `RevealConsent` · `SharedPathCandidate` · `WatchEvent` · `WatchImport` · `WatchMatchSignal` · `WatchTreeFingerprint`
 
-Caller-scoped Functions (13):
+Caller-scoped Function sources:
 
 `add-watch-url-event` · `build-watch-tree` · `commit-watch-import` · `compute-matches` · `delete-watch-data` · `find-shared-paths` · `generate-fingerprint` · `parse-watch-history` · `reconcile-watch-data` · `seed-demo-history` · `set-reveal-consent` · `simulate-mutual` · `verify-capability`
 
-No Function uses service role, live AI, Agents, Integrations, or raw authentication material. Secret values — the protected `WATCHTREE_HMAC_KEY` used for internal HMAC digests — are never exposed to the browser, repository, logs, or response payloads. Inaccessible and nonexistent resource IDs share the same unavailable error class.
+## Development model
 
-## Synthetic-only boundary
+The product was not generated by one model in one prompt.
 
-Matching compares the caller’s own eligible events only against the versioned `demo-corpus-v1` corpus. It never scans another user’s Entities and never invokes service role. Reveal consent applies only to the caller’s own selected evidence tokens, and mutual resonance is an explicit simulation.
+```text
+Human project owner
+→ product intent, consequential approval, deployment/submission authority
 
-## Retained Memory Resonance foundation
+AI CTO
+→ execution contracts, exact-head review, evidence verification, merge readiness
 
-The earlier Memory Resonance Slice 2 journey — private Memory Cards → explicit ConsentRecord → deterministic ResonanceFingerprint → three synthetic candidates → one simulated MatchDecision — remains available as secondary product evidence, together with the original `CapabilityProbe` backend proof. WatchTree is the primary product narrative.
+Coding agents and agentic IDEs
+→ isolated source implementation
 
-## Local commands
+GitHub and CI
+→ version-control, review, and evidence boundary
+
+Base44
+→ Auth, Entities/RLS, Deno Functions, runtime, hosting, deployment
+```
+
+CI does not deploy. Production release requires separate exact-release review, explicit owner approval, deployment, and authenticated UAT.
+
+## Local validation
 
 ```bash
 npm ci
+npm run sync:base44-shared
+npm run check:base44-shared
 npm run test:ci
-npm run build                 # deterministic dev/CI build; no App ID required
-npm run build:release         # production release build; fails closed without VITE_BASE44_APP_ID
-npm run check:release-bundle  # asserts production App ID present; forbidden IDs, localhost, jsxDEV absent
+npm run build
+VITE_BASE44_APP_ID=6a6538c71a8e3e1640117c91 \
+VITE_BASE44_APP_SOURCE=production-release \
+npm run build:release
+npm run check:release-bundle
 npm run test:browser
-npm run dev
 ```
 
-Tests are deterministic and credential-free. They do not deploy, push Base44 resources, call live AI, or require a Base44 token.
+The deterministic CI path is credential-free. It does not deploy, mutate Base44 resources or secrets, call live AI, or require a Base44 token.
 
-## CI and release contract
+## Public documentation
 
-- CI runs on pull requests and on pushes to `main`, plus the two historical feature branches.
-- Pull-request CI stays deterministic and credential-free: shared-function parity, tests, a plain build, and browser validation. It never deploys.
-- The release job first proves fail-closed behavior: `npm run build:release` without `VITE_BASE44_APP_ID` must fail.
-- The release bundle is then built with the public production App ID supplied through non-secret CI configuration and is asserted to contain that ID and to exclude the validation and buildoff App IDs, `localhost:4400`, and `jsxDEV`.
-- CI never deploys, pushes Base44 resources, mutates secrets, calls live AI, or requires a Base44 token.
+- [Build Journal](docs/submission/BUILD_JOURNAL.md)
+- [Why Base44](docs/submission/WHY_BASE44.md)
+- [Backend Capability Ledger](docs/submission/BACKEND_CAPABILITY_LEDGER.md)
+- [Agentic Development Method](docs/submission/AGENTIC_DEVELOPMENT_METHOD.md)
 
-## Runtime validation boundary
-
-Deployment and browser runtime claims are separate validation steps performed against the existing production app after Web CTO review: Auth, owner RLS, Function contracts, cross-user isolation, mobile/desktop evidence, retries, reload restoration, duplicate-mutation behavior, and the reveal-consent hotfix path.
+Video-production documents are prepared separately and remain provisional until the exact final Production release is captured, rendered, uploaded, and verified.

@@ -9,9 +9,9 @@
 ## Prerequisites
 
 - Exact Production release deployed and SHA recorded.
-- `docs/submission/UAT_VERIFICATION_RECORD.md` prepared with timestamp and evidence sections.
 - Fresh browser session (incognito/private window).
 - Separate test email account (not the developer's personal account).
+- After UAT execution, create a **repository-external sanitized record** (not committed). Then commit only an approved public summary.
 
 ---
 
@@ -21,26 +21,26 @@
 
 | Step | Expectation | Evidence |
 | --- | --- | --- |
-| Open live app URL | Landing page renders; "Enter WatchTree" is visible | Screenshot |
+| Open live app URL | Landing page renders; entry CTA is visible | Screenshot |
 | Click "Enter WatchTree" | Auth panel appears with email/password fields and Google button | Screenshot |
-| Click "Create account" | Registration form switches to email + password fields | Screenshot |
-| Enter valid email + password (≥8 chars) | **Create protected account** button is enabled | — |
-| Submit registration | Success message: "Account created. Check your email for a verification code." | Screenshot |
+| Click "Create account" | Registration form is presented with email + password fields | Screenshot |
+| Enter valid email + password (≥8 chars) | Submit button is enabled | — |
+| Submit registration | Verification requirement is communicated | Screenshot |
 | Check test email inbox | Verification code email received from Base44 | — |
 
 ### 2. Email verification
 
 | Step | Expectation | Evidence |
 | --- | --- | --- |
-| Enter the 6-digit verification code | Code accepted; message: "Email verified. You can now sign in." | Screenshot |
-| Auto-redirect or manual sign-in prompt | Sign-in form is displayed | — |
+| Enter the verification code | Verification succeeds | Screenshot |
+| After verification | Sign-in form is displayed or session begins automatically | — |
 
 ### 3. Email sign-in
 
 | Step | Expectation | Evidence |
 | --- | --- | --- |
 | Enter registered email + password | Sign-in succeeds | Screenshot |
-| WatchTree experience loads | Entry choices visible: "Build my WatchTree" and "See Mina's WatchTree story" | Screenshot |
+| WatchTree experience loads | Entry choices are visible | Screenshot |
 
 ### 4. Sign-out
 
@@ -48,18 +48,19 @@
 | --- | --- | --- |
 | Click Sign out | Session ends; landing page returns | Screenshot |
 
-### 5. Re-sign-in and session restore
+### 5. Re-sign-in and session restore (pre-data)
 
 | Step | Expectation | Evidence |
 | --- | --- | --- |
-| Sign in again with same credentials | Previous WatchTree state is restored (events, matches, consent) | Screenshot |
+| Sign in again with same credentials | Authenticated shell restores; caller identity is maintained | Screenshot |
+| Verify | No unauthorized redirect to landing page | — |
 
 ### 6. Google sign-in (separate or test Google account)
 
 | Step | Expectation | Evidence |
 | --- | --- | --- |
-| On auth panel, click Google sign-in button | OAuth consent screen from Google appears (do not complete with personal account) | Screenshot |
-| Verify the OAuth screen shows the correct app name/domain | "base44-resonance" or app domain visible | Screenshot |
+| On auth panel, click Google sign-in button | OAuth consent screen from Google appears (do not complete with personal account) | Screenshot (ensure no Google account email, profile photo, or account list is visible in the capture) |
+| Verify the OAuth screen shows the correct app name/domain | App domain or name is visible | Screenshot |
 | *(Optional, with separate test Google account)* Complete Google OAuth | Google-authenticated session begins; same WatchTree experience loads | Screenshot |
 
 ### 7. Tutorial — 6 steps
@@ -69,7 +70,7 @@
 | Click "See Mina's WatchTree story" | Tutorial entry screen appears with title, body, and start choice | Screenshot |
 | Click "Start Mina's story" | Step 1 loads — synthetic seed data is created | Screenshot |
 | Progress through steps 1–5 | Each step shows correct title, subtitle, detail, and progress indicator | Screenshots per step |
-| Step 5 (simulated mutual) | "Simulated mutual resonance" state displayed with clear synthetic label | Screenshot |
+| Step 5 (simulated mutual) | Simulated mutual state displayed with explicit synthetic/simulation label | Screenshot |
 | Step 6 (finish) | Replay or delete options presented | Screenshot |
 
 ### 8. Tutorial replay
@@ -82,7 +83,7 @@
 
 | Step | Expectation | Evidence |
 | --- | --- | --- |
-| Click "Delete tutorial data" | Deletion completes; "Tutorial data deleted" confirmation shown | Screenshot |
+| Click "Delete tutorial data" | Deletion completes; confirmation shown | Screenshot |
 | Click "Build my WatchTree" | Switches to product path with empty state | Screenshot |
 
 ### 10. Deliberate YouTube URL addition
@@ -90,7 +91,7 @@
 | Step | Expectation | Evidence |
 | --- | --- | --- |
 | From empty state, click to add a YouTube URL | URL input field appears | Screenshot |
-| Paste a valid public YouTube URL (e.g., `https://www.youtube.com/watch?v=dQw4w9WgXcQ`) | URL validated and added as a WatchEvent | Screenshot |
+| Paste a valid public YouTube URL | URL validated and added as a WatchEvent | Screenshot |
 | Add optional watched-date or private-note labels | Labels stored with provenance marking | Screenshot |
 | Add 2–3 more URLs | WatchEvent count increases | Screenshot |
 
@@ -104,9 +105,9 @@
 
 | Step | Expectation | Evidence |
 | --- | --- | --- |
-| Matching triggers against synthetic archetypes | Candidate cards appear with deterministic scores | Screenshot |
+| Matching triggers against synthetic archetypes | Candidate cards appear | Screenshot |
 | Inspect one candidate's shared evidence | Evidence panel shows explainable overlap signals | Screenshot |
-| Verify: No percentage, no soulmate claim, no real-person identity | All labels read "synthetic" or "demo" | Screenshot |
+| Verify: No compatibility percentage, no soulmate claim, no real-person identity | All labels read "synthetic" or "demo" | Screenshot |
 
 ### 13. Evidence consent
 
@@ -127,7 +128,7 @@
 | Step | Expectation | Evidence |
 | --- | --- | --- |
 | Click "Delete all WatchTree data" | Deletion begins; progress indicator if large dataset | Screenshot |
-| After completion | Empty state: "No private WatchTree data yet." | Screenshot |
+| After completion | Empty state: no private WatchTree data remains | Screenshot |
 
 ### 16. Deletion persistence after refresh
 
@@ -135,18 +136,18 @@
 | --- | --- | --- |
 | Refresh the page | Empty state persists — no stale events, matches, or consent records | Screenshot |
 
-### 17. Sign-out / sign-in after deletion
+### 17. Re-sign-in / sign-in after deletion (restore post-data)
 
 | Step | Expectation | Evidence |
 | --- | --- | --- |
-| Sign out, then sign in again | Empty state persists — deletion is durable | Screenshot |
+| Sign in again | Events, matches, and consent from prior data creation are restored (or empty state persists if deletion completed) | Screenshot |
 
 ### 18. Realtime two-tab owner-scoped refresh
 
 | Step | Expectation | Evidence |
 | --- | --- | --- |
 | Open two browser tabs signed in as same user | Both tabs show same WatchTree state | — |
-| Tab A: Add a URL | Tab B: Watchevent update triggers restore notification within 2 seconds | Screenshot (both tabs) |
+| Tab A: Add a URL | Tab B: WatchEvent update triggers restore notification | Screenshot (both tabs) |
 | Tab B: Verify restored state matches Tab A | Tree, events, and privacy state match | Screenshot |
 
 ### 19. Mobile viewport
@@ -156,12 +157,13 @@
 | Resize browser to 375×812 (iPhone) or use mobile device tools | Layout adapts; no horizontal scroll; all CTAs tappable | Screenshot |
 | Complete tutorial on mobile | All 6 steps navigable; progress bar visible | Screenshots |
 
-### 20. Console errors
+### 20. Console errors and warnings
 
 | Step | Expectation | Evidence |
 | --- | --- | --- |
-| Open DevTools Console before any interaction | 0 errors | Screenshot |
-| After completing all test paths above | 0 errors (warnings are acceptable) | Console log export |
+| Open DevTools Console before any interaction | 0 errors, 0 warnings | Screenshot |
+| After completing all test paths above | Record error count, warning count, and warning classification | Console log export |
+| Classify each warning | Determine whether each warning is a submission blocker | — |
 
 ### 21. Failed network requests
 
@@ -182,18 +184,22 @@
 ## Session security
 
 - Do not commit, paste, or screenshot passwords, OTP codes, cookies, tokens, or storage values.
+- Google OAuth screenshots must **not** show the Google account email, profile photo, or account selection list.
 - Use a dedicated test email account — not a personal account.
 - Close the incognito session and clear site data after UAT completion.
 
 ## Result recording
 
-After completing all 21 test paths, record the following in `docs/submission/UAT_VERIFICATION_RECORD.md`:
+Create a **repository-external sanitized record** when UAT is executed, then commit only an approved public summary. The external record must include:
 
 - Exact Production release SHA and deployment timestamp.
 - Pass/fail per test path.
-- Screenshot or log evidence file paths (sanitized).
-- Console log export.
+- Screenshot or log evidence file paths (sanitized — no credentials, OTPs, tokens, or private data).
+- Console log export (with warnings classified).
 - Network log export.
-- Total errors or failures.
+- Total errors and failures.
+- Warning count and classification.
 - Blocking vs non-blocking issues.
 - Final disposition: `PASS` or `ISSUES_FOUND`.
+
+Do **not** include passwords, OTP codes, cookie values, storage values, access tokens, Firebase tokens, or personal account email in any record or log.

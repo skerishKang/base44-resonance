@@ -2,7 +2,7 @@
 
 > **🔴 Live app:** [base44-resonance-40117c91.base44.app](https://base44-resonance-40117c91.base44.app) — no login required to see the landing page.
 >
-> Sign in with email/password or Google to enter the private WatchTree experience.
+> Sign in with email/password to enter the private WatchTree experience. Google login is configured in source and visible at the Base44 dashboard level; production visibility pending final deployment verification.
 
 ---
 

@@ -1,0 +1,82 @@
+[
+  {
+    "id": "clip-landing",
+    "filename": "clips/01-landing.webm",
+    "type": "video",
+    "required": true,
+    "expectedDuration": 12,
+    "truthStatus": "VERIFIED_PRODUCTION",
+    "description": "Exact final Production landing with WatchTree identity and both product choices.",
+    "fallbackAllowed": false
+  },
+  {
+    "id": "clip-url-entry",
+    "filename": "clips/02-url-entry.webm",
+    "type": "video",
+    "required": true,
+    "expectedDuration": 24,
+    "truthStatus": "MERGED_NOT_DEPLOYED",
+    "description": "Verified Production URL entry, or a visibly labeled synthetic fallback when URL entry is not deployed.",
+    "fallbackAllowed": true
+  },
+  {
+    "id": "clip-private-tree",
+    "filename": "clips/03-private-tree.webm",
+    "type": "video",
+    "required": true,
+    "expectedDuration": 24,
+    "truthStatus": "VERIFIED_PRODUCTION",
+    "description": "Owner-private tree with only supported count, repeat, rhythm, and sequence signals.",
+    "fallbackAllowed": false
+  },
+  {
+    "id": "clip-synthetic-match",
+    "filename": "clips/04-synthetic-match.webm",
+    "type": "video",
+    "required": true,
+    "expectedDuration": 25,
+    "truthStatus": "VERIFIED_PRODUCTION",
+    "description": "Deterministic synthetic archetype result with inspectable evidence and no percentage.",
+    "fallbackAllowed": false
+  },
+  {
+    "id": "clip-consent-mutual",
+    "filename": "clips/05-consent-mutual.webm",
+    "type": "video",
+    "required": true,
+    "expectedDuration": 23,
+    "truthStatus": "VERIFIED_PRODUCTION",
+    "description": "Evidence selection, explicit consent, and the required synthetic/simulated/no-contact labels.",
+    "fallbackAllowed": false
+  },
+  {
+    "id": "clip-delete",
+    "filename": "clips/06-delete.webm",
+    "type": "video",
+    "required": true,
+    "expectedDuration": 18,
+    "truthStatus": "VERIFIED_PRODUCTION",
+    "description": "Exclusion, matching toggle, delete all, and restored empty state.",
+    "fallbackAllowed": false
+  },
+  {
+    "id": "clip-base44-proof",
+    "filename": "clips/07-base44-proof.webm",
+    "type": "video",
+    "required": true,
+    "expectedDuration": 22,
+    "truthStatus": "SOURCE_TARGET",
+    "description": "Sanitized exact-release evidence for Auth, owner-scoped Entities/RLS, caller-scoped Functions, CI, and hosting.",
+    "fallbackAllowed": true
+  },
+  {
+    "id": "narration-main",
+    "filename": "audio/watchtree-narration.wav",
+    "type": "audio",
+    "required": true,
+    "expectedDuration": 158,
+    "truthStatus": "SOURCE_TARGET",
+    "description": "Final English narration aligned to the 158-second master timeline.",
+    "fallbackAllowed": false
+  }
+]

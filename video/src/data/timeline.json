@@ -1,0 +1,17 @@
+{
+  "compositionId": "WatchTreeDemoMain",
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "durationSeconds": 158,
+  "scenes": [
+    {"id": "hook", "number": 1, "start": 0, "duration": 12, "label": "Hook", "assetId": "clip-landing", "truthStatus": "VERIFIED_PRODUCTION"},
+    {"id": "collection", "number": 2, "start": 12, "duration": 24, "label": "Deliberate collection", "assetId": "clip-url-entry", "truthStatus": "MERGED_NOT_DEPLOYED"},
+    {"id": "tree", "number": 3, "start": 36, "duration": 24, "label": "Private tree", "assetId": "clip-private-tree", "truthStatus": "VERIFIED_PRODUCTION"},
+    {"id": "match", "number": 4, "start": 60, "duration": 25, "label": "Synthetic match", "assetId": "clip-synthetic-match", "truthStatus": "VERIFIED_PRODUCTION"},
+    {"id": "consent", "number": 5, "start": 85, "duration": 23, "label": "Consent and simulated mutual", "assetId": "clip-consent-mutual", "truthStatus": "VERIFIED_PRODUCTION"},
+    {"id": "privacy", "number": 6, "start": 108, "duration": 18, "label": "Privacy lifecycle", "assetId": "clip-delete", "truthStatus": "VERIFIED_PRODUCTION"},
+    {"id": "base44", "number": 7, "start": 126, "duration": 22, "label": "Base44 proof", "assetId": "clip-base44-proof", "truthStatus": "SOURCE_TARGET"},
+    {"id": "close", "number": 8, "start": 148, "duration": 10, "label": "Close", "assetId": null, "truthStatus": "VERIFIED_PRODUCTION"}
+  ]
+}

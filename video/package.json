@@ -1,0 +1,28 @@
+{
+  "name": "watchtree-submission-video",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "validate": "node ../scripts/validate-demo-assets.mjs --mode preview",
+    "typecheck": "tsc --noEmit",
+    "build": "remotion bundle src/index.ts --out-dir .video-work/bundle",
+    "render:preview": "node scripts/render.mjs preview",
+    "render:final": "node scripts/render.mjs final"
+  },
+  "dependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.495"
+  },
+  "devDependencies": {
+    "@remotion/cli": "4.0.495",
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "typescript": "5.8.3"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

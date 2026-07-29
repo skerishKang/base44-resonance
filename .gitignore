@@ -19,3 +19,20 @@ dist
 .app.json*
 .types/
 visual-evidence-v7/
+
+# Submission video working files and media binaries
+.video-work/
+video/.video-work/
+video/public/clips/*
+!video/public/clips/README.md
+video/public/audio/*
+!video/public/audio/README.md
+video/public/images/*
+!video/public/images/README.md
+video/out/
+video/final-verification.json
+*.mp4
+*.webm
+*.mov
+*.wav
+*.aac

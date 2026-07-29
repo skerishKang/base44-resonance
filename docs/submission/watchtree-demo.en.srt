@@ -1,0 +1,115 @@
+1
+00:00:00,000 --> 00:00:04,200
+Your viewing history is more than a recommendation signal.
+
+2
+00:00:04,200 --> 00:00:07,800
+It is a path through what held your attention.
+
+3
+00:00:07,800 --> 00:00:12,000
+WatchTree turns links you choose into a private memory tree.
+
+4
+00:00:12,000 --> 00:00:16,500
+WatchTree never reads your YouTube account history.
+
+5
+00:00:16,500 --> 00:00:20,500
+You choose every link that enters your private collection.
+
+6
+00:00:20,500 --> 00:00:27,500
+This scene uses verified URL entry only after final Production UAT;
+otherwise it stays visibly synthetic.
+
+7
+00:00:27,500 --> 00:00:36,000
+There is no YouTube OAuth, no YouTube API key,
+no automatic account access, and no metadata lookup.
+
+8
+00:00:36,000 --> 00:00:45,500
+As the collection grows, WatchTree shows its count,
+repeat tendency, time rhythm, and sequence.
+
+9
+00:00:45,500 --> 00:00:51,500
+Every signal comes from records you provided.
+
+10
+00:00:51,500 --> 00:01:00,000
+It does not invent unsupported metadata
+or turn your choices into an AI profile.
+
+11
+00:01:00,000 --> 00:01:08,500
+WatchTree compares the private tree with clearly synthetic
+viewing archetypes, never real people.
+
+12
+00:01:08,500 --> 00:01:14,000
+Matching is deterministic and explainable.
+
+13
+00:01:14,000 --> 00:01:18,500
+You can inspect the evidence behind a result.
+
+14
+00:01:18,500 --> 00:01:25,000
+There is no percentage, no soulmate score,
+and no hidden AI ranking.
+
+15
+00:01:25,000 --> 00:01:31,000
+You choose which evidence to reveal and give explicit consent.
+
+16
+00:01:31,000 --> 00:01:39,000
+The result stays visibly labeled: Synthetic archetype.
+Simulated mutual. No real user contacted.
+
+17
+00:01:39,000 --> 00:01:48,000
+It is a bounded demonstration of consent,
+not a claim that another person was reached.
+
+18
+00:01:48,000 --> 00:01:53,000
+Privacy continues through the whole lifecycle.
+
+19
+00:01:53,000 --> 00:02:00,000
+Exclude a record, turn matching off,
+or delete everything and return to an empty state.
+
+20
+00:02:00,000 --> 00:02:06,000
+Deletion is a product feature, not a footer promise.
+
+21
+00:02:06,000 --> 00:02:15,500
+Base44 supplies Auth, owner-scoped Entities and row-level security,
+caller-scoped Deno Functions, runtime, hosting, and deployment authority.
+
+22
+00:02:15,500 --> 00:02:21,500
+Current source contains thirteen Entity schemas
+and thirteen Function sources.
+
+23
+00:02:21,500 --> 00:02:28,000
+Production proof remains separate from latest source
+until deployment and authenticated UAT.
+
+24
+00:02:28,000 --> 00:02:31,000
+WatchTree by Resonance. Your memory, your rules.
+
+25
+00:02:31,000 --> 00:02:35,000
+Built for the Base44 Dev Build-Off.
+
+26
+00:02:35,000 --> 00:02:38,000
+The verified Production URL is on screen.

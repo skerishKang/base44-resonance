@@ -1,0 +1,35 @@
+[
+  {"start": 0, "end": 4.2, "text": "Your viewing history is more than a recommendation signal."},
+  {"start": 4.2, "end": 7.8, "text": "It is a path through what held your attention."},
+  {"start": 7.8, "end": 12, "text": "WatchTree turns links you choose into a private memory tree."},
+
+  {"start": 12, "end": 16.5, "text": "WatchTree never reads your YouTube account history."},
+  {"start": 16.5, "end": 20.5, "text": "You choose every link that enters your private collection."},
+  {"start": 20.5, "end": 27.5, "text": "This scene uses verified URL entry only after final Production UAT; otherwise it stays visibly synthetic."},
+  {"start": 27.5, "end": 36, "text": "There is no YouTube OAuth, no YouTube API key, no automatic account access, and no metadata lookup."},
+
+  {"start": 36, "end": 45.5, "text": "As the collection grows, WatchTree shows its count, repeat tendency, time rhythm, and sequence."},
+  {"start": 45.5, "end": 51.5, "text": "Every signal comes from records you provided."},
+  {"start": 51.5, "end": 60, "text": "It does not invent unsupported metadata or turn your choices into an AI profile."},
+
+  {"start": 60, "end": 68.5, "text": "WatchTree compares the private tree with clearly synthetic viewing archetypes, never real people."},
+  {"start": 68.5, "end": 74, "text": "Matching is deterministic and explainable."},
+  {"start": 74, "end": 78.5, "text": "You can inspect the evidence behind a result."},
+  {"start": 78.5, "end": 85, "text": "There is no percentage, no soulmate score, and no hidden AI ranking."},
+
+  {"start": 85, "end": 91, "text": "You choose which evidence to reveal and give explicit consent."},
+  {"start": 91, "end": 99, "text": "The result stays visibly labeled: Synthetic archetype. Simulated mutual. No real user contacted."},
+  {"start": 99, "end": 108, "text": "It is a bounded demonstration of consent, not a claim that another person was reached."},
+
+  {"start": 108, "end": 113, "text": "Privacy continues through the whole lifecycle."},
+  {"start": 113, "end": 120, "text": "Exclude a record, turn matching off, or delete everything and return to an empty state."},
+  {"start": 120, "end": 126, "text": "Deletion is a product feature, not a footer promise."},
+
+  {"start": 126, "end": 135.5, "text": "Base44 supplies Auth, owner-scoped Entities and row-level security, caller-scoped Deno Functions, runtime, hosting, and deployment authority."},
+  {"start": 135.5, "end": 141.5, "text": "Current source contains thirteen Entity schemas and thirteen Function sources."},
+  {"start": 141.5, "end": 148, "text": "Production proof remains separate from latest source until deployment and authenticated UAT."},
+
+  {"start": 148, "end": 151, "text": "WatchTree by Resonance. Your memory, your rules."},
+  {"start": 151, "end": 155, "text": "Built for the Base44 Dev Build-Off."},
+  {"start": 155, "end": 158, "text": "The verified Production URL is on screen."}
+]

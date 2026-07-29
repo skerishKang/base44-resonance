@@ -1,0 +1,48 @@
+{
+  "productionUrl": "https://base44-resonance-40117c91.base44.app",
+  "appId": "6a6538c71a8e3e1640117c91",
+  "deployedSha": "REPLACE_WITH_FULL_40_CHARACTER_SHA",
+  "composition": {
+    "id": "WatchTreeDemoMain",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "durationSeconds": 158,
+    "durationInFrames": 4740
+  },
+  "deployedFunctionCount": 0,
+  "realtimeStatus": "MERGED_NOT_DEPLOYED",
+  "tutorialStatus": "SOURCE_TARGET",
+  "authenticatedUat": false,
+  "privacyReviewComplete": false,
+  "narrationReviewComplete": false,
+  "koreanReferenceReviewed": false,
+  "reviewer": "UNVERIFIED",
+  "reviewDate": "UNVERIFIED",
+  "labelVisibility": {
+    "syntheticArchetype": false,
+    "simulatedMutual": false,
+    "noRealUserContacted": false,
+    "sourceVsProduction": false
+  },
+  "sceneTruth": {
+    "clip-landing": "UNVERIFIED",
+    "clip-url-entry": "UNVERIFIED",
+    "clip-private-tree": "UNVERIFIED",
+    "clip-synthetic-match": "UNVERIFIED",
+    "clip-consent-mutual": "UNVERIFIED",
+    "clip-delete": "UNVERIFIED",
+    "clip-base44-proof": "UNVERIFIED"
+  },
+  "assetChecksums": {
+    "clip-landing": "REPLACE_WITH_SHA256",
+    "clip-url-entry": "REPLACE_WITH_SHA256",
+    "clip-private-tree": "REPLACE_WITH_SHA256",
+    "clip-synthetic-match": "REPLACE_WITH_SHA256",
+    "clip-consent-mutual": "REPLACE_WITH_SHA256",
+    "clip-delete": "REPLACE_WITH_SHA256",
+    "clip-base44-proof": "REPLACE_WITH_SHA256",
+    "narration-main": "REPLACE_WITH_SHA256"
+  },
+  "srtSha256": "REPLACE_WITH_SHA256"
+}

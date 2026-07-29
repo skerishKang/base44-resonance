@@ -7,7 +7,7 @@ import { CapabilityPanel } from "@/components/CapabilityPanel";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { ResonanceJourney } from "@/components/ResonanceJourney";
 import { getCopy, getStoredLanguage, persistLanguage } from "@/lib/i18n";
-import { scrollToElementById } from "@/lib/scroll";
+import { navigateToElementById, scrollToElementById } from "@/lib/scroll";
 import { CinematicWatchTree } from "@/watchtree/CinematicWatchTree";
 import { getWatchTreeCopy } from "@/watchtree/copy";
 import { createProductionWatchTreeAdapter } from "@/watchtree/productionAdapter";
@@ -55,6 +55,10 @@ export default function App() {
 
   useEffect(() => { document.documentElement.lang = language === "ko" ? "ko" : "en"; }, [language]);
   const changeLanguage = (nextLanguage) => setLanguage(persistLanguage(nextLanguage));
+  const handlePrivacyNavigation = (event) => {
+    event.preventDefault();
+    navigateToElementById("watchtree-privacy-overview", { block: "start" });
+  };
   const openAuth = () => { setAuthNotice(""); setAuthPanelOpen(true); requestAnimationFrame(() => scrollToElementById("auth-region", { block: "center" })); };
   const handleAuthenticated = (authenticatedUser) => { setUser(authenticatedUser); setAuthState("ready"); setAuthPanelOpen(false); setAuthNotice(""); requestAnimationFrame(() => scrollToElementById("experience", { block: "start" })); };
   const handleLogout = () => {
@@ -64,8 +68,8 @@ export default function App() {
 
   return <main className="site-shell">
     <Atmosphere />
-    <header className="site-header"><a className="wordmark" href="#top" aria-label="Resonance home">Resonance</a><nav aria-label="Primary navigation"><a href="#watchtree-story">{watchText.nav.story}</a><a href="#watchtree-privacy">{watchText.nav.privacy}</a><LanguageSwitch language={language} onChange={changeLanguage} labels={text.language}/>{!user?<button className="nav-enter" type="button" onClick={openAuth}>{watchText.nav.enter}</button>:null}</nav></header>
-    <div id="top"><CinematicWatchTree data-primary-cta="resonance" copy={watchText} onPrimary={user?()=>scrollToElementById("experience"):openAuth}/></div>
+    <header className="site-header"><a className="wordmark" href="#top" aria-label="Resonance home">Resonance</a><nav aria-label="Primary navigation"><a href="#watchtree-story">{watchText.nav.story}</a><a href="#watchtree-privacy-overview" onClick={handlePrivacyNavigation}>{watchText.nav.privacy}</a><LanguageSwitch language={language} onChange={changeLanguage} labels={text.language}/>{!user?<button className="nav-enter" type="button" onClick={openAuth}>{watchText.nav.enter}</button>:null}</nav></header>
+    <div id="top"><CinematicWatchTree data-primary-cta="resonance" copy={watchText} onPrimary={user?()=>scrollToElementById("experience"):openAuth} onPrivacy={handlePrivacyNavigation}/></div>
     <section className="auth-region" id="auth-region" aria-live="polite">
       {authState === "checking" ? <div className="state-message state-message--auth">{text.status.checking}</div> : null}
       {authNotice && authPanelOpen ? <p className="form-message form-message--error" role="alert">{authNotice}</p> : null}

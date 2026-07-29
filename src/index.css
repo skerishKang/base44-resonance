@@ -98,6 +98,12 @@ h2 { margin-bottom: 1.2rem; font-size: clamp(2.2rem, 4.4vw, 4.6rem); line-height
 .auth-form label span, .probe-composer label { color: var(--ivory-soft); font-size: .78rem; }
 .auth-form input, .probe-composer input { width: 100%; min-height: 3.2rem; border: 1px solid var(--line); border-radius: 0; padding: .8rem 1rem; background: rgba(0,0,0,.18); color: var(--ivory); }
 .auth-form small { color: rgba(244,236,221,.45); line-height: 1.5; }
+.auth-provider-divider { display: flex; align-items: center; gap: .8rem; margin: 1.3rem 0 1rem; color: rgba(244,236,221,.46); font-size: .72rem; text-align: center; }
+.auth-provider-divider::before, .auth-provider-divider::after { content: ""; height: 1px; flex: 1; background: var(--line); }
+.auth-provider-divider span { flex: 0 0 auto; }
+.auth-provider-button { width: 100%; border-color: var(--line-strong); background: rgba(255,255,255,.035); gap: .65rem; }
+.auth-provider-button:hover { border-color: rgba(215,169,111,.7); background: rgba(215,169,111,.08); }
+.google-mark { width: 1.35rem; height: 1.35rem; display: inline-grid; place-items: center; border: 1px solid currentColor; border-radius: 50%; color: var(--amber); font-family: Arial, sans-serif; font-size: .78rem; font-weight: 700; }
 .text-action { padding: .35rem 0; color: var(--amber); text-decoration: underline; text-decoration-color: rgba(215,169,111,.3); text-underline-offset: .25rem; }
 .form-message, .capability-message { padding: .8rem 1rem; border-left: 2px solid var(--amber); background: rgba(255,255,255,.025); line-height: 1.55; }
 .form-message--error, .capability-message--error { border-color: var(--error); color: var(--error); }

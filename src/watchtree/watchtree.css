@@ -79,6 +79,41 @@
   color: rgba(244, 236, 221, 0.48);
 }
 
+.watchtree-privacy-overview {
+  grid-column: 1 / -1;
+  scroll-margin-top: 6rem;
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(16rem, 1.2fr);
+  gap: clamp(1.25rem, 4vw, 4rem);
+  align-items: start;
+  margin-top: 1rem;
+  padding: clamp(1.25rem, 3vw, 2.4rem);
+  border: 1px solid var(--wt-line);
+  background: rgba(18, 19, 41, 0.55);
+}
+
+.watchtree-privacy-overview:focus {
+  outline: 2px solid var(--wt-green);
+  outline-offset: 0.35rem;
+}
+
+.watchtree-privacy-overview h2 {
+  margin: 0.55rem 0 0.8rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.8rem, 3vw, 3rem);
+  font-weight: 400;
+  line-height: 1.02;
+}
+
+.watchtree-privacy-overview p,
+.watchtree-privacy-overview li {
+  color: rgba(244, 236, 221, 0.62);
+  line-height: 1.6;
+}
+
+.watchtree-privacy-overview p { margin: 0; }
+.watchtree-privacy-overview ul { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.6rem; }
+
 .watchtree-cinema {
   position: relative;
   z-index: 2;
@@ -192,7 +227,8 @@
 .watchtree-experience button:focus-visible,
 .watchtree-experience input:focus-visible,
 .watchtree-landing a:focus-visible,
-.watchtree-landing button:focus-visible {
+.watchtree-landing button:focus-visible,
+.watchtree-privacy-overview:focus-visible {
   outline: 2px solid var(--wt-green);
   outline-offset: 3px;
 }

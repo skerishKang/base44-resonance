@@ -3,6 +3,11 @@ import { getBase44Client } from "@/api/base44Client";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function getSafeAuthReturnUrl() {
+  if (typeof window === "undefined" || !window.location) return "/";
+  return `${window.location.origin}${window.location.pathname}${window.location.hash}`;
+}
+
 export function AuthPanel({ copy, onAuthenticated, onClose }) {
   const [mode, setMode] = useState("signin");
   const [email, setEmail] = useState("");
@@ -12,6 +17,7 @@ export function AuthPanel({ copy, onAuthenticated, onClose }) {
   const [status, setStatus] = useState("idle");
   const [message, setMessage] = useState("");
   const activeRef = useRef(true);
+  const providerBusyRef = useRef(false);
 
   useEffect(() => {
     activeRef.current = true;
@@ -26,6 +32,7 @@ export function AuthPanel({ copy, onAuthenticated, onClose }) {
   };
 
   const switchMode = (nextMode) => {
+    if (status === "loading") return;
     resetFeedback();
     setMode(nextMode);
     setPassword("");
@@ -116,6 +123,23 @@ export function AuthPanel({ copy, onAuthenticated, onClose }) {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    if (status === "loading" || providerBusyRef.current) return;
+    providerBusyRef.current = true;
+    setStatus("loading");
+    setMessage("");
+    try {
+      const base44 = await getBase44Client();
+      const result = base44.auth.loginWithProvider("google", getSafeAuthReturnUrl());
+      if (result && typeof result.then === "function") await result;
+    } catch {
+      providerBusyRef.current = false;
+      if (!activeRef.current) return;
+      setStatus("error");
+      setMessage(copy.auth.errors.provider);
+    }
+  };
+
   const handleSubmit = (event) => {
     event.preventDefault();
     if (status === "loading") return;
@@ -145,6 +169,7 @@ export function AuthPanel({ copy, onAuthenticated, onClose }) {
           role="tab"
           aria-selected={mode === "signin"}
           className={mode === "signin" ? "is-active" : ""}
+          disabled={status === "loading"}
           onClick={() => switchMode("signin")}
         >
           {copy.auth.signIn}
@@ -154,6 +179,7 @@ export function AuthPanel({ copy, onAuthenticated, onClose }) {
           role="tab"
           aria-selected={mode === "register"}
           className={mode === "register" ? "is-active" : ""}
+          disabled={status === "loading"}
           onClick={() => switchMode("register")}
         >
           {copy.auth.register}
@@ -211,6 +237,24 @@ export function AuthPanel({ copy, onAuthenticated, onClose }) {
           {status === "loading" ? copy.auth.working : submitLabel}
         </button>
       </form>
+
+      {mode !== "verify" ? (
+        <>
+          <div className="auth-provider-divider" role="separator" aria-label={copy.auth.orEmail}>
+            <span aria-hidden="true">{copy.auth.orEmail}</span>
+          </div>
+          <button
+            className="button auth-provider-button"
+            type="button"
+            onClick={() => void handleGoogleLogin()}
+            disabled={status === "loading"}
+            aria-label={copy.auth.google}
+          >
+            <span className="google-mark" aria-hidden="true">G</span>
+            {status === "loading" ? copy.auth.working : copy.auth.google}
+          </button>
+        </>
+      ) : null}
 
       {mode === "verify" ? (
         <button className="text-action" type="button" onClick={() => switchMode("signin")}>

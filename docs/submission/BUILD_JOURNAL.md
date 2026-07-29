@@ -258,14 +258,12 @@ Video-production documents are maintained separately and remain provisional unti
 34fc099 — release CI enforcement
 1de65e5 — Resonance and WatchTree product baseline
 c592a29 — reveal-consent token-scope correction
-а497590 — privacy lifecycle hardening
+a497590 — privacy lifecycle hardening
 959afdc — API-key-free URL collection and grounded archetypes
 7a16adb — owner-scoped Realtime source
 c681194 — Base44 discovery and build-journal documentation
 4efc282 — next-only judge tutorial with EN/KO parity
 ```
-
-> Note: the `а` in historical shorthand should be read as the commit beginning `a497590`; exact full SHAs in linked PRs remain authoritative.
 
 ## Remaining release work
 

@@ -322,3 +322,26 @@ After final approval, a human operator may upload to YouTube as Unlisted or Publ
 ## 16. Re-record conditions
 
 Re-record and rerender when the deployed SHA changes, any claim differs from Production, any privacy item fails, error counts are nonzero, a required disclosure is obscured, a clip is padded or fabricated, captions drift, or the final file fails its technical gate. Never patch a published claim silently.
+
+## 17. GPU encoding benchmark (informational, not the default)
+
+The render wrapper (`video/scripts/render.mjs`) deliberately uses the software path: `--concurrency=1` with the default `libx264` encoder. This section records a one-time GPU experiment and why the software path stays the default. Do not hardcode a GPU option into the wrapper without re-checking the OS, driver, and encoder on the machine doing the final render.
+
+Verified environment: NVIDIA GeForce RTX 3080, driver 581.57, Remotion 4.0.495. Remotion 4.0.495 exposes `hardwareAcceleration` with the values `disable`, `if-possible`, and `required`. On Linux, `if-possible` or `required` with codec `h264` selects `h264_nvenc`; `crf`, `encodingMaxRate`, and `encodingBufferSize` are incompatible with hardware encoding (`required` throws, `if-possible` warns and falls back to `libx264`). The wrapper sets none of those, so NVENC is compatible.
+
+Benchmark on the same 15-second segment (frames 3555–4005, crossing the Scene 6→7 boundary), preview mode, 1920×1080 30 fps:
+
+| Path | Command flags | Wall | fps | Peak RAM | Encoder (log-proven) | GPU encode util | Exit | Decode |
+|---|---|---:|---:|---:|---|---:|---:|---|
+| A — safe default | `--concurrency=1` | 91.6 s | 4.91 | 568 MB | `libx264` | 0% | 0 | OK |
+| B — NVENC | `--concurrency=1 --hardware-acceleration=if-possible` | 86.4 s | 5.21 | 416 MB | `h264_nvenc` | 6% | 0 | OK |
+| C — NVENC parallel | `--concurrency=2 --hardware-acceleration=if-possible` | 107.3 s | 4.19 | 416 MB | `h264_nvenc` | 22% | 0 | OK |
+
+Findings:
+
+- `h264_nvenc` was proven in the Remotion verbose log (encoder name plus `hardware`), not assumed from the FFmpeg encoder list. A short standalone `ffmpeg -c:v h264_nvenc` probe also encoded, ffprobed, and fully decoded a 10-second 1080p30 file with exit 0.
+- Paths A and B produced identical frame luma (frame 200 mean 0.1742 / stddev 0.2123) and identical audio loudness (−91.0 dB): no screen or audio damage from switching encoder.
+- NVENC is only ~6% faster than `libx264` because the bottleneck is Chromium frame rendering, not encoding. `concurrency=2` is slower, not faster, on this machine.
+- Peak RAM stayed under 600 MB in every path, but a prior full 4,740-frame render approached memory pressure, so parallel concurrency is not adopted.
+
+Decision: the software path (Path A) remains the default for preview and final renders. GPU encoding is not adopted as the default because it is not meaningfully faster and the parallel path regresses. If a future machine is encode-bound, GPU encoding can be opted into without editing the wrapper by calling the Remotion CLI directly with `--hardware-acceleration=if-possible`; that value automatically falls back to `libx264` when NVENC is unavailable, so a GPU failure can never block a final render. Do not use `--hardware-acceleration=required` for the submission, and do not use AV1 or HEVC: the required delivery format is H.264/AAC.

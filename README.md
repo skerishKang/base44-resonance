@@ -1,5 +1,40 @@
 # WatchTree by Resonance
 
+> **🔴 Live app:** [base44-resonance-40117c91.base44.app](https://base44-resonance-40117c91.base44.app) — no login required to see the landing page.
+>
+> Sign in via email/password (Google login is also configured in source; production button visibility pending deployment verification).
+
+---
+
+## Quick start
+
+### A. Current production entry
+
+1. Open the **live app** → see the WatchTree landing page (English, mobile-responsive).
+2. Click **Enter WatchTree** → sign in via email/password.
+3. Choose **Build my WatchTree** — you can start with synthetic demo data or import a viewing-history file.
+4. Inspect the synthetic matches, consent to evidence reveal, and run the simulated mutual state.
+5. Delete all data — deletion is bounded, resumable, and verifiable.
+
+> ⚠️ The six-step guided tutorial, Realtime owner-scoped refresh, and deliberate YouTube URL addition are **merged in source but not yet deployed** to Production. They are not available in the current production build.
+
+### B. Judge path after final release
+
+The full path below requires exact Production deployment and authenticated UAT. Until then the tutorial and Realtime remain source-only capabilities.
+
+1. Sign in or create a verified account.
+2. Choose **See Mina's WatchTree story** for the six-step synthetic tutorial, or start with your own deliberately added video link.
+3. Build the private WatchTree.
+4. Inspect clearly labeled synthetic matches and their evidence.
+5. Select what evidence may be revealed and grant explicit consent.
+6. Run the clearly labeled simulated mutual state.
+7. Replay, return to the real product path, or delete the tutorial data.
+8. Verify Realtime two-tab owner-scoped refresh.
+
+The tutorial persona and every candidate are synthetic. No real person is contacted, notified, or matched.
+
+---
+
 **WatchTree** is a privacy-first viewing-memory product built on Base44. It turns the video links or viewing records a person deliberately contributes into a private behavioral tree, then compares that tree only with clearly synthetic viewing archetypes using deterministic, explainable signals.
 
 It does **not** automatically read a YouTube account, scan other users, perform real-person matching, or use runtime AI for matching. Every mutual state in the competition build is explicitly simulated.
@@ -8,7 +43,7 @@ It does **not** automatically read a YouTube account, scan other users, perform 
 
 | Surface | Status |
 | --- | --- |
-| Public Base44 app | Live at https://base44-resonance-40117c91.base44.app |
+| Public Base44 app | Live at [base44-resonance-40117c91.base44.app](https://base44-resonance-40117c91.base44.app) |
 | Public App ID | `6a6538c71a8e3e1640117c91` |
 | Latest reviewed source on `main` | `4efc2827bf9fae2ad99602090c2621845b7c89a3` |
 | Current production deployment | Older reviewed baseline; final source deployment and authenticated UAT are still pending |
@@ -42,13 +77,16 @@ Raw imported history is parsed in a browser Worker and is not uploaded as a raw 
 
 ## Judge path after final release
 
+See the condensed path in [Quick Start B](#b-judge-path-after-final-release) above. This section provides the full detail.
+
 1. Open the Base44 app and sign in or create a verified account.
-2. Choose **See Mina’s WatchTree story** for the six-step synthetic tutorial, or start with your own deliberately added video link.
+2. Choose **See Mina's WatchTree story** for the six-step synthetic tutorial, or start with your own deliberately added video link.
 3. Build the private WatchTree.
 4. Inspect clearly labeled synthetic matches and their evidence.
 5. Select what evidence may be revealed and grant explicit consent.
 6. Run the clearly labeled simulated mutual state.
 7. Replay, return to the real product path, or delete the tutorial data.
+8. Verify Realtime two-tab owner-scoped refresh (requires final Production deployment).
 
 The tutorial persona and every candidate are synthetic. No real person is contacted, notified, or matched.
 

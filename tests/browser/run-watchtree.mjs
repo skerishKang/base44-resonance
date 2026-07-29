@@ -8,6 +8,7 @@ import { createServer } from "vite";
 
 const host = "127.0.0.1";
 const port = 4173;
+const browserTestAppId = "6a6538c71a8e3e1640117c91";
 const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
 const rootUrl = `http://${host}:${port}/tests/harness/index.html`;
 const evidenceDir = new URL("../../visual-evidence-v7/", import.meta.url);
@@ -21,6 +22,10 @@ await Promise.all([
 const server = await createServer({
   root: repoRoot,
   logLevel: "error",
+  define: {
+    "import.meta.env.VITE_BASE44_APP_ID": JSON.stringify(browserTestAppId),
+    "import.meta.env.VITE_BASE44_APP_SOURCE": JSON.stringify("browser-uat"),
+  },
   server: { host, port, strictPort: true },
 });
 
@@ -68,15 +73,17 @@ function watchPage(page) {
   const pageErrors = [];
   const externalRequests = [];
   const rawUploadRequests = [];
+  const failedRequests = [];
   page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
   page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("requestfailed", (request) => failedRequests.push({ type: request.resourceType(), url: new URL(request.url()).origin + new URL(request.url()).pathname, error: request.failure()?.errorText ?? "unknown" }));
   page.on("request", (request) => {
     const url = new URL(request.url());
     if (!["127.0.0.1", "localhost"].includes(url.hostname) && !["data:", "blob:"].includes(url.protocol)) externalRequests.push(request.url());
     const postData = request.postData() ?? "";
     if (/Browser Fixture|Raw HTML Fixture|titleUrl|watch-history/i.test(postData)) rawUploadRequests.push({ url: request.url(), bytes: postData.length });
   });
-  return { consoleErrors, pageErrors, externalRequests, rawUploadRequests };
+  return { consoleErrors, pageErrors, externalRequests, rawUploadRequests, failedRequests };
 }
 
 async function layoutState(page) {
@@ -213,7 +220,7 @@ async function headerState(page) {
     const languageStyle = language ? getComputedStyle(language) : null;
     const desktop = innerWidth >= 821;
     const storyVisible = visible(header.querySelector('nav > a[href="#watchtree-story"]'));
-    const privacyVisible = visible(header.querySelector('nav > a[href="#watchtree-privacy"]'));
+    const privacyVisible = visible(header.querySelector('nav > a[href="#watchtree-privacy-overview"]'));
     const languageVisible = visible(language);
     const enterVisible = visible(header.querySelector(".nav-enter"));
     const headerRect = header.getBoundingClientRect();
@@ -257,6 +264,51 @@ function assertHeaderState(label, state) {
   assert.equal(state.title_clear, true, `${label}: header must clear hero title`);
   assert.equal(state.desktop_nav_complete, true, `${label}: desktop navigation is incomplete`);
   if (state.viewport.width < 821) assert.equal(state.mobile_compact_nav_allowed, true, `${label}: mobile compact navigation is incomplete`);
+}
+
+async function assertPublicPrivacyNavigation(page, label, { secondary = false } = {}) {
+  const selector = secondary
+    ? '.watchtree-landing__actions a[href="#watchtree-privacy-overview"]'
+    : 'nav > a[href="#watchtree-privacy-overview"]';
+  const link = page.locator(selector).first();
+  await link.click();
+  await page.waitForFunction(() => {
+    const target = document.getElementById("watchtree-privacy-overview");
+    if (!target) return false;
+    const rect = target.getBoundingClientRect();
+    return window.location.hash === "#watchtree-privacy-overview"
+      && document.activeElement === target
+      && rect.top >= -8
+      && rect.top < innerHeight;
+  });
+  const state = await page.evaluate(() => {
+    const target = document.getElementById("watchtree-privacy-overview");
+    const rect = target?.getBoundingClientRect();
+    return {
+      hash: window.location.hash,
+      focused: document.activeElement?.id === "watchtree-privacy-overview",
+      in_viewport: Boolean(rect && rect.top >= -8 && rect.top < innerHeight),
+      heading: target?.querySelector("h2")?.textContent?.trim() ?? "",
+      public_controls: target?.querySelectorAll("input, textarea, [data-testid*='delete'], [data-testid*='matching']").length ?? -1,
+      authenticated_id_count: document.querySelectorAll("#watchtree-privacy").length,
+    };
+  });
+  assert.equal(state.hash, "#watchtree-privacy-overview", `${label}: privacy fragment`);
+  assert.equal(state.focused, true, `${label}: privacy target focus`);
+  assert.equal(state.in_viewport, true, `${label}: privacy target must be in viewport`);
+  assert.ok(state.heading.length > 0, `${label}: privacy heading missing`);
+  assert.equal(state.public_controls, 0, `${label}: anonymous privacy overview exposed controls`);
+  assert.equal(state.authenticated_id_count, 0, `${label}: authenticated privacy console must not render anonymously`);
+  await page.evaluate(() => {
+    history.replaceState({}, "", `${location.pathname}${location.search}`);
+    const previousScrollBehavior = document.documentElement.style.scrollBehavior;
+    document.documentElement.style.scrollBehavior = "auto";
+    window.scrollTo(0, 0);
+    document.documentElement.style.scrollBehavior = previousScrollBehavior;
+    document.getElementById("watchtree-privacy-overview")?.blur();
+  });
+  await page.waitForFunction(() => window.scrollY < 1);
+  await delay(80);
 }
 
 async function capture(page, name, required = {}, options = {}) {
@@ -309,6 +361,105 @@ async function openContext(browser, options = {}) {
   const diagnostics = watchPage(page);
   await page.goto(rootUrl, { waitUntil: "networkidle" });
   return { context, page, diagnostics };
+}
+
+async function appEntryAcceptance(browser, { label, viewport, privacySelector, reducedMotion = "no-preference" }) {
+  const appUrl = `http://${host}:${port}/`;
+  const context = await browser.newContext({ viewport, deviceScaleFactor: 1, reducedMotion });
+  const page = await context.newPage();
+  const diagnostics = watchPage(page);
+  const oauthStarts = [];
+  await page.route("**/api/apps/auth/login**", async (route) => {
+    const url = new URL(route.request().url());
+    oauthStarts.push({
+      origin: url.origin,
+      pathname: url.pathname,
+      has_app_id: url.searchParams.has("app_id"),
+      has_return_url: url.searchParams.has("from_url"),
+      return_url_has_token: /access_token|token|cookie/i.test(url.searchParams.get("from_url") ?? ""),
+    });
+    await route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><title>OAuth start intercepted for local UAT</title>" });
+  });
+
+  await page.goto(appUrl, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Enter WatchTree" }).waitFor({ state: "visible" });
+  const initial = await page.evaluate(() => ({
+    title: document.title,
+    privacy_href: document.querySelector('nav a[href="#watchtree-privacy-overview"]')?.getAttribute("href") ?? null,
+    public_target_count: document.querySelectorAll("#watchtree-privacy-overview").length,
+    authenticated_target_count: document.querySelectorAll("#watchtree-privacy").length,
+    horizontal_overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  }));
+  assert.equal(initial.title, "Resonance — WatchTree", `${label}: title`);
+  assert.equal(initial.privacy_href, "#watchtree-privacy-overview", `${label}: public privacy href`);
+  assert.equal(initial.public_target_count, 1, `${label}: public privacy target count`);
+  assert.equal(initial.authenticated_target_count, 0, `${label}: authenticated privacy control must stay hidden anonymously`);
+  assert.equal(initial.horizontal_overflow, 0, `${label}: initial horizontal overflow`);
+
+  await assertPublicPrivacyNavigation(page, `${label} privacy`, { secondary: privacySelector === ".watchtree-landing__actions a[href=\"#watchtree-privacy-overview\"]" });
+  await page.goto(appUrl, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Enter WatchTree" }).click();
+  await page.getByRole("button", { name: "Continue with Google" }).waitFor({ state: "visible" });
+
+  const auth = await page.evaluate(() => {
+    const visible = (element) => Boolean(element && (element.offsetWidth || element.offsetHeight || element.getClientRects().length));
+    const google = [...document.querySelectorAll("button")].find((element) => visible(element) && element.getAttribute("aria-label") === "Continue with Google");
+    return {
+      email_inputs: [...document.querySelectorAll('input[type="email"]')].filter(visible).length,
+      password_inputs: [...document.querySelectorAll('input[type="password"]')].filter(visible).length,
+      sign_in_visible: [...document.querySelectorAll("button")].some((element) => visible(element) && element.textContent.trim() === "Sign in"),
+      create_account_visible: [...document.querySelectorAll("button")].some((element) => visible(element) && element.textContent.trim() === "Create account"),
+      google_visible: Boolean(google),
+      google_type: google?.type ?? null,
+      google_disabled: google?.disabled ?? null,
+      google_aria: google?.getAttribute("aria-label") ?? null,
+      divider_aria: document.querySelector('[role="separator"]')?.getAttribute("aria-label") ?? null,
+    };
+  });
+  assert.deepEqual(
+    { email_inputs: auth.email_inputs, password_inputs: auth.password_inputs, sign_in_visible: auth.sign_in_visible, create_account_visible: auth.create_account_visible, google_visible: auth.google_visible, google_type: auth.google_type, google_disabled: auth.google_disabled },
+    { email_inputs: 1, password_inputs: 1, sign_in_visible: true, create_account_visible: true, google_visible: true, google_type: "button", google_disabled: false },
+    `${label}: auth controls`,
+  );
+  assert.equal(auth.google_aria, "Continue with Google", `${label}: Google accessible name`);
+  assert.equal(auth.divider_aria, "Or continue with email", `${label}: divider label`);
+
+  await page.getByRole("tab", { name: "Create account" }).click();
+  assert.equal(await page.getByRole("button", { name: "Continue with Google" }).isVisible(), true, `${label}: Google button in registration mode`);
+
+  let googleFocus = null;
+  for (let attempt = 0; attempt < 24; attempt += 1) {
+    await page.keyboard.press("Tab");
+    const current = await page.evaluate(() => {
+      const element = document.activeElement;
+      return {
+        aria: element?.getAttribute("aria-label") ?? null,
+        focus_visible: Boolean(element?.matches?.(":focus-visible")),
+        outline_style: getComputedStyle(element).outlineStyle,
+        disabled: element?.disabled ?? false,
+      };
+    });
+    if (current.aria === "Continue with Google") { googleFocus = current; break; }
+  }
+  assert.deepEqual(googleFocus, { aria: "Continue with Google", focus_visible: true, outline_style: "solid", disabled: false }, `${label}: keyboard focus path`);
+
+  const buttonBox = await page.getByRole("button", { name: "Continue with Google" }).boundingBox();
+  assert.ok(buttonBox, `${label}: Google button bounds`);
+  await Promise.allSettled([
+    page.mouse.click(buttonBox.x + buttonBox.width / 2, buttonBox.y + buttonBox.height / 2),
+    page.mouse.click(buttonBox.x + buttonBox.width / 2, buttonBox.y + buttonBox.height / 2),
+  ]);
+  await page.waitForTimeout(450);
+  assert.equal(oauthStarts.length, 1, `${label}: provider start must be exactly once`);
+  assert.deepEqual({ has_app_id: oauthStarts[0].has_app_id, has_return_url: oauthStarts[0].has_return_url, return_url_has_token: oauthStarts[0].return_url_has_token }, { has_app_id: true, has_return_url: true, return_url_has_token: false }, `${label}: OAuth query contract`);
+  assert.deepEqual(diagnostics.consoleErrors, [], `${label}: console errors`);
+  assert.deepEqual(diagnostics.pageErrors, [], `${label}: page errors`);
+  assert.deepEqual(diagnostics.failedRequests, [], `${label}: failed requests`);
+  assert.deepEqual(diagnostics.rawUploadRequests, [], `${label}: raw upload requests`);
+  const layout = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));
+  assert.equal(layout.scrollWidth - layout.clientWidth, 0, `${label}: final horizontal overflow`);
+  await context.close();
+  return { label, viewport, initial, privacy_target: true, auth, register_google: true, keyboard_focus: googleFocus, oauth_starts: oauthStarts.length, diagnostics: { console_errors: diagnostics.consoleErrors.length, page_errors: diagnostics.pageErrors.length, failed_requests: diagnostics.failedRequests.length, raw_uploads: diagnostics.rawUploadRequests.length }, horizontal_overflow: 0 };
 }
 
 async function waitForForegroundScene(page, sceneNumber, outgoingSceneNumber = null) {
@@ -469,17 +620,32 @@ function assertSharedPathGeometry(label, geometry) {
 let browser;
 let runError;
 const cleanupErrors = [];
+const appEntryResults = [];
 
 try {
   await server.listen();
   await waitForServer();
   browser = await chromium.launch({ headless: true });
 
+  // ── Production entry acceptance on the real App component ────────────
+  appEntryResults.push(await appEntryAcceptance(browser, {
+    label: "app desktop entry",
+    viewport: { width: 1440, height: 900 },
+    privacySelector: 'nav > a[href="#watchtree-privacy-overview"]',
+  }));
+  appEntryResults.push(await appEntryAcceptance(browser, {
+    label: "app mobile entry",
+    viewport: { width: 390, height: 844 },
+    privacySelector: '.watchtree-landing__actions a[href="#watchtree-privacy-overview"]',
+    reducedMotion: "reduce",
+  }));
+
   // ── Desktop scenes ──────────────────────────────────────────────────
   {
     const { context, page, diagnostics } = await openContext(browser);
     const desktopHeader = await headerState(page);
     assertHeaderState("desktop initial", desktopHeader);
+    await assertPublicPrivacyNavigation(page, "desktop header privacy");
     for (let scene = 1; scene <= 7; scene += 1) {
       await page.getByRole("button", { name: `Scene ${scene}` }).click();
       const activeScene = await waitForForegroundScene(page, scene, scene === 6 ? 1 : null);
@@ -565,6 +731,7 @@ try {
     assert.ok(mobileComposition.personal_trees >= 1, `mobile: >=1 tree visible, got ${mobileComposition.personal_trees}`);
     assert.equal(mobileComposition.viewer_b, 1, "mobile: viewer B must be visible");
     assert.equal(mobileComposition.connection_signal, 1, "mobile: connection signal must be visible");
+    await assertPublicPrivacyNavigation(page, "mobile landing privacy", { secondary: true });
     await capture(page, "mobile-390-initial", { ...mobileComposition, header: mobileHeader });
     await capture(page, "mobile-initial", mobileComposition);
 
@@ -1515,7 +1682,12 @@ try {
     tutorial_mobile_flow_verified: true,
     tutorial_reduced_motion_verified: true,
     tutorial_korean_flow_verified: true,
+    app_desktop_entry_verified: true,
+    app_mobile_entry_verified: true,
+    app_google_oauth_start_once_verified: true,
+    app_keyboard_google_focus_verified: true,
   };
+  manifest.app_entry_acceptance = appEntryResults;
   await writeFile(new URL("watchtree-browser-evidence.json", evidenceDir), `${JSON.stringify(manifest, null, 2)}\n`);
   await Promise.all([
     unlink(new URL("browser-error.log", evidenceDir)).catch(() => {}),

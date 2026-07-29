@@ -3,7 +3,7 @@ import { WatchTreeGraphic } from "./WatchTreeGraphic.jsx";
 
 const sampleEvents = (length) => Array.from({ length }, (_, index) => ({ normalized_content_id: `visual:${index}` }));
 
-export function CinematicWatchTree({ copy, onPrimary }) {
+export function CinematicWatchTree({ copy, onPrimary, onPrivacy }) {
   const [scene, setScene] = useState(0);
 
   useEffect(() => {
@@ -20,7 +20,7 @@ export function CinematicWatchTree({ copy, onPrimary }) {
         <p>{copy.landing.body}</p>
         <div className="watchtree-landing__actions">
           <button className="button button--primary" data-primary-cta="resonance" type="button" onClick={onPrimary}>{copy.landing.primary}</button>
-          <a className="button button--ghost" href="#watchtree-privacy">{copy.landing.secondary}</a>
+          <a className="button button--ghost" href="#watchtree-privacy-overview" onClick={onPrivacy}>{copy.landing.secondary}</a>
         </div>
         <p className="privacy-note">{copy.landing.privacy}</p>
       </div>
@@ -88,6 +88,22 @@ export function CinematicWatchTree({ copy, onPrimary }) {
         <div className="reduced-product-choices" aria-label="Product choices"><span>Private demo</span><span>Local HTML / JSON</span><span>Consent-controlled reveal</span></div>
         <button className="button button--primary" type="button" onClick={onPrimary}>{copy.landing.primary}</button>
       </div>
+
+      <section
+        className="watchtree-privacy-overview"
+        id="watchtree-privacy-overview"
+        tabIndex="-1"
+        aria-labelledby="watchtree-privacy-overview-title"
+      >
+        <div>
+          <span className="section-kicker">{copy.landing.privacyOverview.eyebrow}</span>
+          <h2 id="watchtree-privacy-overview-title">{copy.landing.privacyOverview.title}</h2>
+          <p>{copy.landing.privacyOverview.body}</p>
+        </div>
+        <ul>
+          {copy.landing.privacyOverview.points.map((point) => <li key={point}>{point}</li>)}
+        </ul>
+      </section>
     </section>
   );
 }

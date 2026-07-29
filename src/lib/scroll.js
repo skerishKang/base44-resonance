@@ -37,3 +37,20 @@ export function scrollToElementById(id, options) {
   if (typeof document === "undefined" || typeof id !== "string") return false;
   return scrollElementIntoView(document.getElementById(id), options);
 }
+
+export function navigateToElementById(id, options) {
+  if (typeof document === "undefined" || typeof id !== "string") return false;
+  const element = document.getElementById(id);
+  if (!element) return false;
+
+  if (typeof window !== "undefined" && window.history?.pushState && window.location) {
+    const hash = `#${id}`;
+    if (window.location.hash !== hash) {
+      window.history.pushState({}, "", `${window.location.pathname}${window.location.search}${hash}`);
+    }
+  }
+
+  const didScroll = scrollElementIntoView(element, options);
+  if (typeof element.focus === "function") element.focus({ preventScroll: true });
+  return didScroll;
+}

@@ -7,6 +7,19 @@ const en = {
     primary: "Use private demo history",
     secondary: "See how privacy works",
     privacy: "Raw export files stay in your browser. Matching starts off.",
+    privacyOverview: {
+      eyebrow: "Privacy overview",
+      title: "Your viewing path stays yours.",
+      body: "WatchTree uses only the viewing material you deliberately choose, with clear boundaries before anything is compared or revealed.",
+      points: [
+        "You add YouTube URLs or files you explicitly select.",
+        "Candidates are synthetic only.",
+        "No real user is contacted.",
+        "Evidence is revealed only after explicit consent.",
+        "You can delete your data whenever you choose.",
+        "WatchTree never accesses your YouTube account automatically.",
+      ],
+    },
     scenes: [
       ["You watched.", "Abstract media moments pass through one synthetic viewer."],
       ["Some moments stayed.", "Retained fragments become a private viewing trail."],
@@ -84,6 +97,19 @@ const ko = {
     primary: "비공개 데모 기록 사용",
     secondary: "개인정보 처리 보기",
     privacy: "원본 내보내기 파일은 브라우저 밖으로 나가지 않으며 매칭은 기본적으로 꺼져 있습니다.",
+    privacyOverview: {
+      eyebrow: "개인정보 보호 원칙",
+      title: "시청 경로의 주인은 당신입니다.",
+      body: "WatchTree는 직접 선택한 시청 자료만 사용하며 비교와 공개 전에 경계를 분명히 보여줍니다.",
+      points: [
+        "직접 추가한 YouTube URL 또는 명시적으로 선택한 파일만 사용합니다.",
+        "후보는 synthetic 자료만 사용합니다.",
+        "실제 사용자에게 연락하지 않습니다.",
+        "명시적 동의 후에만 evidence를 공개합니다.",
+        "원할 때 데이터를 삭제할 수 있습니다.",
+        "YouTube 계정에 자동으로 접근하지 않습니다.",
+      ],
+    },
     scenes: [
       ["당신은 영상을 봤습니다.", "한 명의 synthetic 사용자가 추상적인 미디어 장면을 지나갑니다."],
       ["어떤 장면은 남았습니다.", "남은 빛 조각이 사적인 시청 경로가 됩니다."],

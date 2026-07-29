@@ -24,6 +24,7 @@ import {
   createBase44ClientConfig,
 } from "../src/api/base44ClientConfig.js";
 import {
+  navigateToElementById,
   getScrollBehavior,
   scrollElementIntoView,
   scrollToElementById,
@@ -164,6 +165,36 @@ test("programmatic scrolling respects reduced and normal motion", () => {
   assert.equal(getScrollBehavior(() => ({ matches: false })), "smooth");
   assert.equal(scrollElementIntoView(null), false);
   assert.equal(scrollToElementById("missing"), false);
+});
+
+test("public privacy navigation helper preserves the current query and focuses the target", () => {
+  const previousDocument = globalThis.document;
+  const previousWindow = globalThis.window;
+  const calls = [];
+  const target = {
+    scrollIntoView(options) { calls.push(["scroll", options]); },
+    focus(options) { calls.push(["focus", options]); },
+  };
+  const history = [];
+  globalThis.window = {
+    location: { pathname: "/preview", search: "?mode=local", hash: "" },
+    history: { pushState(_state, _title, url) { history.push(url); } },
+  };
+  globalThis.document = { getElementById: (id) => id === "watchtree-privacy-overview" ? target : null };
+
+  try {
+    assert.equal(navigateToElementById("watchtree-privacy-overview", { block: "start" }), true);
+    assert.deepEqual(history, ["/preview?mode=local#watchtree-privacy-overview"]);
+    assert.deepEqual(calls, [
+      ["scroll", { behavior: "auto", block: "start" }],
+      ["focus", { preventScroll: true }],
+    ]);
+  } finally {
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
 });
 
 test("active Entity inventory contains capability proof and Slice 2 private resources", () => {
